@@ -1,0 +1,15 @@
+local Constants = {
+    PAD = 10,
+    GAP = 10,
+    STATUS_HEIGHT = 18,
+    HEADER_LINE = 18,
+    BROWSER_MIN_WIDTH = 300,
+    BROWSER_MAX_WIDTH = 380,
+    CONTROL_ROW_HEIGHT = 24,
+    CONTROL_ROW_GAP = 6,
+    CONTROL_MIN_ENTRY_WIDTH = 220,
+    CONTROL_BUTTON_MIN_WIDTH = 72,
+    CONTROL_BUTTON_MAX_WIDTH = 110,
+}
+
+return Constants
