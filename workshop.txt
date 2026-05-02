@@ -1,4 +1,4 @@
 version=1
-id=MarketEngine
-name=Market Engine
+id=MarketSense
+name=Market Sense
 visibility=public
