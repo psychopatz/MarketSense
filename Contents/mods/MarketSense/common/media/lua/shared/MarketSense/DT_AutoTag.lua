@@ -38,7 +38,10 @@ local function addDescriptorTags(ctx, result)
         if ctx.moduleName == "Base" then
             addTag(tags, "Origin.Vanilla")
         else
-            addTag(tags, "Origin.Modded")
+            -- Ensure modId is clean (no spaces/dots) for tagging
+            local cleanId = ctx.sourceModId or "Modded"
+            cleanId = cleanId:gsub("[%s%.]", "")
+            addTag(tags, "Origin." .. cleanId)
         end
     end
 

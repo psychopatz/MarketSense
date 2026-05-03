@@ -56,12 +56,18 @@ function Stock.calculate(fullType, ctx, details)
         baseStock.min = math.floor(baseStock.max * (Config.stock.defaultMinRatio or 0.2))
     end
 
+    local tags = { details.primary }
+    if details.rarity then table.insert(tags, "Rarity." .. details.rarity) end
+    if details.quality and details.quality ~= "" then table.insert(tags, "Quality." .. details.quality) end
+    if details.theme and details.theme ~= "" then table.insert(tags, "Theme." .. details.theme) end
+    if details.origin and details.origin ~= "" then table.insert(tags, "Origin." .. details.origin) end
+
     local globalMult = Config.stock.globalMultiplier or 1.0
-    local tagMult = Config.getSandboxTagMultiplier and Config.getSandboxTagMultiplier("Stock", details.primary) or 1.0
+    local tagMult = Config.getSandboxTagMultiplier and Config.getSandboxTagMultiplier("Stock", tags) or 1.0
 
     local state = {
         stock = baseStock,
-        multiplier = globalMult * tagMult,
+        multiplier = (globalMult or 1.0) * tagMult,
         minRatio = Config.stock.defaultMinRatio or 0.2,
     }
 

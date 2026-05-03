@@ -104,41 +104,41 @@ DB.registerCategory("Building", {
 
 
 DB.registerTag("Rarity.Uncommon", {
-    mult = Config.rarityMultipliers["Uncommon"] or 1.18,
-    stockMultiplier = Config.global.stock_uncommon_multiplier or 0.85
+    add = Config.rarityAdditions and Config.rarityAdditions["Uncommon"] or 14,
+    stockMultiplier = Config.global and Config.global.stock_uncommon_multiplier or 0.85
 })
 
 DB.registerTag("Rarity.Rare", {
-    mult = Config.rarityMultipliers["Rare"] or 1.45,
-    stockMultiplier = Config.global.stock_rare_multiplier or 0.55,
-    minRatio = Config.global.stock_rare_min_ratio or 0
+    add = Config.rarityAdditions and Config.rarityAdditions["Rare"] or 17,
+    stockMultiplier = Config.global and Config.global.stock_rare_multiplier or 0.55,
+    minRatio = Config.global and Config.global.stock_rare_min_ratio or 0
 })
 
 DB.registerTag("Rarity.Legendary", {
-    mult = Config.rarityMultipliers["Legendary"] or 2.10,
-    stockMultiplier = Config.global.stock_legendary_multiplier or 0.22,
-    minRatio = Config.global.stock_rare_min_ratio or 0
+    add = Config.rarityAdditions and Config.rarityAdditions["Legendary"] or 20,
+    stockMultiplier = Config.global and Config.global.stock_legendary_multiplier or 0.22,
+    minRatio = Config.global and Config.global.stock_rare_min_ratio or 0
 })
 
 DB.registerTag("Rarity.UltraRare", {
-    mult = Config.rarityMultipliers["UltraRare"] or 2.75,
-    stockMultiplier = Config.global.stock_ultrarare_multiplier or 0.10,
-    minRatio = Config.global.stock_rare_min_ratio or 0
+    add = Config.rarityAdditions and Config.rarityAdditions["UltraRare"] or 27,
+    stockMultiplier = Config.global and Config.global.stock_ultrarare_multiplier or 0.1,
+    minRatio = Config.global and Config.global.stock_rare_min_ratio or 0
 })
 
 
 DB.registerTag("Quality.Waste", {
-    mult = Config.qualityMultipliers["Waste"] or 0.30,
-    stockMultiplier = Config.global.stock_waste_multiplier or 1.20
+    add = Config.qualityAdditions and Config.qualityAdditions["Waste"] or -10.0,
+    stockMultiplier = Config.global and Config.global.stock_waste_multiplier or 1.2
 })
 
 DB.registerTag("Quality.Luxury", {
-    mult = Config.qualityMultipliers["Luxury"] or 1.60,
-    stockMultiplier = Config.global.stock_luxury_multiplier or 0.70
+    add = Config.qualityAdditions and Config.qualityAdditions["Luxury"] or 40.0,
+    stockMultiplier = Config.global and Config.global.stock_luxury_multiplier or 0.7
 })
 
 DB.registerTag("Quality.Sterile", {
-    mult = Config.qualityMultipliers["Sterile"] or 1.18,
+    add = Config.qualityAdditions and Config.qualityAdditions["Sterile"] or 14.0,
     stockMultiplier = 1.0
 })
 

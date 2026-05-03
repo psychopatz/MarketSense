@@ -177,12 +177,7 @@ function Pricing.calculateRawScore(ctx, details)
         score = base - weightPenalty
     end
 
-    if hasTag(details, "Rarity.Uncommon") then score = score * (Config.rarityMultipliers and Config.rarityMultipliers.Uncommon or 1.18) end
-    if hasTag(details, "Rarity.Rare") then score = score * (Config.rarityMultipliers and Config.rarityMultipliers.Rare or 1.45) end
-    if hasTag(details, "Rarity.Legendary") then score = score * (Config.rarityMultipliers and Config.rarityMultipliers.Legendary or 2.10) end
-    if hasTag(details, "Quality.Waste") then score = score * (Config.qualityMultipliers and Config.qualityMultipliers.Waste or 0.30) end
-    if hasTag(details, "Quality.Luxury") then score = score * (Config.qualityMultipliers and Config.qualityMultipliers.Luxury or 1.60) end
-    if hasTag(details, "Origin.Modded") then score = score * 1.00 end
+    -- Note: Rarity/Quality/Theme/Origin are handled by getSandboxTagMultiplier above
 
     if primary == "Misc.General" then
         score = math.max(score, CATEGORY_BASE_SCORES.Misc)
@@ -195,16 +190,27 @@ function Pricing.applyBalances(ctx, details, audit)
     local working = tonumber(details.rawScore or 0) or 0
     addAudit(audit, "raw score", working, working)
 
+    local beforeSandbox = working
+    local sandboxAdd = Config.pricing.globalValue or 0
+    
+    -- All hierarchical tag additions (Primary, Rarity, Quality, Theme, Origin)
+    -- are now resolved via the Sandbox Value system.
+    if Config.getSandboxTagMultiplier then
+        local tags = { details.primary }
+        if details.rarity then table.insert(tags, "Rarity." .. details.rarity) end
+        if details.quality and details.quality ~= "" then table.insert(tags, "Quality." .. details.quality) end
+        if details.theme and details.theme ~= "" then table.insert(tags, "Theme." .. details.theme) end
+        if details.origin and details.origin ~= "" then table.insert(tags, "Origin." .. details.origin) end
+        
+        sandboxAdd = sandboxAdd + Config.getSandboxTagMultiplier("Price", tags)
+    end
+    
+    working = working + sandboxAdd
+    addAudit(audit, "sandbox add", beforeSandbox, working, sandboxAdd)
+
     local beforeGlobal = working
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
-    
-    if Config.getSandboxTagMultiplier then
-        local beforeSandbox = working
-        local tagMult = Config.getSandboxTagMultiplier("Price", details.primary)
-        working = working * tagMult
-        addAudit(audit, "sandbox mult", beforeSandbox, working, tagMult)
-    end
 
     working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
 

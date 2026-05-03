@@ -70,9 +70,11 @@ function DynamicTrading.Config.reloadExported()
         end
         -- Keep refs for Heuristics and Pricing
         runtime.categories = exported.categories or {}
-        runtime.rarityMultipliers = exported.rarity_multipliers or {}
-        runtime.qualityMultipliers = exported.quality_multipliers or {}
-        runtime.themeMultipliers = exported.theme_multipliers or {}
+        runtime.rarityAdditions = exported.rarity_additions or {}
+        runtime.qualityAdditions = exported.quality_additions or {}
+        runtime.themeAdditions = exported.theme_additions or {}
+        runtime.originAdditions = exported.origin_additions or {}
+        runtime.tagPriceAdditions = exported.tag_price_additions or {}
         runtime.global = exported.global or {}
     end
 end
@@ -83,6 +85,7 @@ function DynamicTrading.Config.applySandboxOptions()
         local runtime = rootConfig.DynamicItemRuntime
         
         runtime.pricing.baseMultiplier = vars.PriceMultiplier or runtime.pricing.baseMultiplier
+        runtime.pricing.globalValue = vars.PriceGlobalValue or 0
         
         -- Stock multipliers
         runtime.stock.globalMultiplier = vars.StockMultiplier or 1.0
@@ -93,23 +96,48 @@ function DynamicTrading.Config.applySandboxOptions()
     end
 end
 
-function runtime.getSandboxTagMultiplier(mode, primaryTag)
-    local vars = SandboxVars and SandboxVars.MarketSense
-    if not vars or not primaryTag then
-        return 1.0
+function runtime.getSandboxTagMultiplier(mode, tags)
+    if not tags then
+        return mode == "Price" and 0 or 1.0
     end
     
+    local tagList = type(tags) == "table" and tags or {tags}
     local totalMult = 1.0
-    local path = ""
-    for part in string.gmatch(primaryTag, "[^%.]+") do
-        path = path .. part
-        local optKey = mode .. path .. "Mult"
-        local mult = vars[optKey]
-        if type(mult) == "number" then
-            totalMult = totalMult * mult
+    local totalAdd = 0
+    
+    for _, tag in ipairs(tagList) do
+        local path = ""
+        for part in string.gmatch(tag, "[^%.]+") do
+            path = path .. (path == "" and "" or ".") .. part
+            if mode == "Price" then
+                local optKey = mode .. path:gsub("%.", "") .. "Value"
+                local val = vars and vars[optKey]
+                
+                -- Fallback to exported additions ONLY if the option is missing from Sandbox (nil)
+                -- If it's 0, it means the player specifically set it to 0 or the default is 0.
+                if val == nil then
+                    val = runtime.tagPriceAdditions and runtime.tagPriceAdditions[path]
+                end
+
+                if type(val) == "number" then
+                    totalAdd = totalAdd + val
+                end
+            else
+                local optKey = mode .. path:gsub("%.", "") .. "Mult"
+                local mult = vars and vars[optKey]
+                
+                if mult == nil or mult == 1.0 then
+                    -- Fallback for stock if needed, though stock is still mostly multiplicative categories
+                end
+
+                if type(mult) == "number" then
+                    totalMult = totalMult * mult
+                end
+            end
         end
     end
-    return totalMult
+    
+    return mode == "Price" and totalAdd or totalMult
 end
 
 -- Call it once on boot
