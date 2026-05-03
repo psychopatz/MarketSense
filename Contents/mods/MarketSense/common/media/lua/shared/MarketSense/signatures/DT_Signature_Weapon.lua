@@ -6,6 +6,46 @@ DynamicTrading.Signatures = DynamicTrading.Signatures or {}
 local Core = DynamicTrading.Core
 local Signature = {}
 
+local EXPLOSIVE_ID_PATTERNS = { "aerosol", "grenade", "explosive", "bomb", "molotov", "pipebomb", "smokebomb" }
+local AXE_ID_PATTERNS = { "axe", "hatchet", "pickaxe" }
+local BLADE_ID_PATTERNS = { "blade", "knife", "machete", "sword", "katana", "scalpel", "cleaver" }
+local BLUNT_ID_PATTERNS = { "bat", "club", "hammer", "pipe", "wrench", "crowbar", "mallet", "nightstick", "mace" }
+local MAGAZINE_ID_PATTERNS = { "clip", "magazine", "drum" }
+local COOKWARE_WEAPON_PATTERNS = {
+    "bakingpan", "bakingtray", "fryingpan", "gridlepan", "griddlepan",
+    "saucepan", "cookingpot", "roastingpan", "kettle",
+}
+local COOKWARE_SCRIPT_TAGS = { ["base:cookable"] = true, ["base:canopener"] = true }
+
+local function containsAny(text, patterns)
+    local source = tostring(text or "")
+    if source == "" then
+        return false
+    end
+
+    for _, pattern in ipairs(patterns or {}) do
+        if string.find(source, pattern, 1, true) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function hasScriptTag(ctx, expected)
+    for _, tag in ipairs(ctx.tags or {}) do
+        if expected[Core.lower(tag)] then
+            return true
+        end
+    end
+    return false
+end
+
+local function hasMeaningfulValue(value)
+    local normalized = Core.lower(tostring(value or ""))
+    return normalized ~= "" and normalized ~= "none" and normalized ~= "null" and normalized ~= "nil" and normalized ~= "n/a"
+end
+
 local function success(confidence, primary, tags, details)
     return {
         matched = true,
@@ -18,58 +58,116 @@ local function success(confidence, primary, tags, details)
 end
 
 function Signature.match(ctx)
-    local hasWeaponSignal = (ctx.maxDamage or 0) > 0
-        or (ctx.maxRange or 0) > 0
-        or Core.ctxContains(ctx, {
-            "weapon", "ammo", "gun", "pistol", "rifle", "shotgun", "revolver",
-            "knife", "blade", "machete", "sword", "katana", "axe", "hatchet",
-            "bat", "club", "hammer", "crowbar", "grenade", "molotov", "bomb",
-            "shell", "bullet", "cartridge", "magazine", "scope", "sling",
-        })
+    local itemLower = tostring(ctx.idLower or "")
+    local displayCategory = tostring(ctx.displayCategoryLower or "")
+    local itemTypeLower = tostring(ctx.itemTypeLower or "")
+    local hasDamage = (ctx.minDamage or 0) > 0 or (ctx.maxDamage or 0) > 0
+    local hasAmmoType = hasMeaningfulValue(ctx.ammoTypeLower)
+    local hasMagazineType = hasMeaningfulValue(ctx.magazineTypeLower)
+    local hasPartMount = hasMeaningfulValue(ctx.mountOnLower) or hasMeaningfulValue(ctx.partTypeLower)
+    local isMagazineName = containsAny(itemLower, MAGAZINE_ID_PATTERNS) and not containsAny(itemLower, { "magnesium" })
+    local isWeaponType = itemTypeLower == "weapon" or itemTypeLower == "base:weapon"
 
-    if not hasWeaponSignal then
+    local cookwareContext = (displayCategory == "cooking" or displayCategory == "cookingweapon")
+        and (
+            containsAny(itemLower, COOKWARE_WEAPON_PATTERNS)
+            or hasScriptTag(ctx, COOKWARE_SCRIPT_TAGS)
+            or ctx.isCookable
+            or ctx.hasPourType
+            or ctx.hasEatType
+        )
+
+    if displayCategory == "firstaidweapon" or cookwareContext then
         return { matched = false, confidence = 0 }
     end
 
-    if ctx.ammoType ~= "" or Core.ctxContains(ctx, { "pistol", "rifle", "shotgun", "revolver", "firearm" }) then
+    if displayCategory == "weaponpart" or hasPartMount then
+        return success(0.95, "Weapon.Part.Accessory", {
+            "Weapon.Part.Accessory",
+        }, {
+            subtype = "Part.Accessory",
+            display_category = displayCategory,
+        })
+    end
+
+    if displayCategory == "ammo" then
+        if hasMagazineType or (hasAmmoType and ((ctx.canStackLower or "") == "false" or isMagazineName)) then
+            return success(0.95, "Weapon.Part.Ammo", {
+                "Weapon.Part.Ammo",
+            }, {
+                subtype = "Part.Ammo",
+                display_category = displayCategory,
+            })
+        end
+
+        return success(0.90, "Weapon.Ranged.Ammo", {
+            "Weapon.Ranged.Ammo",
+        }, {
+            subtype = "Ranged.Ammo",
+            display_category = displayCategory,
+        })
+    end
+
+    if hasAmmoType and not isWeaponType and not hasDamage then
+        if hasMagazineType or (ctx.canStackLower or "") == "false" or isMagazineName then
+            return success(0.92, "Weapon.Part.Ammo", {
+                "Weapon.Part.Ammo",
+            }, {
+                subtype = "Part.Ammo",
+            })
+        end
+
+        return success(0.88, "Weapon.Ranged.Ammo", {
+            "Weapon.Ranged.Ammo",
+        }, {
+            subtype = "Ranged.Ammo",
+        })
+    end
+
+    if containsAny(itemLower, EXPLOSIVE_ID_PATTERNS) then
+        return success(0.95, "Weapon.Explosive", {
+            "Weapon.Explosive",
+        }, {
+            subtype = "Explosive",
+        })
+    end
+
+    if not (isWeaponType or hasDamage) then
+        return { matched = false, confidence = 0 }
+    end
+
+    if hasAmmoType
+        or (ctx.rangedTokenLower or "") == "true"
+        or (ctx.aimedFirearmTokenLower or "") == "true"
+        or Core.ctxContains(ctx, { "pistol", "rifle", "shotgun", "revolver", "firearm" }) then
         return success(0.96, "Weapon.Ranged.Firearm", {
             "Weapon.Ranged.Firearm",
+        }, {
+            subtype = "Ranged.Firearm",
         })
     end
 
-    if Core.ctxContains(ctx, { "ammo", "bullet", "shell", "cartridge" }) then
-        return success(0.93, "Weapon.Ranged.Ammo", {
-            "Weapon.Ranged.Ammo",
-        })
-    end
-
-    if Core.ctxContains(ctx, { "scope", "silencer", "sling", "stock", "laser" }) then
-        return success(0.86, "Weapon.Part.Accessory", {
-            "Weapon.Part.Accessory",
-        })
-    end
-
-    if Core.ctxContains(ctx, { "grenade", "molotov", "bomb", "explosive" }) then
-        return success(0.96, "Weapon.Explosive", {
-            "Weapon.Explosive",
-        })
-    end
-
-    if Core.ctxContains(ctx, { "axe", "hatchet" }) then
+    if containsAny(itemLower, AXE_ID_PATTERNS) then
         return success(0.88, "Weapon.Melee.Axe", {
             "Weapon.Melee.Axe",
+        }, {
+            subtype = "Melee.Axe",
         })
     end
 
-    if Core.ctxContains(ctx, { "knife", "blade", "machete", "sword", "katana" }) then
+    if containsAny(itemLower, BLADE_ID_PATTERNS) then
         return success(0.90, "Weapon.Melee.Blade", {
             "Weapon.Melee.Blade",
+        }, {
+            subtype = "Melee.Blade",
         })
     end
 
-    if Core.ctxContains(ctx, { "bat", "club", "hammer", "pipe", "wrench", "crowbar" }) or (ctx.maxDamage or 0) > 0 then
+    if containsAny(itemLower, BLUNT_ID_PATTERNS) or hasDamage then
         return success(0.78, "Weapon.Melee.Blunt", {
             "Weapon.Melee.Blunt",
+        }, {
+            subtype = "Melee.Blunt",
         })
     end
 

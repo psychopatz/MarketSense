@@ -6,6 +6,42 @@ DynamicTrading.Signatures = DynamicTrading.Signatures or {}
 local Core = DynamicTrading.Core
 local Signature = {}
 
+local ELECTRONICS_ID_PATTERNS = {
+    "radio", "walkie", "generator", "battery", "electronic", "tv", "television",
+    "computer", "phone", "telephone", "camera", "flashlight", "penlight", "handtorch",
+    "lightbulb", "alarm", "clock",
+}
+local BATTERY_PATTERNS = { "battery", "cell" }
+local GENERATOR_PATTERNS = { "generator", "solar" }
+local COMMUNICATION_PATTERNS = { "radio", "walkie", "phone", "cb" }
+local LIGHT_COMPONENT_PATTERNS = { "lightbulb", "bulb" }
+local EXCLUDED_LIGHT_ITEM_IDS = {
+    ["candle"] = true, ["candlelit"] = true, ["lighter"] = true, ["lighterbbq"] = true,
+    ["lighterdisposable"] = true, ["lighterfluid"] = true, ["propane_refill"] = true,
+}
+
+local function containsAny(text, patterns)
+    local source = tostring(text or "")
+    if source == "" then
+        return false
+    end
+    for _, pattern in ipairs(patterns or {}) do
+        if string.find(source, pattern, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function hasScriptTag(ctx, expected)
+    for _, tag in ipairs(ctx.tags or {}) do
+        if expected[Core.lower(tag)] then
+            return true
+        end
+    end
+    return false
+end
+
 local function success(confidence, primary, tags)
     return {
         matched = true,
@@ -17,47 +53,111 @@ local function success(confidence, primary, tags)
 end
 
 function Signature.match(ctx)
-    local matched = Core.ctxContains(ctx, {
-        "electronics", "communications", "lightsource", "radio", "walkie", "hamradio",
-        "generator", "battery", "tv", "television", "phone", "camera", "flashlight",
-        "torch", "penlight", "lightbulb", "lantern",
-    })
+    local itemLower = tostring(ctx.idLower or "")
+    local displayCategory = tostring(ctx.displayCategoryLower or "")
+    local isMoveable = ctx.isMoveable
+    if isMoveable then
+        return { matched = false, confidence = 0 }
+    end
+    if EXCLUDED_LIGHT_ITEM_IDS[itemLower] then
+        return { matched = false, confidence = 0 }
+    end
+    if displayCategory == "trapping" then
+        return { matched = false, confidence = 0 }
+    end
 
-    if not matched then
+    local isElectronicsId = containsAny(itemLower, ELECTRONICS_ID_PATTERNS)
+    local isRadioItem = displayCategory == "communications" or containsAny(itemLower, { "radio", "walkie", "hamradio" })
+    local isGeneralElectronics = displayCategory == "electronics"
+    local isLightSource = displayCategory == "lightsource"
+        and (containsAny(itemLower, { "flashlight", "torch", "penlight", "lantern" }) or hasScriptTag(ctx, { ["base:flashlight"] = true, ["base:litlantern"] = true, ["base:unlitlantern"] = true }))
+    local isLightComponent = displayCategory == "electronics" and containsAny(itemLower, LIGHT_COMPONENT_PATTERNS)
+
+    if not (isRadioItem or isGeneralElectronics or isLightSource or isLightComponent or isElectronicsId) then
         return { matched = false, confidence = 0 }
     end
 
     local primary = "Electronics.Gadget.General"
     local tags = {}
+    local evidence = 0
+    local hasSignal = (tonumber(ctx.transmitRange) or 0) > 0 or (tonumber(ctx.micRange) or 0) > 0
+    local isPortable = containsAny(itemLower, { "walkie", "phone", "camera", "flashlight", "torch", "penlight", "radio" })
 
-    if Core.ctxContains(ctx, { "generator" }) then
-        primary = "Electronics.Generator"
-        tags[#tags + 1] = "Electronics.PowerGenerator"
-    elseif Core.ctxContains(ctx, { "battery" }) then
-        primary = "Electronics.Battery"
-        tags[#tags + 1] = "Electronics.PowerSource"
-    elseif Core.ctxContains(ctx, { "radio", "walkie", "hamradio" }) then
-        if Core.ctxContains(ctx, { "walkie", "hamradio" }) then
-            primary = "Electronics.Radio.TwoWay"
-            tags[#tags + 1] = "Electronics.Transmitter"
+    if isRadioItem then
+        evidence = evidence + 0.55
+        local isTwoWay = containsAny(itemLower, { "walkie", "ham" }) or hasSignal
+        if containsAny(itemLower, { "tv", "television" }) then
+            primary = "Electronics.Television"
+            evidence = evidence + 0.15
+        elseif isTwoWay then
+            if containsAny(itemLower, { "walkie" }) then
+                primary = "Electronics.Radio.TwoWay.Walkie"
+            elseif containsAny(itemLower, { "ham", "manpack" }) or not isPortable then
+                primary = "Electronics.Radio.TwoWay.Ham"
+            else
+                primary = "Electronics.Radio.TwoWay.Portable"
+            end
+            evidence = evidence + 0.25
+            tags[#tags + 1] = "Electronics.Radio.TwoWay"
         else
             primary = "Electronics.Radio.Broadcast"
+            evidence = evidence + 0.2
+            tags[#tags + 1] = "Electronics.Radio.Broadcast"
         end
         tags[#tags + 1] = "Electronics.Communicator"
-    elseif Core.ctxContains(ctx, { "flashlight", "torch", "penlight", "lightbulb", "lantern" }) then
-        primary = "Electronics.Light.Flashlight"
+        if hasSignal then
+            tags[#tags + 1] = "Electronics.Transmitter"
+            evidence = evidence + 0.1
+        end
+    elseif isLightSource then
+        evidence = evidence + 0.55
+        if containsAny(itemLower, { "lantern" }) then
+            primary = "Electronics.Light.Lantern"
+        else
+            primary = "Electronics.Light.Flashlight"
+        end
         tags[#tags + 1] = "Electronics.LightSource"
-    elseif Core.ctxContains(ctx, { "tv", "television" }) then
-        primary = "Electronics.Television"
+        evidence = evidence + 0.2
+    elseif isLightComponent then
+        primary = "Electronics.Light.Component"
+        evidence = evidence + 0.7
+    elseif containsAny(itemLower, BATTERY_PATTERNS) then
+        primary = "Electronics.Battery"
+        evidence = evidence + 0.6
+        tags[#tags + 1] = "Electronics.PowerSource"
+    elseif isGeneralElectronics then
+        evidence = evidence + 0.55
+        if containsAny(itemLower, GENERATOR_PATTERNS) then
+            primary = "Electronics.Generator"
+            tags[#tags + 1] = "Electronics.PowerGenerator"
+            evidence = evidence + 0.25
+        elseif containsAny(itemLower, COMMUNICATION_PATTERNS) then
+            primary = "Electronics.Gadget.Communication"
+            tags[#tags + 1] = "Electronics.Communicator"
+            evidence = evidence + 0.2
+        else
+            primary = "Electronics.Gadget.General"
+            evidence = evidence + 0.1
+        end
+    elseif containsAny(itemLower, GENERATOR_PATTERNS) then
+        primary = "Electronics.Generator"
+        evidence = evidence + 0.6
+        tags[#tags + 1] = "Electronics.PowerGenerator"
+    else
+        evidence = evidence + 0.4
     end
 
-    tags[#tags + 1] = primary
-
-    if Core.ctxContains(ctx, { "radio", "walkie", "phone", "camera", "flashlight", "torch" }) then
+    if isPortable then
         tags[#tags + 1] = "Electronics.Portable"
     end
 
-    return success(0.90, primary, tags)
+    local confidence = math.min(1.0, evidence)
+    if confidence <= 0.4 then
+        return { matched = false, confidence = confidence }
+    end
+
+    tags[#tags + 1] = primary
+    return success(confidence, primary, tags)
 end
 
 DynamicTrading.Signatures.Electronics = Signature

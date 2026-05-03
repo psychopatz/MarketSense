@@ -52,6 +52,19 @@ function PropertyReader.buildContext(scriptItemOrFullType)
     local itemType = Core.safeString(scriptItem, { "getTypeString", "getType" }, "")
     local displayName = Core.safeString(scriptItem, "getDisplayName", typeName)
     local ammoType = Core.safeString(scriptItem, { "getAmmoType", "getMagazineType" }, "")
+    local magazineType = Core.safeString(scriptItem, "getMagazineType", "")
+    local partType = Core.safeString(scriptItem, "getPartType", "")
+    local mountOn = Core.safeString(scriptItem, "getMountOn", "")
+    local canStack = Core.safeString(scriptItem, "getCanStack", "")
+    local rangedToken = Core.safeString(scriptItem, { "isRanged", "getRanged" }, "")
+    local aimedFirearmToken = Core.safeString(scriptItem, { "isAimedFirearm", "getIsAimedFirearm" }, "")
+    local canBeEquipped = Core.safeString(scriptItem, "getCanBeEquipped", "")
+    local acceptItemFunction = Core.safeString(scriptItem, "getAcceptItemFunction", "")
+    local openSound = Core.safeString(scriptItem, "getOpenSound", "")
+    local closeSound = Core.safeString(scriptItem, "getCloseSound", "")
+    local putInSound = Core.safeString(scriptItem, "getPutInSound", "")
+    local pourType = Core.safeString(scriptItem, "getPourType", "")
+    local eatType = Core.safeString(scriptItem, "getEatType", "")
     local bodyLocation = Core.safeString(scriptItem, "getBodyLocation", "")
     local modId = Core.safeString(scriptItem, { "getModID", "getModId", "getSourceMod" }, "")
     local modName = Core.safeString(scriptItem, { "getModName", "getModID", "getModId", "getSourceMod" }, "")
@@ -118,6 +131,27 @@ function PropertyReader.buildContext(scriptItemOrFullType)
 
         ammoType = ammoType,
         ammoTypeLower = Core.lower(ammoType),
+        magazineType = magazineType,
+        magazineTypeLower = Core.lower(magazineType),
+        partType = partType,
+        partTypeLower = Core.lower(partType),
+        mountOn = mountOn,
+        mountOnLower = Core.lower(mountOn),
+        canStack = canStack,
+        canStackLower = Core.lower(canStack),
+        rangedToken = rangedToken,
+        rangedTokenLower = Core.lower(rangedToken),
+        aimedFirearmToken = aimedFirearmToken,
+        aimedFirearmTokenLower = Core.lower(aimedFirearmToken),
+        canBeEquipped = canBeEquipped,
+        canBeEquippedLower = Core.lower(canBeEquipped),
+        acceptItemFunction = acceptItemFunction,
+        acceptItemFunctionLower = Core.lower(acceptItemFunction),
+        openSound = openSound,
+        closeSound = closeSound,
+        putInSound = putInSound,
+        pourType = pourType,
+        eatType = eatType,
         tags = Core.safeTags(scriptItem),
 
         isMoveable = Core.startsWith(typeName, "Mov_"),
@@ -125,6 +159,12 @@ function PropertyReader.buildContext(scriptItemOrFullType)
         isCookable = Core.safeBoolean(scriptItem, "isCookable", false),
         isDrainable = Core.safeBoolean(scriptItem, "isDrainable", false),
         canStoreWater = Core.safeBoolean(scriptItem, "CanStoreWater", false),
+        hasOpenSound = openSound ~= "",
+        hasCloseSound = closeSound ~= "",
+        hasPutInSound = putInSound ~= "",
+        hasPourType = pourType ~= "",
+        hasEatType = eatType ~= "",
+        hasFluidContainer = Core.safeBoolean(scriptItem, { "isCanStoreWater", "CanStoreWater" }, false),
     }
 
     Cache.setContext(context.fullType, context)
