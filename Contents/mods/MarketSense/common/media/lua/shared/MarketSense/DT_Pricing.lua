@@ -198,6 +198,13 @@ function Pricing.applyBalances(ctx, details, audit)
     local beforeGlobal = working
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
+    
+    if Config.getSandboxTagMultiplier then
+        local beforeSandbox = working
+        local tagMult = Config.getSandboxTagMultiplier("Price", details.primary)
+        working = working * tagMult
+        addAudit(audit, "sandbox mult", beforeSandbox, working, tagMult)
+    end
 
     working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
 
@@ -292,6 +299,13 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     local beforeGlobal = working
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working)
+
+    if Config.getSandboxTagMultiplier then
+        local beforeSandbox = working
+        local tagMult = Config.getSandboxTagMultiplier("Price", details.primary)
+        working = working * tagMult
+        addAudit(audit, "sandbox mult", beforeSandbox, working, tagMult)
+    end
 
     working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
 

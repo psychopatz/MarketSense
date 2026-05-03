@@ -56,9 +56,12 @@ function Stock.calculate(fullType, ctx, details)
         baseStock.min = math.floor(baseStock.max * (Config.stock.defaultMinRatio or 0.2))
     end
 
+    local globalMult = Config.stock.globalMultiplier or 1.0
+    local tagMult = Config.getSandboxTagMultiplier and Config.getSandboxTagMultiplier("Stock", details.primary) or 1.0
+
     local state = {
         stock = baseStock,
-        multiplier = 1,
+        multiplier = globalMult * tagMult,
         minRatio = Config.stock.defaultMinRatio or 0.2,
     }
 

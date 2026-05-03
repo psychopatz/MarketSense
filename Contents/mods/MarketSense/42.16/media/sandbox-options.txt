@@ -1,0 +1,2882 @@
+VERSION = 1,
+
+option MarketSense.PriceMultiplier
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceMultiplier,
+}
+
+option MarketSense.StockMultiplier
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseGlobal,
+    translation = MarketSense.StockMultiplier,
+}
+
+option MarketSense.PriceFoodMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodMult,
+}
+
+option MarketSense.PriceFoodCookingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodCookingMult,
+}
+
+option MarketSense.PriceFoodCookingIngredientMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodCookingIngredientMult,
+}
+
+option MarketSense.PriceFoodCookingSpiceMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodCookingSpiceMult,
+}
+
+option MarketSense.PriceFoodDrinkMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodDrinkMult,
+}
+
+option MarketSense.PriceFoodDrinkAlcoholMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodDrinkAlcoholMult,
+}
+
+option MarketSense.PriceFoodDrinkNonAlcoholicMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodDrinkNonAlcoholicMult,
+}
+
+option MarketSense.PriceFoodNonPerishableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodNonPerishableMult,
+}
+
+option MarketSense.PriceFoodNonPerishableCannedMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodNonPerishableCannedMult,
+}
+
+option MarketSense.PriceFoodNonPerishableGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodNonPerishableGeneralMult,
+}
+
+option MarketSense.PriceFoodPerishableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodPerishableMult,
+}
+
+option MarketSense.PriceFoodPerishableFruitMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodPerishableFruitMult,
+}
+
+option MarketSense.PriceFoodPerishableGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodPerishableGeneralMult,
+}
+
+option MarketSense.PriceFoodPerishableGrainMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodPerishableGrainMult,
+}
+
+option MarketSense.PriceFoodPerishableMeatMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodPerishableMeatMult,
+}
+
+option MarketSense.PriceFoodPerishableSweetsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodPerishableSweetsMult,
+}
+
+option MarketSense.PriceFoodPerishableVegetableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodPerishableVegetableMult,
+}
+
+option MarketSense.StockFoodMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodMult,
+}
+
+option MarketSense.StockFoodCookingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodCookingMult,
+}
+
+option MarketSense.StockFoodCookingIngredientMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodCookingIngredientMult,
+}
+
+option MarketSense.StockFoodCookingSpiceMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodCookingSpiceMult,
+}
+
+option MarketSense.StockFoodDrinkMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodDrinkMult,
+}
+
+option MarketSense.StockFoodDrinkAlcoholMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodDrinkAlcoholMult,
+}
+
+option MarketSense.StockFoodDrinkNonAlcoholicMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodDrinkNonAlcoholicMult,
+}
+
+option MarketSense.StockFoodNonPerishableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodNonPerishableMult,
+}
+
+option MarketSense.StockFoodNonPerishableCannedMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodNonPerishableCannedMult,
+}
+
+option MarketSense.StockFoodNonPerishableGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodNonPerishableGeneralMult,
+}
+
+option MarketSense.StockFoodPerishableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodPerishableMult,
+}
+
+option MarketSense.StockFoodPerishableFruitMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodPerishableFruitMult,
+}
+
+option MarketSense.StockFoodPerishableGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodPerishableGeneralMult,
+}
+
+option MarketSense.StockFoodPerishableGrainMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodPerishableGrainMult,
+}
+
+option MarketSense.StockFoodPerishableMeatMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodPerishableMeatMult,
+}
+
+option MarketSense.StockFoodPerishableSweetsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodPerishableSweetsMult,
+}
+
+option MarketSense.StockFoodPerishableVegetableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.StockFoodPerishableVegetableMult,
+}
+
+option MarketSense.PriceMedicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceMedicalMult,
+}
+
+option MarketSense.PriceMedicalGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceMedicalGeneralMult,
+}
+
+option MarketSense.PriceMedicalGeneralDrugMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceMedicalGeneralDrugMult,
+}
+
+option MarketSense.PriceMedicalGeneralPillsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceMedicalGeneralPillsMult,
+}
+
+option MarketSense.PriceMedicalGeneralVitaminMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceMedicalGeneralVitaminMult,
+}
+
+option MarketSense.PriceMedicalHealthcareMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceMedicalHealthcareMult,
+}
+
+option MarketSense.PriceMedicalHealthcareBotanicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceMedicalHealthcareBotanicalMult,
+}
+
+option MarketSense.StockMedicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.StockMedicalMult,
+}
+
+option MarketSense.StockMedicalGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.StockMedicalGeneralMult,
+}
+
+option MarketSense.StockMedicalGeneralDrugMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.StockMedicalGeneralDrugMult,
+}
+
+option MarketSense.StockMedicalGeneralPillsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.StockMedicalGeneralPillsMult,
+}
+
+option MarketSense.StockMedicalGeneralVitaminMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.StockMedicalGeneralVitaminMult,
+}
+
+option MarketSense.StockMedicalHealthcareMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.StockMedicalHealthcareMult,
+}
+
+option MarketSense.StockMedicalHealthcareBotanicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMedical,
+    translation = MarketSense.StockMedicalHealthcareBotanicalMult,
+}
+
+option MarketSense.PriceWeaponMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponMult,
+}
+
+option MarketSense.PriceWeaponExplosiveMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponExplosiveMult,
+}
+
+option MarketSense.PriceWeaponMeleeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponMeleeMult,
+}
+
+option MarketSense.PriceWeaponMeleeAxeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponMeleeAxeMult,
+}
+
+option MarketSense.PriceWeaponMeleeBladeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponMeleeBladeMult,
+}
+
+option MarketSense.PriceWeaponMeleeBluntMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponMeleeBluntMult,
+}
+
+option MarketSense.PriceWeaponMeleeGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponMeleeGeneralMult,
+}
+
+option MarketSense.PriceWeaponPartMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponPartMult,
+}
+
+option MarketSense.PriceWeaponPartAccessoryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponPartAccessoryMult,
+}
+
+option MarketSense.PriceWeaponPartAmmoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponPartAmmoMult,
+}
+
+option MarketSense.PriceWeaponRangedMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponRangedMult,
+}
+
+option MarketSense.PriceWeaponRangedAmmoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponRangedAmmoMult,
+}
+
+option MarketSense.PriceWeaponRangedFirearmMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceWeaponRangedFirearmMult,
+}
+
+option MarketSense.StockWeaponMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponMult,
+}
+
+option MarketSense.StockWeaponExplosiveMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponExplosiveMult,
+}
+
+option MarketSense.StockWeaponMeleeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponMeleeMult,
+}
+
+option MarketSense.StockWeaponMeleeAxeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponMeleeAxeMult,
+}
+
+option MarketSense.StockWeaponMeleeBladeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponMeleeBladeMult,
+}
+
+option MarketSense.StockWeaponMeleeBluntMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponMeleeBluntMult,
+}
+
+option MarketSense.StockWeaponMeleeGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponMeleeGeneralMult,
+}
+
+option MarketSense.StockWeaponPartMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponPartMult,
+}
+
+option MarketSense.StockWeaponPartAccessoryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponPartAccessoryMult,
+}
+
+option MarketSense.StockWeaponPartAmmoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponPartAmmoMult,
+}
+
+option MarketSense.StockWeaponRangedMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponRangedMult,
+}
+
+option MarketSense.StockWeaponRangedAmmoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponRangedAmmoMult,
+}
+
+option MarketSense.StockWeaponRangedFirearmMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseWeapon,
+    translation = MarketSense.StockWeaponRangedFirearmMult,
+}
+
+option MarketSense.PriceToolMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolMult,
+}
+
+option MarketSense.PriceToolCookwareMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolCookwareMult,
+}
+
+option MarketSense.PriceToolCraftingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolCraftingMult,
+}
+
+option MarketSense.PriceToolFarmingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolFarmingMult,
+}
+
+option MarketSense.PriceToolFishingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolFishingMult,
+}
+
+option MarketSense.PriceToolLightMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolLightMult,
+}
+
+option MarketSense.PriceToolMedicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolMedicalMult,
+}
+
+option MarketSense.PriceToolMedicalSurgicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolMedicalSurgicalMult,
+}
+
+option MarketSense.PriceToolUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceToolUtilityMult,
+}
+
+option MarketSense.StockToolMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolMult,
+}
+
+option MarketSense.StockToolCookwareMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolCookwareMult,
+}
+
+option MarketSense.StockToolCraftingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolCraftingMult,
+}
+
+option MarketSense.StockToolFarmingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolFarmingMult,
+}
+
+option MarketSense.StockToolFishingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolFishingMult,
+}
+
+option MarketSense.StockToolLightMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolLightMult,
+}
+
+option MarketSense.StockToolMedicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolMedicalMult,
+}
+
+option MarketSense.StockToolMedicalSurgicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolMedicalSurgicalMult,
+}
+
+option MarketSense.StockToolUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTool,
+    translation = MarketSense.StockToolUtilityMult,
+}
+
+option MarketSense.PriceContainerMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerMult,
+}
+
+option MarketSense.PriceContainerBagMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagMult,
+}
+
+option MarketSense.PriceContainerBagBackpackMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagBackpackMult,
+}
+
+option MarketSense.PriceContainerBagCoolerMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagCoolerMult,
+}
+
+option MarketSense.PriceContainerBagDuffelMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagDuffelMult,
+}
+
+option MarketSense.PriceContainerBagFannyMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagFannyMult,
+}
+
+option MarketSense.PriceContainerBagGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagGeneralMult,
+}
+
+option MarketSense.PriceContainerBagHolsterMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagHolsterMult,
+}
+
+option MarketSense.PriceContainerBagRigMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagRigMult,
+}
+
+option MarketSense.PriceContainerBagSackMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagSackMult,
+}
+
+option MarketSense.PriceContainerBagSatchelMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerBagSatchelMult,
+}
+
+option MarketSense.PriceContainerGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerGeneralMult,
+}
+
+option MarketSense.PriceContainerLiquidMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerLiquidMult,
+}
+
+option MarketSense.PriceContainerLiquidBottleMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerLiquidBottleMult,
+}
+
+option MarketSense.PriceContainerLiquidBucketMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerLiquidBucketMult,
+}
+
+option MarketSense.PriceContainerLiquidCanMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerLiquidCanMult,
+}
+
+option MarketSense.PriceContainerLiquidGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerLiquidGeneralMult,
+}
+
+option MarketSense.PriceContainerLiquidJarMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerLiquidJarMult,
+}
+
+option MarketSense.PriceContainerLiquidWearableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerLiquidWearableMult,
+}
+
+option MarketSense.PriceContainerStashMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerStashMult,
+}
+
+option MarketSense.PriceContainerStashBookMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerStashBookMult,
+}
+
+option MarketSense.PriceContainerStashCaseMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerStashCaseMult,
+}
+
+option MarketSense.PriceContainerUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerUtilityMult,
+}
+
+option MarketSense.PriceContainerUtilityKeyRingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceContainerUtilityKeyRingMult,
+}
+
+option MarketSense.StockContainerMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerMult,
+}
+
+option MarketSense.StockContainerBagMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagMult,
+}
+
+option MarketSense.StockContainerBagBackpackMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagBackpackMult,
+}
+
+option MarketSense.StockContainerBagCoolerMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagCoolerMult,
+}
+
+option MarketSense.StockContainerBagDuffelMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagDuffelMult,
+}
+
+option MarketSense.StockContainerBagFannyMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagFannyMult,
+}
+
+option MarketSense.StockContainerBagGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagGeneralMult,
+}
+
+option MarketSense.StockContainerBagHolsterMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagHolsterMult,
+}
+
+option MarketSense.StockContainerBagRigMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagRigMult,
+}
+
+option MarketSense.StockContainerBagSackMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagSackMult,
+}
+
+option MarketSense.StockContainerBagSatchelMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerBagSatchelMult,
+}
+
+option MarketSense.StockContainerGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerGeneralMult,
+}
+
+option MarketSense.StockContainerLiquidMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerLiquidMult,
+}
+
+option MarketSense.StockContainerLiquidBottleMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerLiquidBottleMult,
+}
+
+option MarketSense.StockContainerLiquidBucketMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerLiquidBucketMult,
+}
+
+option MarketSense.StockContainerLiquidCanMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerLiquidCanMult,
+}
+
+option MarketSense.StockContainerLiquidGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerLiquidGeneralMult,
+}
+
+option MarketSense.StockContainerLiquidJarMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerLiquidJarMult,
+}
+
+option MarketSense.StockContainerLiquidWearableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerLiquidWearableMult,
+}
+
+option MarketSense.StockContainerStashMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerStashMult,
+}
+
+option MarketSense.StockContainerStashBookMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerStashBookMult,
+}
+
+option MarketSense.StockContainerStashCaseMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerStashCaseMult,
+}
+
+option MarketSense.StockContainerUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerUtilityMult,
+}
+
+option MarketSense.StockContainerUtilityKeyRingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseContainer,
+    translation = MarketSense.StockContainerUtilityKeyRingMult,
+}
+
+option MarketSense.PriceClothingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingMult,
+}
+
+option MarketSense.PriceClothingAccessoryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingAccessoryMult,
+}
+
+option MarketSense.PriceClothingAccessoryCosmeticMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingAccessoryCosmeticMult,
+}
+
+option MarketSense.PriceClothingAccessoryEyesMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingAccessoryEyesMult,
+}
+
+option MarketSense.PriceClothingAccessoryJewelryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingAccessoryJewelryMult,
+}
+
+option MarketSense.PriceClothingAccessoryNeckMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingAccessoryNeckMult,
+}
+
+option MarketSense.PriceClothingAccessoryUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingAccessoryUtilityMult,
+}
+
+option MarketSense.PriceClothingAccessoryWristMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingAccessoryWristMult,
+}
+
+option MarketSense.PriceClothingArmorMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorMult,
+}
+
+option MarketSense.PriceClothingArmorArmsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorArmsMult,
+}
+
+option MarketSense.PriceClothingArmorFaceMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorFaceMult,
+}
+
+option MarketSense.PriceClothingArmorFeetMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorFeetMult,
+}
+
+option MarketSense.PriceClothingArmorHandsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorHandsMult,
+}
+
+option MarketSense.PriceClothingArmorHeadMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorHeadMult,
+}
+
+option MarketSense.PriceClothingArmorLegsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorLegsMult,
+}
+
+option MarketSense.PriceClothingArmorTorsoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingArmorTorsoMult,
+}
+
+option MarketSense.PriceClothingBottomMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingBottomMult,
+}
+
+option MarketSense.PriceClothingDressMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingDressMult,
+}
+
+option MarketSense.PriceClothingFullBodyMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingFullBodyMult,
+}
+
+option MarketSense.PriceClothingOuterwearMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingOuterwearMult,
+}
+
+option MarketSense.PriceClothingTopMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingTopMult,
+}
+
+option MarketSense.PriceClothingUnderwearMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingUnderwearMult,
+}
+
+option MarketSense.PriceClothingUnderwearBottomMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingUnderwearBottomMult,
+}
+
+option MarketSense.PriceClothingUnderwearGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingUnderwearGeneralMult,
+}
+
+option MarketSense.PriceClothingUnderwearTopMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceClothingUnderwearTopMult,
+}
+
+option MarketSense.StockClothingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingMult,
+}
+
+option MarketSense.StockClothingAccessoryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingAccessoryMult,
+}
+
+option MarketSense.StockClothingAccessoryCosmeticMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingAccessoryCosmeticMult,
+}
+
+option MarketSense.StockClothingAccessoryEyesMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingAccessoryEyesMult,
+}
+
+option MarketSense.StockClothingAccessoryJewelryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingAccessoryJewelryMult,
+}
+
+option MarketSense.StockClothingAccessoryNeckMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingAccessoryNeckMult,
+}
+
+option MarketSense.StockClothingAccessoryUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingAccessoryUtilityMult,
+}
+
+option MarketSense.StockClothingAccessoryWristMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingAccessoryWristMult,
+}
+
+option MarketSense.StockClothingArmorMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorMult,
+}
+
+option MarketSense.StockClothingArmorArmsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorArmsMult,
+}
+
+option MarketSense.StockClothingArmorFaceMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorFaceMult,
+}
+
+option MarketSense.StockClothingArmorFeetMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorFeetMult,
+}
+
+option MarketSense.StockClothingArmorHandsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorHandsMult,
+}
+
+option MarketSense.StockClothingArmorHeadMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorHeadMult,
+}
+
+option MarketSense.StockClothingArmorLegsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorLegsMult,
+}
+
+option MarketSense.StockClothingArmorTorsoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingArmorTorsoMult,
+}
+
+option MarketSense.StockClothingBottomMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingBottomMult,
+}
+
+option MarketSense.StockClothingDressMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingDressMult,
+}
+
+option MarketSense.StockClothingFullBodyMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingFullBodyMult,
+}
+
+option MarketSense.StockClothingOuterwearMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingOuterwearMult,
+}
+
+option MarketSense.StockClothingTopMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingTopMult,
+}
+
+option MarketSense.StockClothingUnderwearMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingUnderwearMult,
+}
+
+option MarketSense.StockClothingUnderwearBottomMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingUnderwearBottomMult,
+}
+
+option MarketSense.StockClothingUnderwearGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingUnderwearGeneralMult,
+}
+
+option MarketSense.StockClothingUnderwearTopMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.StockClothingUnderwearTopMult,
+}
+
+option MarketSense.PriceElectronicsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsMult,
+}
+
+option MarketSense.PriceElectronicsAudioMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsAudioMult,
+}
+
+option MarketSense.PriceElectronicsBatteryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsBatteryMult,
+}
+
+option MarketSense.PriceElectronicsCommunicationsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsCommunicationsMult,
+}
+
+option MarketSense.PriceElectronicsControlMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsControlMult,
+}
+
+option MarketSense.PriceElectronicsGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsGeneralMult,
+}
+
+option MarketSense.PriceElectronicsGeneratorMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsGeneratorMult,
+}
+
+option MarketSense.PriceElectronicsLightMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsLightMult,
+}
+
+option MarketSense.PriceElectronicsRadioMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsRadioMult,
+}
+
+option MarketSense.PriceElectronicsRadioBroadcastMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsRadioBroadcastMult,
+}
+
+option MarketSense.PriceElectronicsRadioTwoWayMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsRadioTwoWayMult,
+}
+
+option MarketSense.PriceElectronicsTelevisionMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceElectronicsTelevisionMult,
+}
+
+option MarketSense.StockElectronicsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsMult,
+}
+
+option MarketSense.StockElectronicsAudioMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsAudioMult,
+}
+
+option MarketSense.StockElectronicsBatteryMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsBatteryMult,
+}
+
+option MarketSense.StockElectronicsCommunicationsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsCommunicationsMult,
+}
+
+option MarketSense.StockElectronicsControlMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsControlMult,
+}
+
+option MarketSense.StockElectronicsGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsGeneralMult,
+}
+
+option MarketSense.StockElectronicsGeneratorMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsGeneratorMult,
+}
+
+option MarketSense.StockElectronicsLightMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsLightMult,
+}
+
+option MarketSense.StockElectronicsRadioMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsRadioMult,
+}
+
+option MarketSense.StockElectronicsRadioBroadcastMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsRadioBroadcastMult,
+}
+
+option MarketSense.StockElectronicsRadioTwoWayMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsRadioTwoWayMult,
+}
+
+option MarketSense.StockElectronicsTelevisionMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseElectronics,
+    translation = MarketSense.StockElectronicsTelevisionMult,
+}
+
+option MarketSense.PriceResourceMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMult,
+}
+
+option MarketSense.PriceResourceFuelMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceFuelMult,
+}
+
+option MarketSense.PriceResourceFuelGasMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceFuelGasMult,
+}
+
+option MarketSense.PriceResourceFuelLiquidMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceFuelLiquidMult,
+}
+
+option MarketSense.PriceResourceFuelSolidMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceFuelSolidMult,
+}
+
+option MarketSense.PriceResourceMaterialMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialMult,
+}
+
+option MarketSense.PriceResourceMaterialAmmoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialAmmoMult,
+}
+
+option MarketSense.PriceResourceMaterialChemicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialChemicalMult,
+}
+
+option MarketSense.PriceResourceMaterialGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialGeneralMult,
+}
+
+option MarketSense.PriceResourceMaterialGlassMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialGlassMult,
+}
+
+option MarketSense.PriceResourceMaterialHardwareMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialHardwareMult,
+}
+
+option MarketSense.PriceResourceMaterialLeatherMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialLeatherMult,
+}
+
+option MarketSense.PriceResourceMaterialMetalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialMetalMult,
+}
+
+option MarketSense.PriceResourceMaterialMineralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialMineralMult,
+}
+
+option MarketSense.PriceResourceMaterialPackagingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialPackagingMult,
+}
+
+option MarketSense.PriceResourceMaterialPaperMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialPaperMult,
+}
+
+option MarketSense.PriceResourceMaterialTextileMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialTextileMult,
+}
+
+option MarketSense.PriceResourceMaterialWoodMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourceMaterialWoodMult,
+}
+
+option MarketSense.PriceResourcePartsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceResourcePartsMult,
+}
+
+option MarketSense.StockResourceMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMult,
+}
+
+option MarketSense.StockResourceFuelMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceFuelMult,
+}
+
+option MarketSense.StockResourceFuelGasMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceFuelGasMult,
+}
+
+option MarketSense.StockResourceFuelLiquidMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceFuelLiquidMult,
+}
+
+option MarketSense.StockResourceFuelSolidMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceFuelSolidMult,
+}
+
+option MarketSense.StockResourceMaterialMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialMult,
+}
+
+option MarketSense.StockResourceMaterialAmmoMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialAmmoMult,
+}
+
+option MarketSense.StockResourceMaterialChemicalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialChemicalMult,
+}
+
+option MarketSense.StockResourceMaterialGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialGeneralMult,
+}
+
+option MarketSense.StockResourceMaterialGlassMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialGlassMult,
+}
+
+option MarketSense.StockResourceMaterialHardwareMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialHardwareMult,
+}
+
+option MarketSense.StockResourceMaterialLeatherMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialLeatherMult,
+}
+
+option MarketSense.StockResourceMaterialMetalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialMetalMult,
+}
+
+option MarketSense.StockResourceMaterialMineralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialMineralMult,
+}
+
+option MarketSense.StockResourceMaterialPackagingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialPackagingMult,
+}
+
+option MarketSense.StockResourceMaterialPaperMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialPaperMult,
+}
+
+option MarketSense.StockResourceMaterialTextileMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialTextileMult,
+}
+
+option MarketSense.StockResourceMaterialWoodMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourceMaterialWoodMult,
+}
+
+option MarketSense.StockResourcePartsMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseResource,
+    translation = MarketSense.StockResourcePartsMult,
+}
+
+option MarketSense.PriceBuildingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingMult,
+}
+
+option MarketSense.PriceBuildingFixtureMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingFixtureMult,
+}
+
+option MarketSense.PriceBuildingFurnitureMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingFurnitureMult,
+}
+
+option MarketSense.PriceBuildingGardenMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingGardenMult,
+}
+
+option MarketSense.PriceBuildingGardenSeedMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingGardenSeedMult,
+}
+
+option MarketSense.PriceBuildingGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingGeneralMult,
+}
+
+option MarketSense.PriceBuildingMaterialMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingMaterialMult,
+}
+
+option MarketSense.PriceBuildingMoveableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingMoveableMult,
+}
+
+option MarketSense.PriceBuildingSurvivalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingSurvivalMult,
+}
+
+option MarketSense.PriceBuildingUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingUtilityMult,
+}
+
+option MarketSense.PriceBuildingVehicleMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceBuildingVehicleMult,
+}
+
+option MarketSense.StockBuildingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingMult,
+}
+
+option MarketSense.StockBuildingFixtureMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingFixtureMult,
+}
+
+option MarketSense.StockBuildingFurnitureMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingFurnitureMult,
+}
+
+option MarketSense.StockBuildingGardenMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingGardenMult,
+}
+
+option MarketSense.StockBuildingGardenSeedMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingGardenSeedMult,
+}
+
+option MarketSense.StockBuildingGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingGeneralMult,
+}
+
+option MarketSense.StockBuildingMaterialMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingMaterialMult,
+}
+
+option MarketSense.StockBuildingMoveableMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingMoveableMult,
+}
+
+option MarketSense.StockBuildingSurvivalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingSurvivalMult,
+}
+
+option MarketSense.StockBuildingUtilityMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingUtilityMult,
+}
+
+option MarketSense.StockBuildingVehicleMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseBuilding,
+    translation = MarketSense.StockBuildingVehicleMult,
+}
+
+option MarketSense.PriceMiscMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMisc,
+    translation = MarketSense.PriceMiscMult,
+}
+
+option MarketSense.PriceMiscGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMisc,
+    translation = MarketSense.PriceMiscGeneralMult,
+}
+
+option MarketSense.StockMiscMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMisc,
+    translation = MarketSense.StockMiscMult,
+}
+
+option MarketSense.StockMiscGeneralMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseMisc,
+    translation = MarketSense.StockMiscGeneralMult,
+}
+
+option MarketSense.PriceLiteratureMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.PriceLiteratureMult,
+}
+
+option MarketSense.PriceLiteratureMediaMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.PriceLiteratureMediaMult,
+}
+
+option MarketSense.PriceLiteratureRecipeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.PriceLiteratureRecipeMult,
+}
+
+option MarketSense.PriceLiteratureSkillBookMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.PriceLiteratureSkillBookMult,
+}
+
+option MarketSense.StockLiteratureMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.StockLiteratureMult,
+}
+
+option MarketSense.StockLiteratureMediaMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.StockLiteratureMediaMult,
+}
+
+option MarketSense.StockLiteratureRecipeMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.StockLiteratureRecipeMult,
+}
+
+option MarketSense.StockLiteratureSkillBookMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseLiterature,
+    translation = MarketSense.StockLiteratureSkillBookMult,
+}
+

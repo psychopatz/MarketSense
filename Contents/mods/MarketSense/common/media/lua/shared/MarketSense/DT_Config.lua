@@ -77,8 +77,44 @@ function DynamicTrading.Config.reloadExported()
     end
 end
 
+function DynamicTrading.Config.applySandboxOptions()
+    if SandboxVars and SandboxVars.MarketSense then
+        local vars = SandboxVars.MarketSense
+        local runtime = rootConfig.DynamicItemRuntime
+        
+        runtime.pricing.baseMultiplier = vars.PriceMultiplier or runtime.pricing.baseMultiplier
+        
+        -- Stock multipliers
+        runtime.stock.globalMultiplier = vars.StockMultiplier or 1.0
+        
+        -- Note: Atomic subcategory multipliers are resolved dynamically 
+        -- during evaluation via runtime.getSandboxTagMultiplier.
+        runtime.stock.categoryMultipliers = nil
+    end
+end
+
+function runtime.getSandboxTagMultiplier(mode, primaryTag)
+    local vars = SandboxVars and SandboxVars.MarketSense
+    if not vars or not primaryTag then
+        return 1.0
+    end
+    
+    local totalMult = 1.0
+    local path = ""
+    for part in string.gmatch(primaryTag, "[^%.]+") do
+        path = path .. part
+        local optKey = mode .. path .. "Mult"
+        local mult = vars[optKey]
+        if type(mult) == "number" then
+            totalMult = totalMult * mult
+        end
+    end
+    return totalMult
+end
+
 -- Call it once on boot
 DynamicTrading.Config.reloadExported()
+DynamicTrading.Config.applySandboxOptions()
 
 DynamicTrading.ItemRuntimeConfig = runtime
 
