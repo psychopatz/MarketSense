@@ -72,6 +72,10 @@ function RuntimeRules.loadFromFile(force)
     if force and package and package.loaded then
         package.loaded[DATA_MODULE] = nil
         package.loaded[TAG_DATA_MODULE] = nil
+        
+        if DynamicTrading.Config and type(DynamicTrading.Config.reloadExported) == "function" then
+            DynamicTrading.Config.reloadExported()
+        end
     end
 
     local ok, data = pcall(require, DATA_MODULE)

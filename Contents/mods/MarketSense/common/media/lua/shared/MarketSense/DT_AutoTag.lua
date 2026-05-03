@@ -21,6 +21,7 @@ local ORDER = {
     "Electronics",
     "Tool",
     "Resource",
+    "Literature",
     "Building",
 }
 
@@ -58,6 +59,8 @@ local function addDescriptorTags(ctx, result)
             addTag(tags, "Quality.Waste")
         elseif Core.ctxContains(ctx, { "gold", "diamond", "luxury", "premium", "whiskey", "wine" }) then
             addTag(tags, "Quality.Luxury")
+        elseif Core.ctxContains(ctx, { "sterile" }) and not Core.ctxContains(ctx, { "unsterile" }) then
+            addTag(tags, "Quality.Sterile")
         else
             addTag(tags, "Quality.Standard")
         end

@@ -121,6 +121,7 @@ function PropertyReader.buildContext(scriptItemOrFullType)
         tags = Core.safeTags(scriptItem),
 
         isMoveable = Core.startsWith(typeName, "Mov_"),
+        hasWorldStaticModel = Core.safeString(scriptItem, "getWorldStaticModel", "") ~= "",
         isCookable = Core.safeBoolean(scriptItem, "isCookable", false),
         isDrainable = Core.safeBoolean(scriptItem, "isDrainable", false),
         canStoreWater = Core.safeBoolean(scriptItem, "CanStoreWater", false),

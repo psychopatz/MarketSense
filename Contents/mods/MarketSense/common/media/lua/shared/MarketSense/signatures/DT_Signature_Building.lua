@@ -18,6 +18,7 @@ end
 
 function Signature.match(ctx)
     local matched = ctx.isMoveable
+        or ctx.hasWorldStaticModel
         or Core.ctxContains(ctx, {
             "furniture", "household", "vehiclemaintenance", "gardening", "camping",
             "trapping", "chair", "table", "cabinet", "shelf", "bed", "mattress",

@@ -45,6 +45,41 @@ end
 
 mergeDefaults(runtime, defaults)
 
+function DynamicTrading.Config.reloadExported()
+    -- Clear package loaded cache so we read fresh
+    if package and package.loaded then
+        package.loaded["DT/MarketSense/Pricing/MS_PricingConfig_Data"] = nil
+    end
+
+    local ok, exported = pcall(require, "DT/MarketSense/Pricing/MS_PricingConfig_Data")
+    if ok and type(exported) == "table" then
+        if exported.global then
+            runtime.pricing.minPrice = exported.global.min_price or runtime.pricing.minPrice
+            runtime.pricing.maxPrice = exported.global.max_price or runtime.pricing.maxPrice
+            runtime.pricing.baseMultiplier = exported.global.base_multiplier or runtime.pricing.baseMultiplier
+            runtime.pricing.openedPenalty = exported.global.opened_penalty or runtime.pricing.openedPenalty
+            
+            runtime.stock.ultralightMax = exported.global.stock_ultralight_max or runtime.stock.ultralightMax
+            runtime.stock.lightMax = exported.global.stock_light_max or runtime.stock.lightMax
+            runtime.stock.smallMax = exported.global.stock_small_max or runtime.stock.smallMax
+            runtime.stock.mediumMax = exported.global.stock_medium_max or runtime.stock.mediumMax
+            runtime.stock.heavyMax = exported.global.stock_heavy_max or runtime.stock.heavyMax
+            runtime.stock.massiveMax = exported.global.stock_massive_max or runtime.stock.massiveMax
+            runtime.stock.maxCap = exported.global.stock_max_cap or runtime.stock.maxCap
+            runtime.stock.defaultMinRatio = exported.global.stock_default_min_ratio or runtime.stock.defaultMinRatio
+        end
+        -- Keep refs for Heuristics and Pricing
+        runtime.categories = exported.categories or {}
+        runtime.rarityMultipliers = exported.rarity_multipliers or {}
+        runtime.qualityMultipliers = exported.quality_multipliers or {}
+        runtime.themeMultipliers = exported.theme_multipliers or {}
+        runtime.global = exported.global or {}
+    end
+end
+
+-- Call it once on boot
+DynamicTrading.Config.reloadExported()
+
 DynamicTrading.ItemRuntimeConfig = runtime
 
 function DynamicTrading.IsItemRuntimeDebugEnabled()
