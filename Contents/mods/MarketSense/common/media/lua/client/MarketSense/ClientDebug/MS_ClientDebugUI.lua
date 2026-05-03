@@ -31,7 +31,6 @@ function UI.attach(windowClass, deps)
 
     function windowClass:createSectionContainer(panelField, titleField, bodyField, titleText)
         local panel = self:createRootPanel()
-        attachPanelClipping(panel)
 
         local title = ISLabel:new(0, 0, HEADER_LINE, titleText, 0.94, 0.94, 0.94, 1, UIFont.Small, true)
         title:initialise()
@@ -42,7 +41,6 @@ function UI.attach(windowClass, deps)
         body.backgroundColor = { r = 0, g = 0, b = 0, a = 0 }
         body.borderColor = { r = 0, g = 0, b = 0, a = 0 }
         panel:addChild(body)
-        attachPanelClipping(body)
 
         self[panelField] = panel
         self[titleField] = title
@@ -120,11 +118,19 @@ function UI.attach(windowClass, deps)
         self.exportTextButton:initialise()
         self.controlsPanel:addChild(self.exportTextButton)
 
-        self.tagFilterCombo = ISComboBox:new(0, 0, 220, 24, self, self.onTagFilterChanged)
+        self.tagFilterCombo = ISComboBox:new(0, 0, 160, 24, self, self.onTagFilterChanged)
         self.tagFilterCombo:initialise()
+        self.tagFilterCombo:instantiate()
         self.tagFilterCombo:addOption("All Tags")
         self.tagFilterCombo.selected = 1
         self.controlsPanel:addChild(self.tagFilterCombo)
+
+        self.originFilterCombo = ISComboBox:new(0, 0, 160, 24, self, self.onOriginFilterChanged)
+        self.originFilterCombo:initialise()
+        self.originFilterCombo:instantiate()
+        self.originFilterCombo:addOption("All Origins")
+        self.originFilterCombo.selected = 1
+        self.controlsPanel:addChild(self.originFilterCombo)
 
         self.statusLabel = ISLabel:new(0, 0, STATUS_HEIGHT, "Status: idle", 0.86, 0.86, 0.86, 1, UIFont.Small, true)
         self.statusLabel:initialise()
@@ -176,7 +182,8 @@ function UI.attach(windowClass, deps)
         self.summaryText = ISRichTextPanel:new(0, 0, 100, 100)
         self.summaryText:initialise()
         self.summaryText:instantiate()
-        self.summaryText.background = false
+        self.summaryText.background = true
+        self.summaryText.backgroundColor = { r = 0, g = 0, b = 0, a = 0 }
         self.summaryText.autosetheight = false
         self.summaryText:addScrollBars()
         self.summaryBody:addChild(self.summaryText)
@@ -191,7 +198,8 @@ function UI.attach(windowClass, deps)
         self.pricingText = ISRichTextPanel:new(0, 0, 100, 100)
         self.pricingText:initialise()
         self.pricingText:instantiate()
-        self.pricingText.background = false
+        self.pricingText.background = true
+        self.pricingText.backgroundColor = { r = 0, g = 0, b = 0, a = 0 }
         self.pricingText.autosetheight = false
         self.pricingText:addScrollBars()
         self.pricingBody:addChild(self.pricingText)
@@ -205,6 +213,7 @@ function UI.attach(windowClass, deps)
 
         self:refreshCatalogList()
         self:refreshTagFilterOptions()
+        self:refreshOriginFilterOptions()
         self:setStatus("Ready. Build the catalog or enter a full item type and press Lookup.")
     end
 
@@ -335,11 +344,16 @@ function UI.attach(windowClass, deps)
         self.exportTextButton:setWidth(buttonW)
         self.exportTextButton:setHeight(CONTROL_ROW_HEIGHT)
 
-        local comboWidth = math.max(240, math.min(460, controlsInnerW))
+        local comboWidth = math.max(160, math.min(240, math.floor(controlsInnerW * 0.24)))
         self.tagFilterCombo:setX(PAD)
         self.tagFilterCombo:setY(comboY)
         self.tagFilterCombo:setWidth(comboWidth)
         self.tagFilterCombo:setHeight(CONTROL_ROW_HEIGHT)
+
+        self.originFilterCombo:setX(self.tagFilterCombo:getX() + self.tagFilterCombo:getWidth() + GAP)
+        self.originFilterCombo:setY(comboY)
+        self.originFilterCombo:setWidth(comboWidth)
+        self.originFilterCombo:setHeight(CONTROL_ROW_HEIGHT)
 
         self.statusLabel:setX(PAD)
         self.statusLabel:setY(statusY)

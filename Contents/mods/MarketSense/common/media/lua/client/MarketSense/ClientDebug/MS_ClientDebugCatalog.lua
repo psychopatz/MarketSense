@@ -38,6 +38,7 @@ function Catalog.attach(windowClass, deps)
     function windowClass:buildCatalogIndex(catalog)
         local items = {}
         local tagSet = {}
+        local originSet = {}
         local source = catalog and catalog.items or nil
 
         self.catalogRenderLimit = renderLimit
@@ -63,6 +64,15 @@ function Catalog.attach(windowClass, deps)
                 end
             end
 
+            local origin = "Vanilla"
+            for _, tag in ipairs(tags) do
+                local o = string.match(tag, "^Origin%.(.+)$")
+                if o then
+                    origin = o
+                    break
+                end
+            end
+
             local entry = {
                 fullType = fullType,
                 moduleName = safeText(details.moduleName, ""),
@@ -71,11 +81,14 @@ function Catalog.attach(windowClass, deps)
                 sourceModName = safeText(details.sourceModName, ""),
                 category = safeText(details.category, "Misc"),
                 primary = safeText(details.primary, "Misc.General"),
+                origin = origin,
                 price = safeNumber(details.price, 0) or 0,
                 confidence = safeNumber(details.confidence, 0) or 0,
                 tags = tags,
                 tagLookup = {},
             }
+
+            originSet[origin] = true
 
             if entry.primary ~= "" then
                 tagSet[entry.primary] = true
@@ -97,6 +110,7 @@ function Catalog.attach(windowClass, deps)
                 entry.sourceModName,
                 entry.category,
                 entry.primary,
+                entry.origin,
                 table.concat(entry.tags, " "),
             }, " "))
 
@@ -104,30 +118,84 @@ function Catalog.attach(windowClass, deps)
             items[count] = entry
         end
 
+        local function shuffleTable(t)
+            for i = #t, 2, -1 do
+                local j = math.random(i)
+                t[i], t[j] = t[j], t[i]
+            end
+        end
+
+        shuffleTable(items)
         table.sort(items, compareCatalogEntries)
 
         local tagOptions = { "All Tags" }
-
         for tag, _ in pairs(tagSet) do
             tagOptions[#tagOptions + 1] = tag
         end
 
+        local originOptions = { "All Origins" }
+        for origin, _ in pairs(originSet) do
+            originOptions[#originOptions + 1] = origin
+        end
+
         table.sort(tagOptions, function(a, b)
-            if a == "All Tags" then
-                return true
-            end
-
-            if b == "All Tags" then
-                return false
-            end
-
+            if a == b then return false end
+            if a == "All Tags" then return true end
+            if b == "All Tags" then return false end
             return lower(a) < lower(b)
         end)
 
         self.catalogTagOptions = tagOptions
+        self.catalogOriginOptions = originOptions
         self:refreshTagFilterOptions()
+        self:refreshOriginFilterOptions()
 
         return items
+    end
+
+    function windowClass:refreshOriginFilterOptions()
+        if not self.originFilterCombo then
+            return
+        end
+
+        local previous = self:getSelectedOriginFilter()
+
+        self.originFilterCombo:clear()
+
+        local options = self.catalogOriginOptions or { "All Origins" }
+        local selectedIndex = 1
+
+        table.sort(options, function(a, b)
+            if a == b then return false end
+            if a == "All Origins" then return true end
+            if b == "All Origins" then return false end
+            return lower(a) < lower(b)
+        end)
+
+        for index, label in ipairs(options) do
+            self.originFilterCombo:addOption(label)
+
+            if previous ~= "" and label == previous then
+                selectedIndex = index
+            end
+        end
+
+        self.originFilterCombo.selected = selectedIndex
+        self.selectedOriginFilter = selectedIndex > 1 and options[selectedIndex] or ""
+    end
+
+    function windowClass:getSelectedOriginFilter()
+        if not self.originFilterCombo then
+            return ""
+        end
+
+        local index = self.originFilterCombo.selected or 1
+
+        if index <= 1 then
+            return ""
+        end
+
+        return safeText(self.originFilterCombo:getOptionText(index), "")
     end
 
     function windowClass:refreshTagFilterOptions()
@@ -212,14 +280,17 @@ function Catalog.attach(windowClass, deps)
         end
     end
 
-    function windowClass:applyCatalogFilter(term, selectedTag)
+    function windowClass:applyCatalogFilter(term, selectedTag, selectedOrigin)
         local query = lower(term)
         local tagFilter = safeText(selectedTag, "")
         local tagFilterLower = lower(tagFilter)
+        local originFilter = safeText(selectedOrigin, "")
+        local originFilterLower = lower(originFilter)
 
-        if query == "" and tagFilterLower == "" then
+        if query == "" and tagFilterLower == "" and originFilterLower == "" then
             self.filteredCatalogItems = self.catalogItems or {}
             self.selectedTagFilter = ""
+            self.selectedOriginFilter = ""
             self:refreshCatalogList()
             return
         end
@@ -230,8 +301,9 @@ function Catalog.attach(windowClass, deps)
         for _, entry in ipairs(self.catalogItems or {}) do
             local matchesText = (query == "") or string.find(entry.searchText, query, 1, true)
             local matchesTag = entryHasTag(entry, tagFilterLower)
+            local matchesOrigin = (originFilterLower == "") or (lower(entry.origin or "") == originFilterLower)
 
-            if matchesText and matchesTag then
+            if matchesText and matchesTag and matchesOrigin then
                 filteredCount = filteredCount + 1
                 filtered[filteredCount] = entry
             end
@@ -239,6 +311,7 @@ function Catalog.attach(windowClass, deps)
 
         self.filteredCatalogItems = filtered
         self.selectedTagFilter = tagFilter
+        self.selectedOriginFilter = originFilter
         self:refreshCatalogList()
     end
 

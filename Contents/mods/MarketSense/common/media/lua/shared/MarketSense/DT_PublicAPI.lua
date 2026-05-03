@@ -213,4 +213,35 @@ function DynamicTrading.ReloadRuntimeRules()
     DynamicTrading.ClearRuntimeCache()
 end
 
+function DynamicTrading.ReloadRuntimeRegistry()
+    if not DynamicTrading.ItemsRegistry then
+        pcall(require, "MarketSense/MS_ItemsRegistry")
+    end
+    
+    if DynamicTrading.ItemsRegistry and DynamicTrading.ItemsRegistry.load then
+        DynamicTrading.ItemsRegistry.load()
+        DynamicTrading.ClearRuntimeCache()
+        return true
+    end
+    return false
+end
+
+function DynamicTrading.GetRuntimeCatalog()
+    if not Cache.built then
+        return nil
+    end
+
+    local result = emptyCatalog()
+    for fullType, details in pairs(Cache.details) do
+        result.items[fullType] = Core.deepCopy(details)
+        result.total = result.total + 1
+        result.modules[details.moduleName or "Unknown"] = (result.modules[details.moduleName or "Unknown"] or 0) + 1
+        result.categories[details.category or "Misc"] = (result.categories[details.category or "Misc"] or 0) + 1
+        for _, tag in ipairs(details.tags or {}) do
+            result.tags[tag] = (result.tags[tag] or 0) + 1
+        end
+    end
+    return result
+end
+
 return DynamicTrading

@@ -3,13 +3,21 @@ local Utils = require "MarketSense/ClientDebug/MS_ClientDebugUtils"
 local Renderers = {}
 
 function Renderers.compareCatalogEntries(a, b)
-    if a.category ~= b.category then
-        return a.category < b.category
+    if a == b then return false end
+    
+    local catA = a.category or ""
+    local catB = b.category or ""
+    if catA ~= catB then
+        return catA < catB
     end
-    if a.moduleName ~= b.moduleName then
-        return a.moduleName < b.moduleName
+
+    local modA = a.moduleName or ""
+    local modB = b.moduleName or ""
+    if modA ~= modB then
+        return modA < modB
     end
-    return a.fullType < b.fullType
+
+    return (a.fullType or "") < (b.fullType or "")
 end
 
 function Renderers.compareSignatureEntries(a, b)

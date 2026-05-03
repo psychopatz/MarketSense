@@ -60,6 +60,12 @@ function MS_ItemRuntimeDebugWindow:initialise()
     self.catalogItems = {}
     self.filteredCatalogItems = {}
     self.lastExportPreview = nil
+
+    local existing = DynamicTrading.GetRuntimeCatalog()
+    if existing then
+        self.catalogItems = self:buildCatalogIndex(existing)
+        self.filteredCatalogItems = self.catalogItems
+    end
 end
 
 function MS_ItemRuntimeDebugWindow:setStatus(text)
@@ -82,7 +88,9 @@ function MS_ItemRuntimeDebugWindow:onLookupClick()
     end
 
     if #self.catalogItems > 0 then
-        self:applyCatalogFilter(fullType)
+        local selectedTag = self:getSelectedTagFilter()
+        local selectedOrigin = self:getSelectedOriginFilter()
+        self:applyCatalogFilter(fullType, selectedTag, selectedOrigin)
         self:selectCatalogItem(fullType)
     end
 
@@ -97,16 +105,18 @@ function MS_ItemRuntimeDebugWindow:onFilterClick()
 
     local term = safeText(self.itemEntry and self.itemEntry:getText() or "")
     local selectedTag = self:getSelectedTagFilter()
-    self:applyCatalogFilter(term, selectedTag)
+    local selectedOrigin = self:getSelectedOriginFilter()
+    self:applyCatalogFilter(term, selectedTag, selectedOrigin)
 
-    if term == "" and selectedTag == "" then
+    local status = "Catalog filtered"
+    if term ~= "" then status = status .. " by text" end
+    if selectedTag ~= "" then status = status .. (term ~= "" and " and tag: " or " by tag: ") .. selectedTag end
+    if selectedOrigin ~= "" then status = status .. ( (term ~= "" or selectedTag ~= "") and " and origin: " or " by origin: ") .. selectedOrigin end
+    
+    if term == "" and selectedTag == "" and selectedOrigin == "" then
         self:setStatus("Catalog filter cleared.")
-    elseif term ~= "" and selectedTag ~= "" then
-        self:setStatus("Catalog filtered by text and tag: " .. selectedTag)
-    elseif term ~= "" then
-        self:setStatus("Catalog filtered by text: " .. term)
     else
-        self:setStatus("Catalog filtered by tag: " .. selectedTag)
+        self:setStatus(status .. ".")
     end
 end
 
@@ -116,16 +126,39 @@ function MS_ItemRuntimeDebugWindow:onTagFilterChanged()
     end
     local term = safeText(self.itemEntry and self.itemEntry:getText() or "")
     local selectedTag = self:getSelectedTagFilter()
-    self:applyCatalogFilter(term, selectedTag)
+    local selectedOrigin = self:getSelectedOriginFilter()
+    self:applyCatalogFilter(term, selectedTag, selectedOrigin)
+end
+
+function MS_ItemRuntimeDebugWindow:onOriginFilterChanged()
+    if #self.catalogItems <= 0 then
+        return
+    end
+    local term = safeText(self.itemEntry and self.itemEntry:getText() or "")
+    local selectedTag = self:getSelectedTagFilter()
+    local selectedOrigin = self:getSelectedOriginFilter()
+    self:applyCatalogFilter(term, selectedTag, selectedOrigin)
 end
 
 function MS_ItemRuntimeDebugWindow:onClearClick()
     DynamicTrading.ClearRuntimeCache()
+    
+    local reloaded = false
+    if DynamicTrading.ReloadRuntimeRegistry then
+        DynamicTrading.ReloadRuntimeRegistry()
+        reloaded = true
+    end
+
     self.catalogItems = {}
     self.filteredCatalogItems = {}
     self.selectedCatalogFullType = nil
     self:refreshCatalogList()
-    self:setStatus("Runtime cache cleared. Catalog browser reset.")
+    
+    if reloaded then
+        self:setStatus("Runtime cache cleared and DT_Items registry reloaded.")
+    else
+        self:setStatus("Runtime cache cleared. Catalog browser reset.")
+    end
 end
 
 function MS_ItemRuntimeDebugWindow:onBuildClick()
@@ -134,7 +167,8 @@ function MS_ItemRuntimeDebugWindow:onBuildClick()
 
     local term = safeText(self.itemEntry and self.itemEntry:getText() or "")
     local selectedTag = self:getSelectedTagFilter()
-    self:applyCatalogFilter(term, selectedTag)
+    local selectedOrigin = self:getSelectedOriginFilter()
+    self:applyCatalogFilter(term, selectedTag, selectedOrigin)
 
     self:setStatus("Built catalog for " .. tostring(catalog.total or #self.catalogItems) .. " items.")
 end
