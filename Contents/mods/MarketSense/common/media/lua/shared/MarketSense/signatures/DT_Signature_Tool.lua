@@ -35,6 +35,39 @@ local COOKWARE_SCRIPT_TAGS = {
 local COOKWARE_WEAK_SCRIPT_TAGS = { ["base:cookable"] = true }
 local COOKWARE_DISPLAY_CATEGORIES = { ["cooking"] = true, ["cookingweapon"] = true }
 
+local ROBUST_TOOL_TAGS = {
+    ["base:blowtorch"] = "Tool.Welding",
+    ["base:saw"] = "Tool.Carpentry",
+    ["base:crudesaw"] = "Tool.Carpentry",
+    ["base:carpentrychisel"] = "Tool.Carpentry",
+    ["base:masonstrowel"] = "Tool.Masonry",
+    ["base:masonschisel"] = "Tool.Masonry",
+    ["base:sewingneedle"] = "Tool.Tailoring",
+    ["base:knittingneedles"] = "Tool.Tailoring",
+    ["base:awl"] = "Tool.Tailoring",
+    ["base:thimble"] = "Tool.Tailoring",
+    ["base:metalsaw"] = "Tool.Blacksmith",
+    ["base:tongs"] = "Tool.Blacksmith",
+    ["base:file"] = "Tool.Blacksmith",
+    ["base:smithinghammer"] = "Tool.Blacksmith",
+    ["base:luggwrench"] = "Tool.Mechanics",
+    ["base:wrench"] = "Tool.Mechanics",
+    ["base:handscythe"] = "Tool.Gardening",
+    ["base:scythe"] = "Tool.Gardening",
+    ["base:whetstone"] = "Tool.Maintenance",
+    ["base:claytool"] = "Tool.Pottery",
+    ["base:knappingtool"] = "Tool.FlintKnapping",
+    ["base:fleshingtool"] = "Tool.Butchering",
+}
+
+local function findRobustToolTag(ctx)
+    for _, tag in ipairs(ctx.tags or {}) do
+        local primary = ROBUST_TOOL_TAGS[Core.lower(tag)]
+        if primary then return primary end
+    end
+    return nil
+end
+
 local function containsAny(text, patterns)
     local source = tostring(text or "")
     if source == "" then
@@ -142,7 +175,11 @@ function Signature.match(ctx)
     if conditionMax > 3 then evidence = evidence + 0.25 end
     if containsAny(itemLower, TOOL_ID_PATTERNS) then evidence = evidence + 0.2 end
 
-    if containsAny(itemLower, CRAFTING_TOOL_PATTERNS) then
+    local robustPrimary = findRobustToolTag(ctx)
+    if robustPrimary then
+        primary = robustPrimary
+        evidence = evidence + 0.35
+    elseif containsAny(itemLower, CRAFTING_TOOL_PATTERNS) then
         primary = "Tool.Crafting"
         evidence = evidence + 0.15
     elseif containsAny(itemLower, FARMING_TOOL_PATTERNS) then

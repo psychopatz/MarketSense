@@ -82,18 +82,34 @@ local function classifyFoodSubtype(itemLower, ctx, isDrink, perishable)
         return "Drink", "NonAlcoholic"
     end
 
+    if ctx.isSpice or containsAny(itemLower, SPICE_ID_PATTERNS) then
+        return "Cooking", "Spice"
+    end
+
     if isCanItem(itemLower) then
         return "NonPerishable", "Canned"
     end
-    if containsAny(itemLower, SPICE_ID_PATTERNS) then
-        return "Cooking", "Spice"
-    end
+
     if containsAny(itemLower, MEAT_ID_PATTERNS) then
         if string.find(itemLower, "fish", 1, true) ~= nil then
             return perishable and "Perishable" or "NonPerishable", "Fish"
         end
         return perishable and "Perishable" or "NonPerishable", "Meat"
     end
+
+    -- Snippet from CAEC: Guessing snack vs meal based on caloric density
+    local weight = ctx.weight or 1
+    local calories = ctx.calories or 0
+    local caloricDensity = weight > 0 and (calories / weight) or 0
+
+    if ctx.eatTypeLower == "bowl" or ctx.eatTypeLower == "plate" or ctx.eatTypeLower == "pot" then
+        return perishable and "Perishable" or "NonPerishable", "Meal"
+    end
+
+    if caloricDensity > 300 and not perishable then
+        return "NonPerishable", "Sweets"
+    end
+
     if containsAny(itemLower, FRUIT_ID_PATTERNS) then
         return perishable and "Perishable" or "NonPerishable", "Fruit"
     end

@@ -40,17 +40,23 @@ local function addDescriptorTags(ctx, result)
         else
             -- Ensure modId is clean (no spaces/dots) for tagging
             local cleanId = ctx.sourceModId or "Modded"
-            cleanId = cleanId:gsub("[%s%.]", "")
+            cleanId = cleanId:gsub("[%s%.%-]", "")
+            
+            -- If modId is still just "Base" or "Unknown", try to use component from fullType
+            if (cleanId == "Base" or cleanId == "Unknown") and ctx.moduleName ~= "Base" then
+                cleanId = ctx.moduleName:gsub("[%s%.%-]", "")
+            end
+            
             addTag(tags, "Origin." .. cleanId)
         end
     end
 
     if not TagUtils.tagStarts(tags, "Rarity") then
-        if Core.ctxContains(ctx, { "legendary", "artifact" }) then
+        if Core.ctxContains(ctx, { "legendary", "artifact", "unique", "rare_item" }) then
             addTag(tags, "Rarity.Legendary")
-        elseif Core.ctxContains(ctx, { "katana", "machete", "generator", "military", "diamond", "gold" }) then
+        elseif Core.ctxContains(ctx, { "katana", "machete", "generator", "military", "diamond", "gold", "hitech", "vintage" }) then
             addTag(tags, "Rarity.Rare")
-        elseif Core.ctxContains(ctx, { "pistol", "rifle", "shotgun", "revolver", "backpack", "radio", "walkie", "medical" }) then
+        elseif Core.ctxContains(ctx, { "pistol", "rifle", "shotgun", "revolver", "backpack", "radio", "walkie", "medical", "reinforced", "industrial" }) then
             addTag(tags, "Rarity.Uncommon")
         else
             addTag(tags, "Rarity.Common")
@@ -58,11 +64,11 @@ local function addDescriptorTags(ctx, result)
     end
 
     if not TagUtils.tagStarts(tags, "Quality") then
-        if Core.ctxContains(ctx, { "broken", "trash", "junk", "worn" }) then
+        if Core.ctxContains(ctx, { "broken", "trash", "junk", "worn", "rusty", "damaged", "dirty" }) then
             addTag(tags, "Quality.Waste")
-        elseif Core.ctxContains(ctx, { "gold", "diamond", "luxury", "premium", "whiskey", "wine" }) then
+        elseif Core.ctxContains(ctx, { "gold", "diamond", "luxury", "premium", "whiskey", "wine", "pristine", "masterwork" }) then
             addTag(tags, "Quality.Luxury")
-        elseif Core.ctxContains(ctx, { "sterile" }) and not Core.ctxContains(ctx, { "unsterile" }) then
+        elseif Core.ctxContains(ctx, { "sterile", "medical", "surgical" }) and not Core.ctxContains(ctx, { "unsterile", "used" }) then
             addTag(tags, "Quality.Sterile")
         else
             addTag(tags, "Quality.Standard")

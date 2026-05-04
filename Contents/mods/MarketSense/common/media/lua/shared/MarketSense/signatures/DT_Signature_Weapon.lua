@@ -139,11 +139,27 @@ function Signature.match(ctx)
     if hasAmmoType
         or (ctx.rangedTokenLower or "") == "true"
         or (ctx.aimedFirearmTokenLower or "") == "true"
-        or Core.ctxContains(ctx, { "pistol", "rifle", "shotgun", "revolver", "firearm" }) then
-        return success(0.96, "Weapon.Ranged.Firearm", {
-            "Weapon.Ranged.Firearm",
+        or Core.ctxContains(ctx, { "pistol", "rifle", "shotgun", "revolver", "firearm" })
+        or TagUtils.hasTag(ctx.tags, "Firearm") then
+
+        local subtype = "Ranged.Firearm"
+        local primary = "Weapon.Ranged.Firearm"
+
+        if ctx.ammoTypeLower:contains("shell") or ctx.idLower:contains("shotgun") then
+            primary = "Weapon.Ranged.Shotgun"
+            subtype = "Ranged.Shotgun"
+        elseif ctx.isTwoHandWeapon then
+            primary = "Weapon.Ranged.Rifle"
+            subtype = "Ranged.Rifle"
+        else
+            primary = "Weapon.Ranged.Handgun"
+            subtype = "Ranged.Handgun"
+        end
+
+        return success(0.96, primary, {
+            primary,
         }, {
-            subtype = "Ranged.Firearm",
+            subtype = subtype,
         })
     end
 
@@ -161,6 +177,30 @@ function Signature.match(ctx)
         }, {
             subtype = "Melee.Blade",
         })
+    end
+
+    local categories = ctx.weaponCategories or {}
+    local hasCat = function(c)
+        for _, cat in ipairs(categories) do
+            if Core.lower(cat) == Core.lower(c) then return true end
+        end
+        return false
+    end
+
+    if hasCat("Axe") then
+        return success(0.98, "Weapon.Melee.Axe", { "Weapon.Melee.Axe" }, { engine_cat = "Axe" })
+    end
+    if hasCat("Blunt") then
+        return success(0.98, "Weapon.Melee.Blunt", { "Weapon.Melee.Blunt" }, { engine_cat = "Blunt" })
+    end
+    if hasCat("SmallBlunt") then
+        return success(0.98, "Weapon.Melee.Blunt", { "Weapon.Melee.Blunt" }, { engine_cat = "SmallBlunt" })
+    end
+    if hasCat("LongBlade") or hasCat("SmallBlade") then
+        return success(0.98, "Weapon.Melee.Blade", { "Weapon.Melee.Blade" }, { engine_cat = "Blade" })
+    end
+    if hasCat("Spear") then
+        return success(0.98, "Weapon.Melee.Spear", { "Weapon.Melee.Spear" }, { engine_cat = "Spear" })
     end
 
     if containsAny(itemLower, BLUNT_ID_PATTERNS) or hasDamage then

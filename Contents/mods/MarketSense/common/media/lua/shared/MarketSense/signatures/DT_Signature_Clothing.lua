@@ -13,6 +13,17 @@ local COSMETIC_BODY_LOCATIONS = {
     ["base:makeup_eyesshadow"] = true,
     ["base:makeup_lips"] = true,
 }
+local JEWELRY_TAGS = {
+    ["base:amethyst_jewellery"] = true,
+    ["base:diamond_jewellery"] = true,
+    ["base:emerald_jewellery"] = true,
+    ["base:ruby_jewellery"] = true,
+    ["base:sapphire_jewellery"] = true,
+    ["base:two_diamond_jewellery"] = true,
+    ["base:two_emerald_jewellery"] = true,
+    ["base:two_ruby_jewellery"] = true,
+    ["base:two_sapphire_jewellery"] = true,
+}
 
 local HEAD_LOCATIONS = { ["base:hat"] = true, ["base:fullhat"] = true, ["base:jackethat"] = true, ["base:sweaterhat"] = true, ["base:fullsuithead"] = true }
 local FACE_LOCATIONS = { ["base:mask"] = true, ["base:maskeyes"] = true, ["base:maskfull"] = true, ["base:scba"] = true, ["base:scbanotank"] = true }
@@ -103,6 +114,15 @@ local function containsAny(text, patterns)
     return false
 end
 
+local function hasScriptTag(ctx, expected)
+    for _, tag in ipairs(ctx.tags or {}) do
+        if expected[Core.lower(tag)] then
+            return true
+        end
+    end
+    return false
+end
+
 local function resolveArmorSlot(body)
     if HEAD_LOCATIONS[body] then return "Head" end
     if FACE_LOCATIONS[body] then return "Face" end
@@ -114,7 +134,7 @@ local function resolveArmorSlot(body)
     return "Torso"
 end
 
-local function resolveNonArmorSlot(itemLower, displayCategory, body)
+local function resolveNonArmorSlot(ctx, itemLower, displayCategory, body)
     if COSMETIC_BODY_LOCATIONS[body] then return "Accessory.Cosmetic" end
     if JEWELRY_EAR_LOCATIONS[body] then return "Accessory.Jewelry.Ears" end
     if JEWELRY_NECK_LOCATIONS[body] then return "Accessory.Jewelry.Necklace" end
@@ -141,8 +161,8 @@ local function resolveNonArmorSlot(itemLower, displayCategory, body)
     if TOP_LOCATIONS[body] then return "Top" end
     if BOTTOM_LOCATIONS[body] then return "Bottom" end
 
-    if displayCategory == "accessory" then
-        if containsAny(itemLower, { "ring", "necklace", "earring", "bracelet", "locket", "dogtag" }) then
+    if displayCategory == "accessory" or hasScriptTag(ctx, JEWELRY_TAGS) then
+        if hasScriptTag(ctx, JEWELRY_TAGS) or containsAny(itemLower, { "ring", "necklace", "earring", "bracelet", "locket", "dogtag" }) then
             return "Accessory.Jewelry"
         end
         return "Accessory"
@@ -186,7 +206,7 @@ function Signature.match(ctx)
     local maxDefense = math.max(bite, scratch, bullet, blunt)
     local isArmor = displayCategory == "protectivegear" or ARMOR_LOCATIONS[body] == true or bullet > 0 or containsAny(itemLower, { "armor", "armour", "bulletvest", "greave", "vambrace", "gorget", "cuirass", "helmet", "visor" }) or maxDefense >= 90
 
-    local clothingType = isArmor and ("Armor." .. resolveArmorSlot(body)) or resolveNonArmorSlot(itemLower, displayCategory, body)
+    local clothingType = isArmor and ("Armor." .. resolveArmorSlot(body)) or resolveNonArmorSlot(ctx, itemLower, displayCategory, body)
 
     local primary = "Clothing.Top"
     local tags = {}

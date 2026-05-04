@@ -95,6 +95,10 @@ function Signature.match(ctx)
     local isKeyring = hasScriptTag(ctx, { ["base:keyring"] = true })
         or string.find(ctx.acceptItemFunctionLower or "", "acceptitemfunction.keyring", 1, true) ~= nil
     local isAmmoCase = hasScriptTag(ctx, { ["base:ammocase"] = true })
+    
+    local isRecipePackage = containsAny(ctx.doubleClickRecipeLower or "", { "unpack", "open", "takea" })
+    local isIconPackage = containsAny(ctx.iconLower or "", { "parcel", "carton" })
+    local isPackage = (isRecipePackage or isIconPackage) and containsAny(itemLower, { "box", "carton", "parcel", "bundle", "pack" })
 
     local isCookwareLiquid = hasFluidContainer
         and (displayCategory == "cooking" or displayCategory == "cookingweapon")
@@ -131,6 +135,8 @@ function Signature.match(ctx)
         primary = "Container.Utility.KeyRing"
     elseif isHollowBook then
         primary = "Container.Stash.Book"
+    elseif isPackage then
+        primary = "Container.Package"
     elseif WEARABLE_FANNY_LOCATIONS[bodyLocation] then
         primary = "Container.Bag.Fanny"
     elseif WEARABLE_RIG_LOCATIONS[bodyLocation] then

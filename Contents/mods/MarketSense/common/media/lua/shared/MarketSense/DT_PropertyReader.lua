@@ -65,6 +65,8 @@ function PropertyReader.buildContext(scriptItemOrFullType)
     local putInSound = Core.safeString(scriptItem, "getPutInSound", "")
     local pourType = Core.safeString(scriptItem, "getPourType", "")
     local eatType = Core.safeString(scriptItem, "getEatType", "")
+    local doubleClickRecipe = Core.safeString(scriptItem, "getDoubleClickRecipe", "")
+    local icon = Core.safeString(scriptItem, { "getIcon", "getIconName" }, "")
     local bodyLocation = Core.safeString(scriptItem, "getBodyLocation", "")
     local modId = Core.safeString(scriptItem, { "getModID", "getModId", "getSourceMod" }, "")
     local modName = Core.safeString(scriptItem, { "getModName", "getModID", "getModId", "getSourceMod" }, "")
@@ -152,7 +154,21 @@ function PropertyReader.buildContext(scriptItemOrFullType)
         putInSound = putInSound,
         pourType = pourType,
         eatType = eatType,
+        eatTypeLower = Core.lower(eatType),
+        doubleClickRecipe = doubleClickRecipe,
+        doubleClickRecipeLower = Core.lower(doubleClickRecipe),
+        icon = icon,
+        iconLower = Core.lower(icon),
         tags = Core.safeTags(scriptItem),
+
+        weaponCategories = Core.listFromJavaCollection(Core.safeCall(scriptItem, "getWeaponCategories", nil)),
+        isTwoHandWeapon = Core.safeBoolean(scriptItem, "isTwoHandWeapon", false),
+        isSpice = Core.safeBoolean(scriptItem, "isSpice", false),
+        isPoison = Core.safeBoolean(scriptItem, "isPoison", false),
+        alcoholPower = Core.safeNumber(scriptItem, "getAlcoholPower", 0),
+        fatigueChange = Core.safeNumber(scriptItem, "getFatigueChange", 0),
+        reduceInfectionPower = Core.safeNumber(scriptItem, "getReduceInfectionPower", 0),
+        bandagePower = Core.safeNumber(scriptItem, "getBandagePower", 0),
 
         isMoveable = Core.startsWith(typeName, "Mov_"),
         hasWorldStaticModel = Core.safeString(scriptItem, "getWorldStaticModel", "") ~= "",

@@ -93,8 +93,9 @@ function Signature.match(ctx)
         or isMedicalFlag
         or containsAny(itemLower, MEDICAL_SUPPLY_ID_PATTERNS)
         or isNicotineDrug
-        or bandagePower > 0
-        or reduceInfection > 0
+        or ctx.bandagePower > 0
+        or ctx.reduceInfectionPower > 0
+        or ctx.alcoholPower > 0
 
     if not looksMedical then
         return { matched = false, confidence = 0 }
@@ -105,8 +106,9 @@ function Signature.match(ctx)
     if isMedicalFlag then evidence = evidence + 0.35 end
     if containsAny(itemLower, MEDICAL_SUPPLY_ID_PATTERNS) then evidence = evidence + 0.2 end
     if isNicotineDrug then evidence = evidence + 0.45 end
-    if bandagePower > 0 then evidence = evidence + 0.25 end
-    if reduceInfection > 0 then evidence = evidence + 0.3 end
+    if ctx.bandagePower > 0 then evidence = evidence + 0.45 end
+    if ctx.reduceInfectionPower > 0 then evidence = evidence + 0.45 end
+    if ctx.alcoholPower > 0 then evidence = evidence + 0.35 end
     if hasScriptTag(ctx, MEDICAL_SUPPLY_TAGS) then evidence = evidence + 0.1 end
 
     local confidence = math.min(1.0, evidence)
