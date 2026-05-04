@@ -23,6 +23,12 @@ local JEWELRY_TAGS = {
     ["base:two_emerald_jewellery"] = true,
     ["base:two_ruby_jewellery"] = true,
     ["base:two_sapphire_jewellery"] = true,
+    
+    -- Jewelry Scrap (Robust)
+    ["base:tinygoldscrap"] = true, ["base:tinysilverscrap"] = true,
+    ["base:smallgoldscrap"] = true, ["base:smallsilverscrap"] = true,
+    ["base:smallergoldscrap"] = true, ["base:smallersilverscrap"] = true,
+    ["base:smallestgoldscrap"] = true, ["base:smallestsilverscrap"] = true,
 }
 
 local HEAD_LOCATIONS = { ["base:hat"] = true, ["base:fullhat"] = true, ["base:jackethat"] = true, ["base:sweaterhat"] = true, ["base:fullsuithead"] = true }

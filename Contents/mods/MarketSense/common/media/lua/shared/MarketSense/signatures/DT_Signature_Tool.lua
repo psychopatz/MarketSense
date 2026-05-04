@@ -58,6 +58,24 @@ local ROBUST_TOOL_TAGS = {
     ["base:claytool"] = "Tool.Pottery",
     ["base:knappingtool"] = "Tool.FlintKnapping",
     ["base:fleshingtool"] = "Tool.Butchering",
+    
+    -- Cooking Utensils & Cutlery (Robust)
+    ["base:fork"] = "Tool.Cooking.Cutlery",
+    ["base:spoon"] = "Tool.Cooking.Cutlery",
+    ["base:dullknife"] = "Tool.Cooking.Cutlery",
+    ["base:sharpknife"] = "Tool.Cooking.Utensil",
+    ["base:bottleopener"] = "Tool.Cooking.Utensil",
+    ["base:canopener"] = "Tool.Cooking.Utensil",
+    ["base:grater"] = "Tool.Cooking.Utensil",
+    ["base:mixingutensil"] = "Tool.Cooking.Utensil",
+    ["base:pizzacutter"] = "Tool.Cooking.Utensil",
+    ["base:rollingpin"] = "Tool.Cooking.Utensil",
+    
+    -- Gardening (Robust)
+    ["base:spraytool"] = "Tool.Gardening",
+    ["base:fliesspray"] = "Tool.Gardening",
+    ["base:mildewspray"] = "Tool.Gardening",
+    ["base:waterspray"] = "Tool.Gardening",
 }
 
 local function findRobustToolTag(ctx)

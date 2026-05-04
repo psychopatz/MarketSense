@@ -65,7 +65,8 @@ function Signature.match(ctx)
     local hasAmmoType = hasMeaningfulValue(ctx.ammoTypeLower)
     local hasMagazineType = hasMeaningfulValue(ctx.magazineTypeLower)
     local hasPartMount = hasMeaningfulValue(ctx.mountOnLower) or hasMeaningfulValue(ctx.partTypeLower)
-    local isMagazineName = containsAny(itemLower, MAGAZINE_ID_PATTERNS) and not containsAny(itemLower, { "magnesium" })
+    local isMagazineTag = hasScriptTag(ctx, { ["base:riflemagazine"] = true, ["base:pistolmagazine"] = true })
+    local isMagazineName = (containsAny(itemLower, MAGAZINE_ID_PATTERNS) and not containsAny(itemLower, { "magnesium" })) or isMagazineTag
     local isWeaponType = itemTypeLower == "weapon" or itemTypeLower == "base:weapon"
 
     local cookwareContext = (displayCategory == "cooking" or displayCategory == "cookingweapon")

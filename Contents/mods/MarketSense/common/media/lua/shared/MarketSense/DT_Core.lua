@@ -217,6 +217,22 @@ function Core.findScriptItem(fullType)
     return nil
 end
 
+function Core.createTemporaryInstance(fullType)
+    if type(fullType) ~= "string" or fullType == "" then return nil end
+    local scriptItem = Core.findScriptItem(fullType)
+    if not scriptItem then return nil end
+    
+    if type(instanceItem) ~= "function" then return nil end
+    local ok, result = pcall(instanceItem, scriptItem)
+    return ok and result or nil
+end
+
+function Core.releaseTemporaryInstance(instance)
+    if instance and type(instance.Remove) == "function" then
+        pcall(instance.Remove, instance)
+    end
+end
+
 function Core.listFromJavaCollection(collection)
     local result = {}
     if collection == nil then

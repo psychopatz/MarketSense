@@ -39,6 +39,24 @@ local CHEMICAL_PATTERNS = { "lye", "sulfur", "saltpeter", "pigment", "dye", "flu
 local PAPER_PATTERNS = { "paper", "cardboard", "label", "roll" }
 local PACKAGING_PATTERNS = { "box", "bag", "sack", "bundle", "carton", "package", "parcel", "wrapper" }
 
+local METAL_TAGS = {
+    ["base:ingot"] = true, ["base:ironmaterial"] = true, ["base:metalpiece"] = true, ["base:piercedingot"] = true,
+    ["base:steelmaterial"] = true, ["base:hasmetal"] = true,
+    ["base:smeltableironsmall"] = true, ["base:smeltableironmedium"] = true, ["base:smeltableironlarge"] = true,
+    ["base:smeltablesteelsmall"] = true, ["base:smeltablesteelmedium"] = true, ["base:smeltablesteellarge"] = true,
+}
+local LEATHER_TAGS = {
+    ["base:leathercrudesmall"] = true, ["base:leathercrudemedium"] = true, ["base:leathercrudelarge"] = true,
+    ["base:leatherfursmall"] = true, ["base:leatherfurbedium"] = true, ["base:leatherfurlarge"] = true,
+}
+local MAINTENANCE_TAGS = {
+    ["base:binding"] = true, ["base:epoxy"] = true, ["base:fiberglasstape"] = true, ["base:glue"] = true,
+    ["base:inferiorbinding"] = true, ["base:simpleweaponbinding"] = true, ["base:tape"] = true,
+}
+local GARDENING_TAGS = {
+    ["base:iscompostable"] = true, ["base:isseed"] = true, ["base:cutplant"] = true, ["base:farmingloot"] = true,
+}
+
 local RESOURCE_TAG_HINTS = {
     ["base:hasmetal"] = true,
     ["base:steelmaterial"] = true,
@@ -50,6 +68,7 @@ local RESOURCE_TAG_HINTS = {
     ["base:binding"] = true,
     ["base:simpleweaponbinding"] = true,
     ["base:ingot"] = true,
+    ["base:ammo"] = true,
 }
 
 local function containsAny(text, patterns)
@@ -96,10 +115,10 @@ local function getResourceSubtype(itemLower, displayCategory, ctx)
     if containsAny(itemLower, CERAMIC_PATTERNS) then
         return "Material.Ceramic"
     end
-    if containsAny(itemLower, LEATHER_PATTERNS) then
+    if containsAny(itemLower, LEATHER_PATTERNS) or hasScriptTag(ctx, LEATHER_TAGS) then
         return "Material.Leather"
     end
-    if containsAny(itemLower, TEXTILE_PATTERNS) then
+    if containsAny(itemLower, TEXTILE_PATTERNS) or hasScriptTag(ctx, { ["base:thread"] = true, ["base:heavythread"] = true }) then
         return "Material.Textile"
     end
     if containsAny(itemLower, HARDWARE_PATTERNS) then
@@ -111,7 +130,7 @@ local function getResourceSubtype(itemLower, displayCategory, ctx)
     if containsAny(itemLower, GLASS_PATTERNS) or hasScriptTag(ctx, { ["base:glass"] = true }) then
         return "Material.Glass"
     end
-    if containsAny(itemLower, METAL_PATTERNS) or hasScriptTag(ctx, { ["base:hasmetal"] = true, ["base:ingot"] = true, ["base:steelmaterial"] = true }) then
+    if containsAny(itemLower, METAL_PATTERNS) or hasScriptTag(ctx, METAL_TAGS) then
         return "Material.Metal"
     end
     if containsAny(itemLower, WOOD_PATTERNS) then
@@ -126,6 +145,38 @@ local function getResourceSubtype(itemLower, displayCategory, ctx)
     if string.sub(itemLower, -6) == "_empty" or string.find(itemLower, "bagseed", 1, true) ~= nil or containsAny(itemLower, PACKAGING_PATTERNS) then
         return "Material.Packaging"
     end
+
+    local model = ctx.worldStaticModelLower or ""
+    if model ~= "" then
+        if string.find(model, "rolledhide", 1, true) or string.find(model, "fabricroll", 1, true) then
+            return "Material.Textile"
+        elseif string.find(model, "unfired", 1, true) or string.find(model, "clay", 1, true) then
+            return "Material.Pottery"
+        end
+    end
+
+    if hasScriptTag(ctx, MAINTENANCE_TAGS) then
+        return "Material.Maintenance"
+    end
+
+    if hasScriptTag(ctx, GARDENING_TAGS) or ctx.doubleClickRecipe == "OpenPacketOfSeeds" then
+        if ctx.doubleClickRecipe == "OpenPacketOfSeeds" then return "Material.Gardening.Seeds" end
+        return "Material.Gardening"
+    end
+
+    if hasScriptTag(ctx, LEATHER_TAGS) then
+        return "Material.Butchering"
+    end
+
+    if hasScriptTag(ctx, METAL_TAGS) and (string.find(itemLower, "smelt", 1, true) or string.find(itemLower, "scrap", 1, true)) then
+        return "Material.Metalworking"
+    end
+    
+    -- Memento/Plushie Trick (CAEC)
+    if hasScriptTag(ctx, { ["base:isfiretinder"] = true }) and ctx.itemTypeLower == "base:inventoryitem" then
+        return "Memento.Plushie"
+    end
+
     return "Material.General"
 end
 

@@ -55,16 +55,14 @@ local function hasMapProperty(ctx)
 end
 
 local function hasSkillLearning(ctx)
-    local skillToken = Core.safeString(ctx.item, { "getSkillTrained", "getLvlSkillTrained", "getNumLevelsTrained" }, "")
-    return skillToken ~= ""
+    return (ctx.skillTrained or "") ~= ""
 end
 
 local function hasRecipeLearning(ctx)
-    local teaches = Core.safeCall(ctx.item, "getTeachedRecipes", nil)
-    local learned = Core.safeCall(ctx.item, "getLearnedRecipes", nil)
-    return hasCollectionEntries(teaches)
-        or hasCollectionEntries(learned)
-        or Core.safeString(ctx.item, "getTeaches", "") ~= ""
+    if ctx.learnedRecipes and #ctx.learnedRecipes > 0 then
+        return true
+    end
+    return Core.safeString(ctx.item, "getTeaches", "") ~= ""
 end
 
 local function hasReadingMetadata(ctx)

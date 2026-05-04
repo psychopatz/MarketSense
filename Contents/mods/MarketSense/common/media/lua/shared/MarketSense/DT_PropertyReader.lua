@@ -11,13 +11,15 @@ local function positiveMagnitude(value)
     return math.abs(tonumber(value) or 0)
 end
 
-function PropertyReader.buildContext(scriptItemOrFullType)
+function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     if type(scriptItemOrFullType) == "table" and scriptItemOrFullType.fullType and scriptItemOrFullType.item ~= nil then
         return scriptItemOrFullType
     end
 
     local scriptItem = nil
     local fullType = nil
+    local instance = inventoryItem
+    local isTemporary = false
 
     if type(scriptItemOrFullType) == "string" then
         fullType = scriptItemOrFullType
@@ -58,6 +60,8 @@ function PropertyReader.buildContext(scriptItemOrFullType)
     local canStack = Core.safeString(scriptItem, "getCanStack", "")
     local rangedToken = Core.safeString(scriptItem, { "isRanged", "getRanged" }, "")
     local aimedFirearmToken = Core.safeString(scriptItem, { "isAimedFirearm", "getIsAimedFirearm" }, "")
+    local ammo = Core.safeCall(scriptItem, "getAmmoType", nil)
+    local magazine = Core.safeCall(scriptItem, "getMagazineType", nil)
     local canBeEquipped = Core.safeString(scriptItem, "getCanBeEquipped", "")
     local acceptItemFunction = Core.safeString(scriptItem, "getAcceptItemFunction", "")
     local openSound = Core.safeString(scriptItem, "getOpenSound", "")
@@ -68,6 +72,28 @@ function PropertyReader.buildContext(scriptItemOrFullType)
     local doubleClickRecipe = Core.safeString(scriptItem, "getDoubleClickRecipe", "")
     local icon = Core.safeString(scriptItem, { "getIcon", "getIconName" }, "")
     local bodyLocation = Core.safeString(scriptItem, "getBodyLocation", "")
+    local learnedRecipes = Core.safeCall(scriptItem, "getLearnedRecipes", nil)
+    local skillTrained = Core.safeString(scriptItem, "getSkillTrained", "")
+    local worldStaticModel = Core.safeString(scriptItem, "getWorldStaticModel", "")
+
+    if not instance then
+        instance = Core.createTemporaryInstance(fullType)
+        isTemporary = instance ~= nil
+    end
+
+    local fluidContainer = Core.safeCall(instance or scriptItem, "getFluidContainer", nil)
+    local fluidType = ""
+    local fluidCategory = ""
+    local fluidTypeString = ""
+    if fluidContainer then
+        local fluid = Core.safeCall(fluidContainer, "getPrimaryFluid", nil)
+        if fluid then
+            fluidType = tostring(Core.safeCall(fluid, "getFluidType", ""))
+            fluidCategory = tostring(Core.safeCall(fluid, "getFluidCategory", ""))
+            fluidTypeString = Core.safeString(fluid, "getFluidTypeString", "")
+        end
+    end
+
     local modId = Core.safeString(scriptItem, { "getModID", "getModId", "getSourceMod" }, "")
     local modName = Core.safeString(scriptItem, { "getModName", "getModID", "getModId", "getSourceMod" }, "")
 
@@ -159,6 +185,18 @@ function PropertyReader.buildContext(scriptItemOrFullType)
         doubleClickRecipeLower = Core.lower(doubleClickRecipe),
         icon = icon,
         iconLower = Core.lower(icon),
+        learnedRecipes = Core.listFromJavaCollection(learnedRecipes),
+        skillTrained = skillTrained,
+        skillTrainedLower = Core.lower(skillTrained),
+        worldStaticModel = worldStaticModel,
+        worldStaticModelLower = Core.lower(worldStaticModel),
+        
+        fluidType = fluidType,
+        fluidCategory = fluidCategory,
+        fluidTypeString = fluidTypeString,
+        fluidTypeStringLower = Core.lower(fluidTypeString),
+        isFluidContainer = fluidContainer ~= nil,
+        
         tags = Core.safeTags(scriptItem),
 
         weaponCategories = Core.listFromJavaCollection(Core.safeCall(scriptItem, "getWeaponCategories", nil)),
@@ -182,6 +220,10 @@ function PropertyReader.buildContext(scriptItemOrFullType)
         hasEatType = eatType ~= "",
         hasFluidContainer = Core.safeBoolean(scriptItem, { "isCanStoreWater", "CanStoreWater" }, false),
     }
+
+    if isTemporary then
+        Core.releaseTemporaryInstance(instance)
+    end
 
     Cache.setContext(context.fullType, context)
     return Core.deepCopy(context)

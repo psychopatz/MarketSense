@@ -75,7 +75,26 @@ local function isPerishable(daysFresh, daysRotten)
 end
 
 local function classifyFoodSubtype(itemLower, ctx, isDrink, perishable)
-    if isDrink then
+    if isDrink or ctx.isFluidContainer then
+        local fType = ctx.fluidTypeStringLower or ""
+        local fCat = ctx.fluidCategory or ""
+        
+        if fCat == "Alcoholic" or fType:contains("beer") or fType:contains("wine") or fType:contains("alcohol") or containsAny(itemLower, ALCOHOL_ID_PATTERNS) then
+            return "Drink", "Alcohol"
+        elseif fType:contains("milk") then
+            return "Drink", "Milk"
+        elseif fType:contains("soda") or fType:contains("pop") or fType:contains("cola") then
+            return "Drink", "SoftDrink"
+        elseif fType:contains("juice") then
+            return "Drink", "Juice"
+        elseif fType:contains("coffee") then
+            return "Drink", "Coffee"
+        elseif fType:contains("tea") then
+            return "Drink", "Tea"
+        elseif fType:contains("water") or fCat == "Water" then
+            return "Drink", "Water"
+        end
+        
         if containsAny(itemLower, ALCOHOL_ID_PATTERNS) then
             return "Drink", "Alcohol"
         end
