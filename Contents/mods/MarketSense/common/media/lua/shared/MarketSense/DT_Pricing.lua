@@ -80,6 +80,9 @@ function Pricing.calculateRawScore(ctx, details)
 
     if category == "Food" then
         local shelfLifeDays = math.max(ctx.daysFresh or 0, ctx.daysRotten or 0)
+        -- [ANTICLAMP] Non-perishables in B42 or specific mods may return 1,000,000,000 days.
+        -- We clamp this to 100 days for pricing heuristics to prevent astronomical prices.
+        if shelfLifeDays > 100 then shelfLifeDays = 100 end
         local moodWeight = cc.mood_penalty_weight or 40.0
         local moodPenalty = ((ctx.unhappy or 0) + (ctx.boredom or 0) + ((ctx.stress or 0) * 2)) * (moodWeight / 100.0)
         score = base
