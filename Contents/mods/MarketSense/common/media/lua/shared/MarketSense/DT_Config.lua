@@ -84,12 +84,11 @@ function DynamicTrading.Config.applySandboxOptions()
         local vars = SandboxVars.MarketSense
         local runtime = rootConfig.DynamicItemRuntime
         
+        -- Default to SandboxVars
         runtime.pricing.baseMultiplier = vars.PriceMultiplier or runtime.pricing.baseMultiplier
         runtime.pricing.globalValue = vars.PriceGlobalValue or 0
-        
-        -- Stock multipliers
         runtime.stock.globalMultiplier = vars.StockMultiplier or 1.0
-        
+
         -- Note: Atomic subcategory multipliers are resolved dynamically 
         -- during evaluation via runtime.getSandboxTagMultiplier.
         runtime.stock.categoryMultipliers = nil
@@ -102,6 +101,7 @@ function runtime.getSandboxTagMultiplier(mode, tags)
     end
     
     local tagList = type(tags) == "table" and tags or {tags}
+    local vars = SandboxVars and SandboxVars.MarketSense
     local totalMult = 1.0
     local totalAdd = 0
     
@@ -111,6 +111,7 @@ function runtime.getSandboxTagMultiplier(mode, tags)
             path = path .. (path == "" and "" or ".") .. part
             if mode == "Price" then
                 local optKey = mode .. path:gsub("%.", "") .. "Value"
+                
                 local val = vars and vars[optKey]
                 
                 -- Fallback to exported additions ONLY if the option is missing from Sandbox (nil)
@@ -124,6 +125,7 @@ function runtime.getSandboxTagMultiplier(mode, tags)
                 end
             else
                 local optKey = mode .. path:gsub("%.", "") .. "Mult"
+                
                 local mult = vars and vars[optKey]
                 
                 if mult == nil or mult == 1.0 then

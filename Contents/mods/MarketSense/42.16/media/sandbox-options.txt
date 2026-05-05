@@ -310,26 +310,6 @@ option MarketSense.StockClothingMult
     translation = MarketSense.StockClothingMult,
 }
 
-option MarketSense.PriceClothingAccessoryValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryValue,
-}
-
-option MarketSense.StockClothingAccessoryMult
-{
-    type = double,
-    default = 1.0,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseClothing,
-    translation = MarketSense.StockClothingAccessoryMult,
-}
-
 option MarketSense.PriceClothingAccessoryJewelryValue
 {
     type = integer,
@@ -923,7 +903,7 @@ option MarketSense.PriceContainerValue
 option MarketSense.StockContainerMult
 {
     type = double,
-    default = 0.85,
+    default = 0.9,
     min = 0.0,
     max = 100.0,
     page = MarketSenseContainer,
@@ -1070,26 +1050,6 @@ option MarketSense.StockContainerWeightReductionMult
     translation = MarketSense.StockContainerWeightReductionMult,
 }
 
-option MarketSense.PriceElectronicsValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsValue,
-}
-
-option MarketSense.StockElectronicsMult
-{
-    type = double,
-    default = 0.55,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseElectronics,
-    translation = MarketSense.StockElectronicsMult,
-}
-
 option MarketSense.PriceElectronicsBatteryValue
 {
     type = integer,
@@ -1168,26 +1128,6 @@ option MarketSense.StockElectronicsPowerGeneratorMult
     max = 100.0,
     page = MarketSenseElectronics,
     translation = MarketSense.StockElectronicsPowerGeneratorMult,
-}
-
-option MarketSense.PriceElectronicsRadioValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsRadioValue,
-}
-
-option MarketSense.StockElectronicsRadioMult
-{
-    type = double,
-    default = 1.0,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseElectronics,
-    translation = MarketSense.StockElectronicsRadioMult,
 }
 
 option MarketSense.PriceElectronicsRadioTwoWayValue
@@ -1303,7 +1243,7 @@ option MarketSense.PriceFoodNonPerishableValue
 option MarketSense.StockFoodNonPerishableMult
 {
     type = double,
-    default = 1.0,
+    default = 1.15,
     min = 0.0,
     max = 100.0,
     page = MarketSenseFood,
@@ -1470,33 +1410,13 @@ option MarketSense.StockMiscMult
     translation = MarketSense.StockMiscMult,
 }
 
-option MarketSense.PriceQualityValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseGlobal,
-    translation = MarketSense.PriceQualityValue,
-}
-
-option MarketSense.StockQualityMult
-{
-    type = double,
-    default = 1.0,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseGlobal,
-    translation = MarketSense.StockQualityMult,
-}
-
 option MarketSense.PriceQualityLuxuryValue
 {
     type = integer,
     default = 40,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseQuality,
     translation = MarketSense.PriceQualityLuxuryValue,
 }
 
@@ -1506,28 +1426,8 @@ option MarketSense.StockQualityLuxuryMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseQuality,
     translation = MarketSense.StockQualityLuxuryMult,
-}
-
-option MarketSense.PriceRarityValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseGlobal,
-    translation = MarketSense.PriceRarityValue,
-}
-
-option MarketSense.StockRarityMult
-{
-    type = double,
-    default = 1.0,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseGlobal,
-    translation = MarketSense.StockRarityMult,
 }
 
 option MarketSense.PriceRarityCommonValue
@@ -1536,7 +1436,7 @@ option MarketSense.PriceRarityCommonValue
     default = 11,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseRarity,
     translation = MarketSense.PriceRarityCommonValue,
 }
 
@@ -1546,7 +1446,7 @@ option MarketSense.StockRarityCommonMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseRarity,
     translation = MarketSense.StockRarityCommonMult,
 }
 
@@ -1556,7 +1456,7 @@ option MarketSense.PriceRarityRareValue
     default = 17,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseRarity,
     translation = MarketSense.PriceRarityRareValue,
 }
 
@@ -1566,7 +1466,7 @@ option MarketSense.StockRarityRareMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseRarity,
     translation = MarketSense.StockRarityRareMult,
 }
 
@@ -1576,7 +1476,7 @@ option MarketSense.PriceRarityUncommonValue
     default = 14,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseRarity,
     translation = MarketSense.PriceRarityUncommonValue,
 }
 
@@ -1586,28 +1486,8 @@ option MarketSense.StockRarityUncommonMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseRarity,
     translation = MarketSense.StockRarityUncommonMult,
-}
-
-option MarketSense.PriceResourceValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseResource,
-    translation = MarketSense.PriceResourceValue,
-}
-
-option MarketSense.StockResourceMult
-{
-    type = double,
-    default = 1.1,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseResource,
-    translation = MarketSense.StockResourceMult,
 }
 
 option MarketSense.PriceResourceFuelValue
@@ -1623,7 +1503,7 @@ option MarketSense.PriceResourceFuelValue
 option MarketSense.StockResourceFuelMult
 {
     type = double,
-    default = 1.0,
+    default = 1.2,
     min = 0.0,
     max = 100.0,
     page = MarketSenseResource,
@@ -1650,33 +1530,13 @@ option MarketSense.StockResourceMaterialMult
     translation = MarketSense.StockResourceMaterialMult,
 }
 
-option MarketSense.PriceThemeValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseGlobal,
-    translation = MarketSense.PriceThemeValue,
-}
-
-option MarketSense.StockThemeMult
-{
-    type = double,
-    default = 1.0,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseGlobal,
-    translation = MarketSense.StockThemeMult,
-}
-
 option MarketSense.PriceThemeCombatValue
 {
     type = integer,
     default = 17,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.PriceThemeCombatValue,
 }
 
@@ -1686,7 +1546,7 @@ option MarketSense.StockThemeCombatMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.StockThemeCombatMult,
 }
 
@@ -1696,7 +1556,7 @@ option MarketSense.PriceThemeIndustrialValue
     default = 15,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.PriceThemeIndustrialValue,
 }
 
@@ -1706,7 +1566,7 @@ option MarketSense.StockThemeIndustrialMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.StockThemeIndustrialMult,
 }
 
@@ -1716,7 +1576,7 @@ option MarketSense.PriceThemeMilitiaValue
     default = 20,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.PriceThemeMilitiaValue,
 }
 
@@ -1726,7 +1586,7 @@ option MarketSense.StockThemeMilitiaMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.StockThemeMilitiaMult,
 }
 
@@ -1736,7 +1596,7 @@ option MarketSense.PriceThemePoliceValue
     default = 13,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.PriceThemePoliceValue,
 }
 
@@ -1746,7 +1606,7 @@ option MarketSense.StockThemePoliceMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.StockThemePoliceMult,
 }
 
@@ -1756,7 +1616,7 @@ option MarketSense.PriceThemePrimitiveValue
     default = 7,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.PriceThemePrimitiveValue,
 }
 
@@ -1766,7 +1626,7 @@ option MarketSense.StockThemePrimitiveMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.StockThemePrimitiveMult,
 }
 
@@ -1776,7 +1636,7 @@ option MarketSense.PriceThemeSurvivalValue
     default = 20,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.PriceThemeSurvivalValue,
 }
 
@@ -1786,7 +1646,7 @@ option MarketSense.StockThemeSurvivalMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.StockThemeSurvivalMult,
 }
 
@@ -1796,7 +1656,7 @@ option MarketSense.PriceThemeWinterValue
     default = 15,
     min = -1000000,
     max = 1000000,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.PriceThemeWinterValue,
 }
 
@@ -1806,28 +1666,8 @@ option MarketSense.StockThemeWinterMult
     default = 1.0,
     min = 0.0,
     max = 100.0,
-    page = MarketSenseGlobal,
+    page = MarketSenseTheme,
     translation = MarketSense.StockThemeWinterMult,
-}
-
-option MarketSense.PriceToolValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseTool,
-    translation = MarketSense.PriceToolValue,
-}
-
-option MarketSense.StockToolMult
-{
-    type = double,
-    default = 0.8,
-    min = 0.0,
-    max = 100.0,
-    page = MarketSenseTool,
-    translation = MarketSense.StockToolMult,
 }
 
 option MarketSense.PriceToolCookwareValue
@@ -1883,7 +1723,7 @@ option MarketSense.PriceWeaponExplosiveValue
 option MarketSense.StockWeaponExplosiveMult
 {
     type = double,
-    default = 1.0,
+    default = 0.3,
     min = 0.0,
     max = 100.0,
     page = MarketSenseWeapon,
