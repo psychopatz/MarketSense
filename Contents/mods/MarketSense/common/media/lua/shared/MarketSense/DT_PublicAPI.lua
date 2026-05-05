@@ -15,55 +15,40 @@ require "MarketSense/signatures/DT_Signature_Medical"
 require "MarketSense/signatures/DT_Signature_Container"
 require "MarketSense/signatures/DT_Signature_Resource"
 require "MarketSense/signatures/DT_Signature_Building"
-require "MarketSense/DT_AutoTag"
 require "MarketSense/DT_Stock"
-require "MarketSense/DT_Pricing"
 require "MarketSense/DT_Debug"
+require "MarketSense/MS_RuntimeRules"
+require "MarketSense/MS_ItemsRegistry"
+require "MarketSense/MS_RegistryHook"
 
 DynamicTrading = DynamicTrading or {}
 
 local Core = DynamicTrading.Core
+local TagUtils = DynamicTrading.TagUtils
 local Cache = DynamicTrading.RuntimeCache
+local Registry = DynamicTrading.ItemsRegistry
 local Config = DynamicTrading.ItemRuntimeConfig
-
-local NO_RUNTIME_RULES = {
-    loadFromFile = function() return false end,
-    shouldSkip = function() return false end,
+local DESCRIPTOR_ROOTS = {
+    Origin = true,
+    Quality = true,
+    Rarity = true,
+    Theme = true,
 }
 
 local function getRuntimeRules()
     local rules = DynamicTrading.RuntimeRules
     if type(rules) ~= "table" then
-        return NO_RUNTIME_RULES
+        return nil
     end
-    if type(rules.loadFromFile) ~= "function" then
-        rules.loadFromFile = NO_RUNTIME_RULES.loadFromFile
-    end
-    if type(rules.shouldSkip) ~= "function" then
-        rules.shouldSkip = NO_RUNTIME_RULES.shouldSkip
+    if type(rules.loadFromFile) == "function" then
+        rules.loadFromFile(false)
     end
     return rules
 end
 
-local function emptyCatalog()
-    return {
-        items = {},
-        total = 0,
-        modules = {},
-        categories = {},
-        tags = {},
-    }
-end
-
-local function cloneWithSource(details, source)
-    local copy = Core.deepCopy(details or {})
-    copy.source = source or copy.source
-    return copy
-end
-
-local function fallbackDetails(fullType)
+local function buildFallbackDetails(fullType)
     local ctx = DynamicTrading.PropertyReader.buildContext(fullType)
-    local details = {
+    return {
         fullType = ctx.fullType,
         moduleName = ctx.moduleName,
         typeName = ctx.typeName,
@@ -73,70 +58,158 @@ local function fallbackDetails(fullType)
         primary = "Misc.General",
         tags = { "Misc.General" },
         expandedTags = { "Misc.General", "Misc" },
-        confidence = 0,
-        rawScore = Config.pricing.minPrice,
+        basePrice = Config.pricing.minPrice,
         price = Config.pricing.minPrice,
+        rawScore = Config.pricing.minPrice,
+        confidence = 0,
         stock = { min = 0, max = 0 },
-        source = "lazy",
+        source = "fallback",
     }
-    return details
 end
 
-local function blacklistedDetails(fullType)
-    local details = fallbackDetails(fullType)
-    details.stock = { min = 0, max = 0 }
-    details.source = "runtime-rules:blacklist"
-    return details
+local function getPrimaryTag(tags)
+    for _, tag in ipairs(tags or {}) do
+        local root = string.match(tostring(tag), "^([^%.]+)")
+        if root and not DESCRIPTOR_ROOTS[root] then
+            return tag
+        end
+    end
+    return tostring(tags and tags[1] or "Misc.General")
+end
+
+local function buildDetailsFromMasterList(fullType, itemData)
+    local ctx = DynamicTrading.PropertyReader.buildContext(fullType)
+    local tags = TagUtils.unique(itemData and itemData.tags or { "Misc.General" })
+    local primary = getPrimaryTag(tags)
+    local category = TagUtils.categoryFromPrimary(primary)
+
+    local price = tonumber(itemData and itemData.basePrice) or Config.pricing.minPrice
+    if DynamicTrading.PriceConfig and DynamicTrading.PriceConfig.GetEffectiveBasePrice then
+        price = DynamicTrading.PriceConfig.GetEffectiveBasePrice(fullType, itemData)
+    end
+
+    local stock = itemData and itemData.stockRange or { min = 0, max = 0 }
+    if DynamicTrading.Stock and DynamicTrading.Stock.calculate then
+        stock = DynamicTrading.Stock.calculate(fullType, ctx, {
+            category = category,
+            primary = primary,
+            tags = tags,
+            expandedTags = TagUtils.expandHierarchy(tags),
+        })
+    end
+
+    return {
+        fullType = ctx.fullType,
+        moduleName = ctx.moduleName,
+        typeName = ctx.typeName,
+        sourceModId = ctx.sourceModId,
+        sourceModName = ctx.sourceModName,
+        category = category,
+        primary = primary,
+        tags = tags,
+        expandedTags = TagUtils.expandHierarchy(tags),
+        basePrice = tonumber(itemData and itemData.basePrice) or Config.pricing.minPrice,
+        price = tonumber(price) or Config.pricing.minPrice,
+        rawScore = tonumber(itemData and itemData.basePrice) or Config.pricing.minPrice,
+        confidence = 1,
+        stock = {
+            min = math.max(0, tonumber(stock and stock.min) or 0),
+            max = math.max(0, tonumber(stock and stock.max) or 0),
+        },
+        source = "registry",
+    }
 end
 
 function DynamicTrading.ClearRuntimeCache()
     Cache.clear()
+    if Registry and Registry.state then
+        Registry.state.loaded = false
+        Registry.state.catalog = nil
+        Registry.state.activeModsHash = nil
+        Registry.state.lastIndex = nil
+    end
+end
+
+function DynamicTrading.RegenerateItemRegistry(reason)
+    local why = tostring(reason or "manual")
+    if DynamicTrading.Log then
+        DynamicTrading.Log("MarketSense", "Registry", "Info", "Manual DT_Items cache rebuild requested (" .. why .. ").")
+    end
+    DynamicTrading.ClearRuntimeCache()
+    return DynamicTrading.EnsureRuntimeRegistryLoaded(true)
+end
+
+function DynamicTrading.RequestRegenerateItemRegistry(reason)
+    if isClient() and not isServer() then
+        local player = getPlayer and getPlayer() or (getSpecificPlayer and getSpecificPlayer(0)) or nil
+        if player then
+            sendClientCommand(player, "DynamicTrading", "RegenerateItemRegistry", {
+                reason = tostring(reason or "manual"),
+            })
+            return nil, "requested"
+        end
+        return nil, "missing_player"
+    end
+
+    return DynamicTrading.RegenerateItemRegistry(reason or "manual")
+end
+
+function DynamicTrading.EnsureRuntimeRegistryLoaded(forceRebuild)
+    if Registry and Registry.ensureLoaded then
+        return Registry.ensureLoaded(forceRebuild == true)
+    end
+    return {
+        items = {},
+        total = 0,
+        modules = {},
+        categories = {},
+        tags = {},
+    }
 end
 
 function DynamicTrading.GetPriceDetails(fullType)
     if type(fullType) ~= "string" or fullType == "" then
+        return buildFallbackDetails(fullType)
+    end
+
+    DynamicTrading.EnsureRuntimeRegistryLoaded(false)
+
+    local rules = getRuntimeRules()
+    if rules and rules.shouldSkip and rules.shouldSkip(fullType) then
+        local skipped = buildFallbackDetails(fullType)
+        skipped.source = "runtime-rules:blacklist"
+        return skipped
+    end
+
+    local masterList = DynamicTrading.Config and DynamicTrading.Config.MasterList or {}
+    local itemData = masterList[fullType]
+    if itemData then
+        return buildDetailsFromMasterList(fullType, itemData)
+    end
+
+    local staticDetails = DynamicTrading.StaticCatalog and DynamicTrading.StaticCatalog[fullType] or nil
+    if type(staticDetails) == "table" then
+        local moduleName, typeName = Core.splitFullType(fullType)
         return {
-            fullType = tostring(fullType or ""),
-            category = "Misc",
-            primary = "Misc.General",
-            tags = { "Misc.General" },
-            expandedTags = { "Misc.General", "Misc" },
-            confidence = 0,
-            rawScore = Config.pricing.minPrice,
-            price = Config.pricing.minPrice,
-            stock = { min = 0, max = 0 },
-            source = "lazy",
+            fullType = staticDetails.fullType or fullType,
+            moduleName = staticDetails.moduleName or moduleName,
+            typeName = staticDetails.typeName or typeName,
+            sourceModId = staticDetails.sourceModId or "StaticCatalog",
+            sourceModName = staticDetails.sourceModName or "Static Catalog",
+            category = staticDetails.category or "Misc",
+            primary = staticDetails.primary or "Misc.General",
+            tags = TagUtils.unique(staticDetails.tags or { staticDetails.primary or "Misc.General" }),
+            expandedTags = TagUtils.unique(staticDetails.expandedTags or TagUtils.expandHierarchy(staticDetails.tags or { staticDetails.primary or "Misc.General" })),
+            basePrice = tonumber(staticDetails.basePrice or staticDetails.price) or Config.pricing.minPrice,
+            price = tonumber(staticDetails.price or staticDetails.basePrice) or Config.pricing.minPrice,
+            rawScore = tonumber(staticDetails.rawScore or staticDetails.basePrice or staticDetails.price) or Config.pricing.minPrice,
+            confidence = tonumber(staticDetails.confidence) or 1,
+            stock = Core.deepCopy(staticDetails.stock or { min = 0, max = 0 }),
+            source = "static",
         }
     end
 
-    local runtimeRules = getRuntimeRules()
-    runtimeRules.loadFromFile(false)
-    if runtimeRules.shouldSkip(fullType) then
-        return blacklistedDetails(fullType)
-    end
-
-    local cached = Cache.getDetails(fullType)
-    if cached then
-        return cloneWithSource(cached, "cache")
-    end
-
-    local staticDetails = DynamicTrading.StaticCatalog[fullType]
-    if staticDetails then
-        local resolved = DynamicTrading.Pricing.applyOverridesOnly(fullType, staticDetails)
-        Cache.setDetails(fullType, resolved)
-        return cloneWithSource(resolved, resolved.source or "static")
-    end
-
-    if not Config.server.allowLazyGeneration then
-        return cloneWithSource(fallbackDetails(fullType), "lazy")
-    end
-
-    local generated = DynamicTrading.Pricing.generateDetailsOnce(fullType)
-    if Config.server.cacheLazyItems ~= false then
-        Cache.setDetails(fullType, generated)
-        Cache.missing[fullType] = true
-    end
-    return cloneWithSource(generated, generated.source or "lazy")
+    return buildFallbackDetails(fullType)
 end
 
 function DynamicTrading.GetPrice(fullType)
@@ -155,93 +228,88 @@ function DynamicTrading.GetTags(fullType)
 end
 
 function DynamicTrading.BuildRuntimeCatalog()
-    local runtimeRules = getRuntimeRules()
-    runtimeRules.loadFromFile(false)
-    local result = emptyCatalog()
-    local ok, allItems = pcall(function()
-        return getAllItems and getAllItems() or nil
-    end)
-
-    if not ok or allItems == nil then
-        return result
-    end
-
-    for index = 0, allItems:size() - 1 do
-        local scriptItem = allItems:get(index)
-        local ctx = DynamicTrading.PropertyReader.buildContext(scriptItem)
-        if ctx and ctx.fullType ~= "" and not runtimeRules.shouldSkip(ctx.fullType) then
-            local details = DynamicTrading.Pricing.generateDetailsOnce(ctx)
-            Cache.setDetails(ctx.fullType, details)
-
-            result.items[ctx.fullType] = {
-                fullType = details.fullType,
-                moduleName = details.moduleName,
-                typeName = details.typeName,
-                sourceModId = details.sourceModId,
-                sourceModName = details.sourceModName,
-                category = details.category,
-                primary = details.primary,
-                tags = Core.deepCopy(details.tags),
-                expandedTags = Core.deepCopy(details.expandedTags),
-                price = details.price,
-                rawScore = details.rawScore,
-                confidence = details.confidence,
-                stock = Core.deepCopy(details.stock),
-            }
-
-            result.total = result.total + 1
-            result.modules[ctx.moduleName] = (result.modules[ctx.moduleName] or 0) + 1
-            result.categories[details.category] = (result.categories[details.category] or 0) + 1
-            for _, tag in ipairs(details.tags or {}) do
-                result.tags[tag] = (result.tags[tag] or 0) + 1
-            end
-        end
-    end
-
-    Cache.built = true
-    return result
+    return DynamicTrading.EnsureRuntimeRegistryLoaded(false)
 end
 
 function DynamicTrading.AdminRebuildCatalog()
-    DynamicTrading.ClearRuntimeCache()
-    return DynamicTrading.BuildRuntimeCatalog()
+    return DynamicTrading.RegenerateItemRegistry("admin_rebuild")
 end
 
 function DynamicTrading.ReloadRuntimeRules()
-    local runtimeRules = getRuntimeRules()
-    runtimeRules.loadFromFile(true)
+    local rules = getRuntimeRules()
+    if rules and rules.loadFromFile then
+        rules.loadFromFile(true)
+    end
     DynamicTrading.ClearRuntimeCache()
+    return DynamicTrading.EnsureRuntimeRegistryLoaded(false)
 end
 
-function DynamicTrading.ReloadRuntimeRegistry()
-    if not DynamicTrading.ItemsRegistry then
-        pcall(require, "MarketSense/MS_ItemsRegistry")
-    end
-    
-    if DynamicTrading.ItemsRegistry and DynamicTrading.ItemsRegistry.load then
-        DynamicTrading.ItemsRegistry.load()
-        DynamicTrading.ClearRuntimeCache()
+local function canRegenerateForPlayer(player)
+    if not isClient() and not isServer() then
         return true
     end
-    return false
-end
 
-function DynamicTrading.GetRuntimeCatalog()
-    if not Cache.built then
-        return nil
+    if DynamicTrading.PriceConfig and DynamicTrading.PriceConfig.CanEdit then
+        return DynamicTrading.PriceConfig.CanEdit(player)
     end
 
-    local result = emptyCatalog()
-    for fullType, details in pairs(Cache.details) do
-        result.items[fullType] = Core.deepCopy(details)
-        result.total = result.total + 1
-        result.modules[details.moduleName or "Unknown"] = (result.modules[details.moduleName or "Unknown"] or 0) + 1
-        result.categories[details.category or "Misc"] = (result.categories[details.category or "Misc"] or 0) + 1
-        for _, tag in ipairs(details.tags or {}) do
-            result.tags[tag] = (result.tags[tag] or 0) + 1
+    if not player or not player.getAccessLevel then
+        return false
+    end
+
+    local accessLevel = tostring(player:getAccessLevel() or "")
+    return string.lower(accessLevel) == "admin"
+end
+
+local function onClientCommand(module, command, player, args)
+    if module ~= "DynamicTrading" or command ~= "RegenerateItemRegistry" then
+        return
+    end
+
+    if not canRegenerateForPlayer(player) then
+        if isServer() and sendServerCommand then
+            sendServerCommand(player, "DynamicTrading", "RegenerateItemRegistryResult", {
+                success = false,
+                message = "Unauthorized: admin access required.",
+            })
         end
+        return
     end
-    return result
+
+    local ok, catalog = pcall(DynamicTrading.RegenerateItemRegistry, tostring(args and args.reason or "client_request"))
+    local payload = {
+        success = ok == true and type(catalog) == "table",
+        total = ok == true and type(catalog) == "table" and tonumber(catalog.total) or 0,
+        message = ok == true and type(catalog) == "table"
+            and ("DT_Items registry rebuild requested. Cached items currently loaded: " .. tostring(catalog.total or 0))
+            or ("Failed to rebuild DT_Items registry: " .. tostring(catalog)),
+    }
+
+    if isServer() and sendServerCommand then
+        sendServerCommand(player, "DynamicTrading", "RegenerateItemRegistryResult", payload)
+    end
 end
+
+local function onServerCommand(module, command, args)
+    if module ~= "DynamicTrading" or command ~= "RegenerateItemRegistryResult" then
+        return
+    end
+
+    if LuaEventManager and LuaEventManager.OnDynamicTradingItemRegistryRegenerated then
+        triggerEvent("OnDynamicTradingItemRegistryRegenerated", args or {})
+    end
+
+    if DynamicTrading.Log then
+        DynamicTrading.Log(
+            "MarketSense",
+            "Registry",
+            (args and args.success) and "Info" or "Warn",
+            tostring(args and args.message or "Item registry regeneration result received.")
+        )
+    end
+end
+
+Events.OnClientCommand.Add(onClientCommand)
+Events.OnServerCommand.Add(onServerCommand)
 
 return DynamicTrading

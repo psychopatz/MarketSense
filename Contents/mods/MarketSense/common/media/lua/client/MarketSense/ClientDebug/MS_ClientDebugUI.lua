@@ -102,6 +102,10 @@ function UI.attach(windowClass, deps)
         self.buildButton:initialise()
         self.controlsPanel:addChild(self.buildButton)
 
+        self.regenButton = ISButton:new(0, 0, 110, 24, "Regen Cache", self, self.onRegenerateClick)
+        self.regenButton:initialise()
+        self.controlsPanel:addChild(self.regenButton)
+
         self.filterButton = ISButton:new(0, 0, 100, 24, "Apply Filter", self, self.onFilterClick)
         self.filterButton:initialise()
         self.controlsPanel:addChild(self.filterButton)
@@ -226,7 +230,7 @@ function UI.attach(windowClass, deps)
         local innerH = self:getHeight() - self:titleBarHeight() - (PAD * 2)
 
         local controlsInnerW = math.max(320, innerW - (PAD * 2))
-        local buttonCount = 6
+        local buttonCount = 7
         local minButtonsTotal = (CONTROL_BUTTON_MIN_WIDTH * buttonCount) + (GAP * (buttonCount - 1))
         local singleRow = controlsInnerW >= (CONTROL_MIN_ENTRY_WIDTH + GAP + minButtonsTotal)
 
@@ -324,7 +328,12 @@ function UI.attach(windowClass, deps)
         self.buildButton:setWidth(buttonW)
         self.buildButton:setHeight(CONTROL_ROW_HEIGHT)
 
-        self.filterButton:setX(self.buildButton:getX() + self.buildButton:getWidth() + GAP)
+        self.regenButton:setX(self.buildButton:getX() + self.buildButton:getWidth() + GAP)
+        self.regenButton:setY(buttonsY)
+        self.regenButton:setWidth(buttonW)
+        self.regenButton:setHeight(CONTROL_ROW_HEIGHT)
+
+        self.filterButton:setX(self.regenButton:getX() + self.regenButton:getWidth() + GAP)
         self.filterButton:setY(buttonsY)
         self.filterButton:setWidth(buttonW)
         self.filterButton:setHeight(CONTROL_ROW_HEIGHT)

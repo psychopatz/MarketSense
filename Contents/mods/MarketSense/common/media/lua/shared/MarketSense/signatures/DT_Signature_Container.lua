@@ -157,10 +157,10 @@ function Signature.match(ctx)
         primary = "Container.Bag.Sack"
     elseif (ctx.canBeEquippedLower or "") == "base:back" or bodyLocation == "base:back" or containsAny(itemLower, BACKPACK_ID_PATTERNS) then
         primary = "Container.Bag.Backpack"
-    elseif displayCategory == "bag" or containsAny(itemLower, BAG_ID_PATTERNS) then
-        primary = "Container.Bag.General"
     elseif containsAny(itemLower, STASH_CASE_PATTERNS) or (isContainerType and capacity <= 4 and bodyLocation == "" and not canBeEquipped) then
         primary = "Container.Stash.Case"
+    elseif displayCategory == "bag" or containsAny(itemLower, BAG_ID_PATTERNS) then
+        primary = "Container.Bag.General"
     elseif isContainerType then
         primary = "Container.General"
     else

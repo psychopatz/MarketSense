@@ -80,10 +80,15 @@ local function isLiteratureItem(ctx)
     local itemLower = tostring(ctx.idLower or "")
     local displayCategory = tostring(ctx.displayCategoryLower or "")
     local typeToken = tostring(ctx.itemTypeLower or "")
+    local bodyLocation = tostring(ctx.bodyLocationLower or "")
+
+    if bodyLocation ~= "" then
+        return false
+    end
 
     local hasTypeLiterature = typeToken == "literature" or typeToken == "base:literature"
     local hasTypeMap = typeToken == "base:map"
-    if typeToken == "base:container" then
+    if typeToken == "base:container" or typeToken == "container" or typeToken == "base:clothing" or typeToken == "clothing" then
         return false
     end
 

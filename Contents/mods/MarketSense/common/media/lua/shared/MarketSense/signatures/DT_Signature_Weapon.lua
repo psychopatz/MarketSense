@@ -1,9 +1,11 @@
 require "MarketSense/DT_Core"
+require "MarketSense/DT_TagUtils"
 
 DynamicTrading = DynamicTrading or {}
 DynamicTrading.Signatures = DynamicTrading.Signatures or {}
 
 local Core = DynamicTrading.Core
+local TagUtils = DynamicTrading.TagUtils
 local Signature = {}
 
 local EXPLOSIVE_ID_PATTERNS = { "aerosol", "grenade", "explosive", "bomb", "molotov", "pipebomb", "smokebomb" }
@@ -68,6 +70,7 @@ function Signature.match(ctx)
     local isMagazineTag = hasScriptTag(ctx, { ["base:riflemagazine"] = true, ["base:pistolmagazine"] = true })
     local isMagazineName = (containsAny(itemLower, MAGAZINE_ID_PATTERNS) and not containsAny(itemLower, { "magnesium" })) or isMagazineTag
     local isWeaponType = itemTypeLower == "weapon" or itemTypeLower == "base:weapon"
+    local isNoMaintenance = hasScriptTag(ctx, { ["base:nomaintenancexp"] = true })
 
     local cookwareContext = (displayCategory == "cooking" or displayCategory == "cookingweapon")
         and (
@@ -78,8 +81,27 @@ function Signature.match(ctx)
             or ctx.hasEatType
         )
 
-    if displayCategory == "firstaidweapon" or cookwareContext then
+    if isNoMaintenance
+        or string.sub(itemLower, 1, 7) == "zeddmg_"
+        or displayCategory == "firstaidweapon"
+        or displayCategory == "literature"
+        or displayCategory == "container"
+        or displayCategory == "bag"
+        or itemTypeLower == "base:container"
+        or itemTypeLower == "container"
+        or itemTypeLower == "base:literature"
+        or itemTypeLower == "literature"
+        or cookwareContext then
         return { matched = false, confidence = 0 }
+    end
+
+    if displayCategory == "explosives" then
+        return success(0.98, "Weapon.Explosive", {
+            "Weapon.Explosive",
+        }, {
+            subtype = "Explosive",
+            display_category = displayCategory,
+        })
     end
 
     if displayCategory == "weaponpart" or hasPartMount then

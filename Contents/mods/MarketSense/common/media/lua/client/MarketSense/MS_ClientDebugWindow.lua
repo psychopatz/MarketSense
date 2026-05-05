@@ -142,23 +142,12 @@ end
 
 function MS_ItemRuntimeDebugWindow:onClearClick()
     DynamicTrading.ClearRuntimeCache()
-    
-    local reloaded = false
-    if DynamicTrading.ReloadRuntimeRegistry then
-        DynamicTrading.ReloadRuntimeRegistry()
-        reloaded = true
-    end
 
     self.catalogItems = {}
     self.filteredCatalogItems = {}
     self.selectedCatalogFullType = nil
     self:refreshCatalogList()
-    
-    if reloaded then
-        self:setStatus("Runtime cache cleared and DT_Items registry reloaded.")
-    else
-        self:setStatus("Runtime cache cleared. Catalog browser reset.")
-    end
+    self:setStatus("Runtime cache cleared. Catalog browser reset.")
 end
 
 function MS_ItemRuntimeDebugWindow:onBuildClick()
@@ -171,6 +160,29 @@ function MS_ItemRuntimeDebugWindow:onBuildClick()
     self:applyCatalogFilter(term, selectedTag, selectedOrigin)
 
     self:setStatus("Built catalog for " .. tostring(catalog.total or #self.catalogItems) .. " items.")
+end
+
+function MS_ItemRuntimeDebugWindow:onRegenerateClick()
+    local catalog, status = DynamicTrading.RequestRegenerateItemRegistry
+        and DynamicTrading.RequestRegenerateItemRegistry("debug_window")
+        or DynamicTrading.BuildRuntimeCatalog()
+
+    if status == "requested" then
+        self:setStatus("Requested registry cache regeneration from the server.")
+        return
+    end
+
+    if type(catalog) == "table" then
+        self.catalogItems = self:buildCatalogIndex(catalog)
+        local term = safeText(self.itemEntry and self.itemEntry:getText() or "")
+        local selectedTag = self:getSelectedTagFilter()
+        local selectedOrigin = self:getSelectedOriginFilter()
+        self:applyCatalogFilter(term, selectedTag, selectedOrigin)
+        self:setStatus("Regenerated cache for " .. tostring(catalog.total or #self.catalogItems) .. " items.")
+        return
+    end
+
+    self:setStatus("Failed to regenerate the registry cache.")
 end
 
 function MS_ItemRuntimeDebugWindow:onExportClick()

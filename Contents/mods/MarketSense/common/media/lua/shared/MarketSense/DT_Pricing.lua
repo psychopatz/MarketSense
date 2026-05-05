@@ -80,9 +80,6 @@ function Pricing.calculateRawScore(ctx, details)
 
     if category == "Food" then
         local shelfLifeDays = math.max(ctx.daysFresh or 0, ctx.daysRotten or 0)
-        -- [ANTICLAMP] Non-perishables in B42 or specific mods may return 1,000,000,000 days.
-        -- We clamp this to 100 days for pricing heuristics to prevent astronomical prices.
-        if shelfLifeDays > 100 then shelfLifeDays = 100 end
         local moodWeight = cc.mood_penalty_weight or 40.0
         local moodPenalty = ((ctx.unhappy or 0) + (ctx.boredom or 0) + ((ctx.stress or 0) * 2)) * (moodWeight / 100.0)
         score = base
@@ -305,16 +302,26 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
 
     addAudit(audit, "static baseline", working, working)
 
+    local beforeSandbox = working
+    local sandboxAdd = Config.pricing.globalValue or 0
+    if Config.getSandboxTagMultiplier then
+        local sandboxTags = { details.primary }
+        for _, tag in ipairs(details.tags or {}) do
+            if tag ~= details.primary and string.match(tag, "^[A-Z][^%.]*%.") then
+                local root = string.match(tag, "^([^%.]+)")
+                if root == "Rarity" or root == "Quality" or root == "Theme" or root == "Origin" then
+                    sandboxTags[#sandboxTags + 1] = tag
+                end
+            end
+        end
+        sandboxAdd = sandboxAdd + Config.getSandboxTagMultiplier("Price", sandboxTags)
+    end
+    working = working + sandboxAdd
+    addAudit(audit, "sandbox add", beforeSandbox, working, sandboxAdd)
+
     local beforeGlobal = working
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working)
-
-    if Config.getSandboxTagMultiplier then
-        local beforeSandbox = working
-        local tagMult = Config.getSandboxTagMultiplier("Price", details.primary)
-        working = working * tagMult
-        addAudit(audit, "sandbox mult", beforeSandbox, working, tagMult)
-    end
 
     working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
 

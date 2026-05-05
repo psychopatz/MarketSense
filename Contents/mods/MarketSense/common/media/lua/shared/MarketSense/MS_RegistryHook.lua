@@ -1,43 +1,36 @@
 -- ============================================================================
 -- MARKET SENSE: REGISTRY HOOK
 -- ============================================================================
--- Populates the Dynamic Trading MasterList from MarketSense's runtime catalog.
+-- Populates the Dynamic Trading MasterList from the persisted DT_Items cache.
+-- Falls back to a rebuild only when the cache is missing or invalid.
 -- ============================================================================
 
 Events.OnGameBoot.Add(function()
-    if not DynamicTrading or not DynamicTrading.BuildRuntimeCatalog then
+    if not DynamicTrading or not DynamicTrading.EnsureRuntimeRegistryLoaded then
         if DynamicTrading and DynamicTrading.Log then
-            DynamicTrading.Log("MarketSense", "Init", "Error", "Missing Core APIs for Registry Hook!")
+            DynamicTrading.Log("MarketSense", "Init", "Error", "Missing runtime registry loader for Registry Hook!")
         else
-            print("[MarketSense] ERROR: Missing Core APIs for Registry Hook!")
+            print("[MarketSense] ERROR: Missing runtime registry loader for Registry Hook!")
         end
         return
     end
 
-    local catalog = DynamicTrading.BuildRuntimeCatalog()
-    
-    -- Ensure tables exist
-    DynamicTrading.Config = DynamicTrading.Config or {}
-    DynamicTrading.Config.MasterList = {}
-    
-    local added = 0
-    for fullType, details in pairs(catalog.items or {}) do
-        -- Convert Market Sense output schemas to Dynamic Trading Registry schemas
-        local priceNum = tonumber(details.price) or 10
-        local stockData = type(details.stock) == "table" and details.stock or { min=0, max=5 }
-
-        DynamicTrading.AddItem(fullType, {
-            item = details.fullType,
-            tags = details.expandedTags or details.tags or {},
-            basePrice = priceNum,
-            stockRange = stockData,
-        })
-        added = added + 1
+    local ok, catalog = pcall(DynamicTrading.EnsureRuntimeRegistryLoaded, false)
+    if not ok then
+        local err = tostring(catalog)
+        if DynamicTrading.Log then
+            DynamicTrading.Log("MarketSense", "Init", "Error", "Registry boot load failed: " .. err)
+        else
+            print("[MarketSense] ERROR: Registry boot load failed: " .. err)
+        end
+        return
     end
-    
+
+    local count = type(catalog) == "table" and tonumber(catalog.total) or 0
+
     if DynamicTrading.Log then
-        DynamicTrading.Log("MarketSense", "Init", "Info", "Hooked " .. added .. " dynamic items into DynamicTrading MasterList.")
+        DynamicTrading.Log("MarketSense", "Init", "Info", "Loaded " .. tostring(count) .. " live items into DynamicTrading MasterList.")
     else
-        print("[MarketSense] Hooked " .. added .. " dynamic items into DynamicTrading Registry.")
+        print("[MarketSense] Loaded " .. tostring(count) .. " items into DynamicTrading Registry.")
     end
 end)

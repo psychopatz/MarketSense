@@ -11,6 +11,12 @@ local function positiveMagnitude(value)
     return math.abs(tonumber(value) or 0)
 end
 
+local function normalizeToken(value)
+    local text = Core.lower(value)
+    text = string.gsub(text, "[^%w]", "")
+    return text
+end
+
 function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     if type(scriptItemOrFullType) == "table" and scriptItemOrFullType.fullType and scriptItemOrFullType.item ~= nil then
         return scriptItemOrFullType
@@ -72,20 +78,35 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local doubleClickRecipe = Core.safeString(scriptItem, "getDoubleClickRecipe", "")
     local icon = Core.safeString(scriptItem, { "getIcon", "getIconName" }, "")
     local bodyLocation = Core.safeString(scriptItem, "getBodyLocation", "")
+    local lootType = Core.safeString(scriptItem, "getLootType", "")
     local learnedRecipes = Core.safeCall(scriptItem, "getLearnedRecipes", nil)
     local skillTrained = Core.safeString(scriptItem, "getSkillTrained", "")
+    local readType = Core.safeString(scriptItem, "getReadType", "")
     local worldStaticModel = Core.safeString(scriptItem, "getWorldStaticModel", "")
+    local worldObjectSprite = Core.safeString(scriptItem, "getWorldObjectSprite", "")
+    local bloodClothingType = Core.safeString(scriptItem, "getBloodClothingType", "")
 
     if not instance then
         instance = Core.createTemporaryInstance(fullType)
         isTemporary = instance ~= nil
     end
 
+    local isFoodInstance = false
+    local isInventoryItemInstance = false
+    local isLiteratureInstance = false
+    if instance and type(instanceof) == "function" then
+        isFoodInstance = instanceof(instance, "Food") == true
+        isInventoryItemInstance = instanceof(instance, "InventoryItem") == true
+        isLiteratureInstance = instanceof(instance, "Literature") == true
+    end
+
     local fluidContainer = Core.safeCall(instance or scriptItem, "getFluidContainer", nil)
     local fluidType = ""
     local fluidCategory = ""
     local fluidTypeString = ""
+    local fluidContainerName = ""
     if fluidContainer then
+        fluidContainerName = Core.safeString(fluidContainer, "getContainerName", "")
         local fluid = Core.safeCall(fluidContainer, "getPrimaryFluid", nil)
         if fluid then
             fluidType = tostring(Core.safeCall(fluid, "getFluidType", ""))
@@ -111,6 +132,17 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         end
     end
 
+    local tags = Core.safeTags(scriptItem)
+    local normalizedTags = {}
+    local normalizedTagList = {}
+    for _, tag in ipairs(tags) do
+        local normalized = normalizeToken(tag)
+        if normalized ~= "" and not normalizedTags[normalized] then
+            normalizedTags[normalized] = true
+            normalizedTagList[#normalizedTagList + 1] = normalized
+        end
+    end
+
     local context = {
         item = scriptItem,
         fullType = fullType ~= "" and fullType or (moduleName .. "." .. typeName),
@@ -125,8 +157,13 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
 
         displayCategory = displayCategory,
         displayCategoryLower = Core.lower(displayCategory),
+        displayCategoryToken = normalizeToken(displayCategory),
         itemType = itemType,
         itemTypeLower = Core.lower(itemType),
+        itemTypeToken = normalizeToken((string.match(Core.lower(itemType), "([^:]+)$") or itemType)),
+        lootType = lootType,
+        lootTypeLower = Core.lower(lootType),
+        lootTypeToken = normalizeToken(lootType),
 
         weight = math.max(0, Core.safeNumber(scriptItem, { "getActualWeight", "getWeight" }, 0)),
         hunger = positiveMagnitude(Core.safeNumber(scriptItem, "getHungerChange", 0)),
@@ -156,13 +193,17 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         windResistance = math.max(0, Core.safeNumber(scriptItem, "getWindResistance", 0)),
         bodyLocation = bodyLocation,
         bodyLocationLower = Core.lower(bodyLocation),
+        bodyLocationToken = normalizeToken((string.match(Core.lower(bodyLocation), "([^:]+)$") or bodyLocation)),
 
         ammoType = ammoType,
         ammoTypeLower = Core.lower(ammoType),
+        ammoTypeToken = normalizeToken((string.match(Core.lower(ammoType), "([^:]+)$") or ammoType)),
         magazineType = magazineType,
         magazineTypeLower = Core.lower(magazineType),
+        magazineTypeToken = normalizeToken((string.match(Core.lower(magazineType), "([^:]+)$") or magazineType)),
         partType = partType,
         partTypeLower = Core.lower(partType),
+        partTypeToken = normalizeToken(partType),
         mountOn = mountOn,
         mountOnLower = Core.lower(mountOn),
         canStack = canStack,
@@ -188,16 +229,29 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         learnedRecipes = Core.listFromJavaCollection(learnedRecipes),
         skillTrained = skillTrained,
         skillTrainedLower = Core.lower(skillTrained),
+        readType = readType,
+        readTypeLower = Core.lower(readType),
+        readTypeToken = normalizeToken(readType),
         worldStaticModel = worldStaticModel,
         worldStaticModelLower = Core.lower(worldStaticModel),
+        worldObjectSprite = worldObjectSprite,
+        worldObjectSpriteLower = Core.lower(worldObjectSprite),
+        bloodClothingType = bloodClothingType,
+        bloodClothingTypeLower = Core.lower(bloodClothingType),
+        bloodClothingTypeToken = normalizeToken(bloodClothingType),
         
         fluidType = fluidType,
         fluidCategory = fluidCategory,
+        fluidCategoryLower = Core.lower(fluidCategory),
         fluidTypeString = fluidTypeString,
         fluidTypeStringLower = Core.lower(fluidTypeString),
+        fluidContainerName = fluidContainerName,
+        fluidContainerNameLower = Core.lower(fluidContainerName),
         isFluidContainer = fluidContainer ~= nil,
         
-        tags = Core.safeTags(scriptItem),
+        tags = tags,
+        normalizedTagList = normalizedTagList,
+        normalizedTags = normalizedTags,
 
         weaponCategories = Core.listFromJavaCollection(Core.safeCall(scriptItem, "getWeaponCategories", nil)),
         isTwoHandWeapon = Core.safeBoolean(scriptItem, "isTwoHandWeapon", false),
@@ -207,6 +261,12 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         fatigueChange = Core.safeNumber(scriptItem, "getFatigueChange", 0),
         reduceInfectionPower = Core.safeNumber(scriptItem, "getReduceInfectionPower", 0),
         bandagePower = Core.safeNumber(scriptItem, "getBandagePower", 0),
+        mechanicType = math.max(0, Core.safeNumber(instance or scriptItem, "getMechanicType", 0)),
+        canAge = Core.safeBoolean(instance or scriptItem, "canAge", false),
+        canBeWrite = Core.safeBoolean(instance or scriptItem, "canBeWrite", false),
+        isCantEat = Core.safeBoolean(scriptItem, "isCantEat", false),
+        customEatSound = Core.safeString(instance or scriptItem, "getCustomEatSound", ""),
+        customEatSoundLower = Core.lower(Core.safeString(instance or scriptItem, "getCustomEatSound", "")),
 
         isMoveable = Core.startsWith(typeName, "Mov_"),
         hasWorldStaticModel = Core.safeString(scriptItem, "getWorldStaticModel", "") ~= "",
@@ -219,6 +279,10 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         hasPourType = pourType ~= "",
         hasEatType = eatType ~= "",
         hasFluidContainer = Core.safeBoolean(scriptItem, { "isCanStoreWater", "CanStoreWater" }, false),
+        instanceCreated = instance ~= nil,
+        isFoodInstance = isFoodInstance,
+        isInventoryItemInstance = isInventoryItemInstance,
+        isLiteratureInstance = isLiteratureInstance,
     }
 
     if isTemporary then

@@ -55,6 +55,8 @@ end
 function Signature.match(ctx)
     local itemLower = tostring(ctx.idLower or "")
     local displayCategory = tostring(ctx.displayCategoryLower or "")
+    local itemTypeLower = tostring(ctx.itemTypeLower or "")
+    local bodyLocation = tostring(ctx.bodyLocationLower or "")
     local isMoveable = ctx.isMoveable
     if isMoveable then
         return { matched = false, confidence = 0 }
@@ -63,6 +65,18 @@ function Signature.match(ctx)
         return { matched = false, confidence = 0 }
     end
     if displayCategory == "trapping" then
+        return { matched = false, confidence = 0 }
+    end
+    if bodyLocation ~= "" then
+        return { matched = false, confidence = 0 }
+    end
+    if itemTypeLower == "base:container"
+        or itemTypeLower == "container"
+        or itemTypeLower == "base:clothing"
+        or itemTypeLower == "clothing"
+        or itemTypeLower == "base:alarmclockclothing"
+        or itemTypeLower == "base:literature"
+        or itemTypeLower == "literature" then
         return { matched = false, confidence = 0 }
     end
 

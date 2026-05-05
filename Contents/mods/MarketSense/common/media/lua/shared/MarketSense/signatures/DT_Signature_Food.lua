@@ -164,8 +164,27 @@ function Signature.match(ctx)
     local itemLower = tostring(ctx.idLower or "")
     local displayCategory = tostring(ctx.displayCategoryLower or "")
     local typeValue = tostring(ctx.itemTypeLower or "")
+    local bodyLocation = tostring(ctx.bodyLocationLower or "")
 
-    if displayCategory == "firstaid" or displayCategory == "firstaidweapon" or displayCategory == "bandage" then
+    if string.sub(itemLower, 1, 7) == "zeddmg_"
+        or displayCategory == "zeddmg"
+        or bodyLocation == "base:zeddmg"
+        or bodyLocation == "base:wound"
+        or bodyLocation == "base:bandage"
+        or displayCategory == "firstaid"
+        or displayCategory == "firstaidweapon"
+        or displayCategory == "bandage" then
+        return { matched = false, confidence = 0 }
+    end
+
+    if typeValue == "base:clothing"
+        or typeValue == "clothing"
+        or typeValue == "base:container"
+        or typeValue == "container"
+        or typeValue == "base:literature"
+        or typeValue == "literature"
+        or typeValue == "base:weapon"
+        or typeValue == "weapon" then
         return { matched = false, confidence = 0 }
     end
 
@@ -179,19 +198,27 @@ function Signature.match(ctx)
     local hasFreshness = daysFresh > 0 or daysRotten > 0
     local isDisplayFood = displayCategory == "food"
     local isTypeFood = typeValue == "food" or typeValue == "base:food" or typeValue == "eat" or typeValue == "eatsmall"
+    local isFoodInstance = ctx.isFoodInstance == true
     local foodLikeId = containsAny(itemLower, FOOD_ID_PATTERNS)
 
-    local hasFoodContext = hunger ~= 0
+    local hasFoodSignals = hunger ~= 0
         or thirst ~= 0
-        or isDisplayFood
-        or isTypeFood
         or hasNutrition
         or hasFreshness
-        or hasCookingMetadata(ctx)
         or hasConsumptionMetadata(ctx)
-        or foodLikeId
+        or hasCookingMetadata(ctx)
+
+    local hasFoodContext = isDisplayFood
+        or isTypeFood
+        or isFoodInstance
+        or hasFoodSignals
+        or (foodLikeId and (hunger ~= 0 or thirst ~= 0 or hasNutrition or hasFreshness))
 
     if not hasFoodContext then
+        return { matched = false, confidence = 0 }
+    end
+
+    if not (isDisplayFood or isTypeFood or isFoodInstance or hasFoodSignals) then
         return { matched = false, confidence = 0 }
     end
 
