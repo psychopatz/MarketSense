@@ -1,4 +1,4 @@
-require "MarketSense/DT_HeuristicsDB"
+require "MarketSense/MS_HeuristicsDB"
 
 -- Data module paths inside the mod (common/media/lua/shared/):
 --   DT/MarketSense/Items/MS_RuntimeRules_Data.lua
@@ -25,7 +25,7 @@ local function cloneMap(source)
 end
 
 DynamicTrading = DynamicTrading or {}
-DynamicTrading.RuntimeRules = DynamicTrading.RuntimeRules or {
+MarketSense.RuntimeRules = MarketSense.RuntimeRules or {
     loaded = false,
     blacklist = {},
     whitelist = {},
@@ -36,8 +36,8 @@ DynamicTrading.RuntimeRules = DynamicTrading.RuntimeRules or {
     tagAdditionData = {},
 }
 
-local RuntimeRules = DynamicTrading.RuntimeRules
-local DB = DynamicTrading.HeuristicsDB
+local RuntimeRules = MarketSense.RuntimeRules
+local DB = MarketSense.HeuristicsDB
 
 function RuntimeRules.reset()
     for itemId, _ in pairs(RuntimeRules.appliedItems or {}) do
@@ -75,8 +75,8 @@ function RuntimeRules.loadFromFile(force)
         package.loaded[TAG_DATA_MODULE] = nil
         package.loaded[LEGACY_TAG_DATA_MODULE] = nil
         
-        if DynamicTrading.Config and type(DynamicTrading.Config.reloadExported) == "function" then
-            DynamicTrading.Config.reloadExported()
+        if MarketSense.Config and type(MarketSense.Config.reloadExported) == "function" then
+            MarketSense.Config.reloadExported()
         end
     end
 

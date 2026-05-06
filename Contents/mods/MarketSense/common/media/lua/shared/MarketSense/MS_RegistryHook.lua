@@ -5,6 +5,8 @@
 -- Falls back to a rebuild only when the cache is missing or invalid.
 -- ============================================================================
 
+require "MarketSense/MS_PublicAPI"
+
 Events.OnGameBoot.Add(function()
     if not DynamicTrading or not DynamicTrading.EnsureRuntimeRegistryLoaded then
         if DynamicTrading and DynamicTrading.Log then
