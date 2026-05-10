@@ -3,6 +3,7 @@ require "MarketSense/MS_TagUtils"
 require "MarketSense/MS_HeuristicsDB"
 require "MarketSense/signatures/tags/MS_TagMapper"
 require "MarketSense/signatures/tags/MS_Classifier"
+require "MarketSense/signatures/tags/MS_PostLabelResolver"
 require "MarketSense/signatures/TagFilters/MS_filter_Quality"
 require "MarketSense/signatures/TagFilters/MS_filter_Origin"
 require "MarketSense/signatures/TagFilters/MS_filter_Rarity"
@@ -15,6 +16,7 @@ local AutoTag    = MarketSense.AutoTag
 local TagUtils   = MarketSense.TagUtils
 local DB         = MarketSense.HeuristicsDB
 local Classifier = MarketSense.Classifier
+local PostLabelResolver = MarketSense.PostLabelResolver
 
 local function addDescriptorTags(ctx, result)
     MarketSense.Filters.Quality.apply(ctx, result)
@@ -58,7 +60,11 @@ function AutoTag.generate(fullTypeOrContext)
     -- 2. Classifier pipeline
     local clsResult = Classifier.classify(ctx)
     if clsResult and clsResult.matched then
-        return addDescriptorTags(ctx, TagUtils.normalizeResult(clsResult))
+        local normalized = TagUtils.normalizeResult(clsResult)
+        if PostLabelResolver and type(PostLabelResolver.correct) == "function" then
+            normalized = TagUtils.normalizeResult(PostLabelResolver.correct(ctx, normalized))
+        end
+        return addDescriptorTags(ctx, normalized)
     end
 
     -- 3. Fallback

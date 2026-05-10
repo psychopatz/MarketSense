@@ -24,12 +24,18 @@ local FLUID_TOKENS = {
     soda        = "BeverageSoda",
     cola        = "BeverageSoda",
     energy      = "BeverageSoda",
-    milk        = "BeverageDairy",
+    milk        = "BeverageMilk",
+}
+
+local NON_BEVERAGE_FLUID_CATEGORIES = {
+    dyes = true,
+    hairdyes = true,
+    fuel = true,
+    medical = true,
 }
 
 local function isFluidContainer(ctx)
     return ctx.isFluidContainer == true
-        or ctx.hasPourType == true
         or (ctx.lootTypeLower or "") == "beverage"
         or (ctx.eatTypeLower or "") == "beverage"
 end
@@ -40,16 +46,16 @@ local function detectFluidToken(ctx)
     for key, token in pairs(FLUID_TOKENS) do
         if fluidStr:find(key, 1, true) then return token end
     end
-    -- Fallback: check id/display name
-    local id = ctx.idLower or ""
-    for key, token in pairs(FLUID_TOKENS) do
-        if id:find(key, 1, true) then return token end
-    end
     return nil
 end
 
 function Signature.match(ctx)
     if not isFluidContainer(ctx) then
+        return { matched = false, confidence = 0 }
+    end
+
+    local fluidCategory = ctx.fluidCategoryLower or ""
+    if NON_BEVERAGE_FLUID_CATEGORIES[fluidCategory] then
         return { matched = false, confidence = 0 }
     end
 
@@ -67,7 +73,17 @@ function Signature.match(ctx)
         return TagMapper.makeResult(fluTok, 0.92, { source = "beverage_fluid" })
     end
 
-    return TagMapper.makeResult("Beverage", 0.82, { source = "beverage_generic" })
+    if ctx.isFluidContainer and (ctx.canStoreWater or (ctx.displayCategoryToken or "") == "container") then
+        return TagMapper.makeResult("ContainerLiquid", 0.82, { source = "fluid_empty_container" })
+    end
+
+    if (ctx.displayCategoryToken or "") == "food"
+        and ((ctx.thirst or 0) > 0 or (ctx.hunger or 0) > 0)
+        and ((ctx.itemTypeToken or "") == "drainable" or (ctx.eatTypeLower or "") == "candrink") then
+        return TagMapper.makeResult("Beverage", 0.80, { source = "beverage_food_drink_fields" })
+    end
+
+    return { matched = false, confidence = 0 }
 end
 
 MarketSense.Signatures.Beverage = Signature

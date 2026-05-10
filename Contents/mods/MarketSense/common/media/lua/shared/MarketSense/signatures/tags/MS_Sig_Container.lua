@@ -20,6 +20,9 @@ end
 local function itemTypeIs(ctx, t)
     return (ctx.itemTypeToken or "") == t
 end
+local function contains(text, token)
+    return string.find(tostring(text or ""), token, 1, true) ~= nil
+end
 
 function Signature.match(ctx)
     if not itemTypeIs(ctx, "container") then return { matched = false, confidence = 0 } end
@@ -42,10 +45,20 @@ function Signature.match(ctx)
     elseif hasTag(ctx, "ammocase") then
         return TagMapper.makeResult("ContainerAmmo", 0.93, { source = "container_ammo" })
     elseif ctx.isFluidContainer then
+        if (ctx.fluidTypeStringLower or "") ~= ""
+            or (ctx.fluidTypeLower or "") ~= ""
+            or (ctx.fluidCategoryLower or "") ~= "" then
+            return { matched = false, confidence = 0 }
+        end
         return TagMapper.makeResult("ContainerLiquid", 0.88, { source = "container_liquid" })
     end
 
-    return TagMapper.makeResult("ContainerBox", 0.85, { source = "container_box" })
+    local text = (ctx.idLower or "") .. " " .. (ctx.displayNameLower or "") .. " " .. (ctx.iconLower or "")
+    if contains(text, "box") or contains(text, "crate") or contains(text, "case") then
+        return TagMapper.makeResult("ContainerBox", 0.85, { source = "container_box" })
+    end
+
+    return TagMapper.makeResult("Container", 0.80, { source = "container_generic" })
 end
 
 MarketSense.Signatures.Container = Signature

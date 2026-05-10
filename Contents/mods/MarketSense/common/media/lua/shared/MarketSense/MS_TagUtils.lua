@@ -40,7 +40,7 @@ function TagUtils.expandHierarchy(tags)
     end
     for _, tag in ipairs(TagUtils.unique(tags)) do
         local text = tostring(tag)
-        if string.find(text, "%.", 1, true) then
+        if string.find(text, ".", 1, true) then
             -- Descriptor tag — keep as-is (no expansion)
             add(text)
         else
@@ -69,7 +69,7 @@ function TagUtils.tagStarts(tags, prefix)
     for _, tag in ipairs(tags or {}) do
         if tag == prefix then return true end
         -- For dot-notation descriptors, check prefix match
-        if string.find(tag, "%.", 1, true) then
+        if string.find(tag, ".", 1, true) then
             if string.sub(tag, 1, #prefix + 1) == (prefix .. ".") then return true end
         else
             -- For flat tokens, check expanded hierarchy

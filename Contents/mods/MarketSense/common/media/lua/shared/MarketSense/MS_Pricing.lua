@@ -58,17 +58,22 @@ function Pricing.calculateRawScore(ctx, details)
     local score = base
 
     if category == "Food" then
-        local shelfLifeDays = math.max(ctx.daysFresh or 0, ctx.daysRotten or 0)
-        local moodPenalty = ((ctx.unhappy or 0) + (ctx.boredom or 0) + ((ctx.stress or 0) * 2))
-                            * ((cc.mood_penalty_weight or 40.0) / 100.0)
-        score = base
-            + ((ctx.hunger  or 0) * (cc.hunger_weight  or 160))
-            + ((ctx.thirst  or 0) * (cc.thirst_weight  or 90))
-            + ((ctx.calories or 0) * (cc.calorie_weight or 0.025))
-            + (shelfLifeDays * (cc.shelf_life_weight or 1.35))
-            - moodPenalty - weightPenalty
-        if hasTag(details, "FoodNonPerishableCanned") then score = score + (cc.canned_bonus or 24) end
-        if hasTag(details, "FoodNonPerishable")       then score = score + (cc.packaged_bonus or 10) end
+        if hasTag(details, "Beverage") then
+            score = base + ((ctx.thirst or 0) * (cc.thirst_weight or 90)) - weightPenalty
+            if hasTag(details, "BeverageAlcohol") then score = score + (cc.alcohol_bonus or 12) end
+        else
+            local shelfLifeDays = math.max(ctx.daysFresh or 0, ctx.daysRotten or 0)
+            local moodPenalty = ((ctx.unhappy or 0) + (ctx.boredom or 0) + ((ctx.stress or 0) * 2))
+                                * ((cc.mood_penalty_weight or 40.0) / 100.0)
+            score = base
+                + ((ctx.hunger  or 0) * (cc.hunger_weight  or 160))
+                + ((ctx.thirst  or 0) * (cc.thirst_weight  or 90))
+                + ((ctx.calories or 0) * (cc.calorie_weight or 0.025))
+                + (shelfLifeDays * (cc.shelf_life_weight or 1.35))
+                - moodPenalty - weightPenalty
+            if hasTag(details, "FoodNonPerishableCanned") then score = score + (cc.canned_bonus or 24) end
+            if hasTag(details, "FoodNonPerishable")       then score = score + (cc.packaged_bonus or 10) end
+        end
 
     elseif category == "Beverage" then
         score = base + ((ctx.thirst or 0) * (cc.thirst_weight or 90)) - weightPenalty
@@ -162,7 +167,7 @@ function Pricing.applyBalances(ctx, details, audit)
     if Config.getSandboxTagMultiplier then
         local tags = { details.primary }
         for _, t in ipairs(details.tags or {}) do
-            if string.find(t, "%.", 1, true) then
+            if string.find(t, ".", 1, true) then
                 tags[#tags + 1] = t
             end
         end
@@ -198,6 +203,37 @@ local function applyTagOverrideIfPresent(ctx, details)
     local itemEntry = DB.getItem(ctx.fullType)
     if itemEntry and type(itemEntry.tags) == "table" and #itemEntry.tags > 0 then
         details.tags = TagUtils.unique(itemEntry.tags)
+        details.primary = details.tags[1] or details.primary
+        details.category = TagUtils.categoryFromPrimary(details.primary)
+        details.expandedTags = TagUtils.expandHierarchy(details.tags)
+    elseif itemEntry and (type(itemEntry.addTags) == "table" or type(itemEntry.removeTags) == "table") then
+        local merged = Core.deepCopy(details.tags or {})
+
+        if type(itemEntry.addTags) == "table" then
+            for _, tag in ipairs(itemEntry.addTags) do
+                merged[#merged + 1] = tostring(tag)
+            end
+        end
+
+        if type(itemEntry.removeTags) == "table" then
+            local removeSet = {}
+            for _, tag in ipairs(itemEntry.removeTags) do
+                local text = tostring(tag or "")
+                if text ~= "" then
+                    removeSet[text] = true
+                end
+            end
+
+            local filtered = {}
+            for _, tag in ipairs(merged) do
+                if not removeSet[tostring(tag or "")] then
+                    filtered[#filtered + 1] = tag
+                end
+            end
+            merged = filtered
+        end
+
+        details.tags = TagUtils.unique(merged)
         details.primary = details.tags[1] or details.primary
         details.category = TagUtils.categoryFromPrimary(details.primary)
         details.expandedTags = TagUtils.expandHierarchy(details.tags)
@@ -254,7 +290,7 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     if Config.getSandboxTagMultiplier then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
-            if tag ~= details.primary and string.find(tag, "%.", 1, true) then
+            if tag ~= details.primary and string.find(tag, ".", 1, true) then
                 sandboxTags[#sandboxTags + 1] = tag
             end
         end

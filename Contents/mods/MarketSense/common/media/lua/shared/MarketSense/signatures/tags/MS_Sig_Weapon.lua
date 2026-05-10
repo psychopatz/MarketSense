@@ -60,8 +60,10 @@ function Signature.match(ctx)
     -- Melee by weapon category enum
     local cat = nil
     if weaponCatIs(ctx, "Axe") then cat = "WeaponAxe"
-    elseif weaponCatIs(ctx, "Blunt", "SmallBlunt") then cat = "WeaponBlunt"
-    elseif weaponCatIs(ctx, "LongBlade", "SmallBlade") then cat = "WeaponLongBlade"
+    elseif weaponCatIs(ctx, "SmallBlunt") then cat = "WeaponSmallBlunt"
+    elseif weaponCatIs(ctx, "Blunt") then cat = "WeaponBlunt"
+    elseif weaponCatIs(ctx, "SmallBlade") then cat = "WeaponSmallBlade"
+    elseif weaponCatIs(ctx, "LongBlade") then cat = "WeaponLongBlade"
     elseif weaponCatIs(ctx, "Spear") then cat = "WeaponSpear"
     elseif weaponCatIs(ctx, "Improvised") then cat = "WeaponCrafted"
     end

@@ -131,7 +131,7 @@ function runtime.getSandboxTagMultiplier(mode, tags)
     end
 
     for _, tag in ipairs(tagList) do
-        local isDotted = string.find(tag, "%.", 1, true) ~= nil
+        local isDotted = string.find(tag, ".", 1, true) ~= nil
         if isDotted then
             -- Descriptor tag (Rarity.Rare, Quality.Luxury, etc.) — walk dot-path
             local path = ""

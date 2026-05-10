@@ -39,6 +39,94 @@ MarketSense.RuntimeRules = MarketSense.RuntimeRules or {
 local RuntimeRules = MarketSense.RuntimeRules
 local DB = MarketSense.HeuristicsDB
 
+local function ensureArray(value)
+    if type(value) == "table" then
+        return value
+    end
+    return {}
+end
+
+local function matchesPatterns(fullType, patterns)
+    local input = tostring(fullType or "")
+    for _, pattern in ipairs(patterns or {}) do
+        if type(pattern) == "string" and pattern ~= "" then
+            local ok, matched = pcall(string.match, input, pattern)
+            if ok and matched then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function normalizeOverride(entry)
+    if type(entry) ~= "table" then
+        return nil
+    end
+
+    local override = {}
+
+    if type(entry.price) == "number" then
+        override.price = entry.price
+    end
+    if type(entry.add) == "number" then
+        override.add = entry.add
+    end
+    if type(entry.mult) == "number" then
+        override.mult = entry.mult
+    end
+
+    if type(entry.tags) == "table" and #entry.tags > 0 then
+        override.tags = entry.tags
+    end
+
+    if type(entry.addTags) == "table" and #entry.addTags > 0 then
+        override.addTags = entry.addTags
+    end
+
+    if type(entry.removeTags) == "table" and #entry.removeTags > 0 then
+        override.removeTags = entry.removeTags
+    end
+
+    local stock = nil
+    if type(entry.stock) == "table" then
+        stock = {
+            min = entry.stock.min,
+            max = entry.stock.max,
+        }
+    end
+
+    local sMin = type(entry.stockMin) == "number" and entry.stockMin or (stock and stock.min or nil)
+    local sMax = type(entry.stockMax) == "number" and entry.stockMax or (stock and stock.max or nil)
+    if sMin ~= nil or sMax ~= nil then
+        override.stock = {}
+        if sMin ~= nil then
+            override.stock.min = math.max(0, math.floor(sMin))
+        end
+        if sMax ~= nil then
+            override.stock.max = math.max(0, math.floor(sMax))
+        end
+        if override.stock.min ~= nil and override.stock.max ~= nil and override.stock.min > override.stock.max then
+            override.stock.min = override.stock.max
+        end
+    end
+
+    if next(override) == nil then
+        return nil
+    end
+
+    return override
+end
+
+local function applyOverride(itemId, override)
+    if type(itemId) ~= "string" or itemId == "" or type(override) ~= "table" then
+        return
+    end
+    DB.registerItem(itemId, override)
+    RuntimeRules.appliedItems[itemId] = true
+    RuntimeRules.overrideData[itemId] = override
+end
+
 function RuntimeRules.reset()
     for itemId, _ in pairs(RuntimeRules.appliedItems or {}) do
         DB.items[itemId] = nil
@@ -55,6 +143,8 @@ function RuntimeRules.reset()
 
     RuntimeRules.blacklist = {}
     RuntimeRules.whitelist = {}
+    RuntimeRules.blacklistPatterns = {}
+    RuntimeRules.whitelistPatterns = {}
     RuntimeRules.appliedItems = {}
     RuntimeRules.appliedTags = {}
     RuntimeRules.previousTagData = {}
@@ -92,6 +182,11 @@ function RuntimeRules.loadFromFile(force)
             RuntimeRules.blacklist[itemId] = true
         end
     end
+    for _, pattern in ipairs(data.blacklistPatterns or {}) do
+        if type(pattern) == "string" and pattern ~= "" then
+            RuntimeRules.blacklistPatterns[#RuntimeRules.blacklistPatterns + 1] = pattern
+        end
+    end
 
     -- Whitelist
     for _, itemId in ipairs(data.whitelist or {}) do
@@ -99,39 +194,32 @@ function RuntimeRules.loadFromFile(force)
             RuntimeRules.whitelist[itemId] = true
         end
     end
+    for _, pattern in ipairs(data.whitelistPatterns or {}) do
+        if type(pattern) == "string" and pattern ~= "" then
+            RuntimeRules.whitelistPatterns[#RuntimeRules.whitelistPatterns + 1] = pattern
+        end
+    end
 
     -- Item overrides
-    for _, entry in ipairs(data.overrides or {}) do
-        local itemId = entry.id
+    local listOverrides = ensureArray(data.overrides)
+    for _, entry in ipairs(listOverrides) do
+        local itemId = type(entry) == "table" and entry.id or nil
         if type(itemId) == "string" and itemId ~= "" then
-            local override = {}
-
-            if type(entry.price) == "number" then
-                override.price = entry.price
+            local override = normalizeOverride(entry)
+            if override then
+                applyOverride(itemId, override)
             end
+        end
+    end
 
-            if type(entry.tags) == "table" and #entry.tags > 0 then
-                override.tags = entry.tags
+    -- Map-based overrides format:
+    -- overridesById = { ["Base.Battery"] = { price = 50, addTags = {...}, removeTags = {...}, stock = {min=1,max=4} } }
+    for itemId, entry in pairs(data.overridesById or {}) do
+        if type(itemId) == "string" and itemId ~= "" then
+            local override = normalizeOverride(entry)
+            if override then
+                applyOverride(itemId, override)
             end
-
-            local sMin = type(entry.stockMin) == "number" and entry.stockMin or nil
-            local sMax = type(entry.stockMax) == "number" and entry.stockMax or nil
-            if sMin ~= nil or sMax ~= nil then
-                override.stock = {}
-                if sMin ~= nil then
-                    override.stock.min = math.max(0, math.floor(sMin))
-                end
-                if sMax ~= nil then
-                    override.stock.max = math.max(0, math.floor(sMax))
-                end
-                if override.stock.min ~= nil and override.stock.max ~= nil and override.stock.min > override.stock.max then
-                    override.stock.min = override.stock.max
-                end
-            end
-
-            DB.registerItem(itemId, override)
-            RuntimeRules.appliedItems[itemId] = true
-            RuntimeRules.overrideData[itemId] = override
         end
     end
 
@@ -165,13 +253,19 @@ end
 
 function RuntimeRules.isWhitelisted(fullType)
     RuntimeRules.loadFromFile(false)
+    if matchesPatterns(fullType, RuntimeRules.whitelistPatterns) then
+        return true
+    end
     return RuntimeRules.whitelist[fullType] == true
 end
 
 function RuntimeRules.isBlacklisted(fullType)
     RuntimeRules.loadFromFile(false)
-    if RuntimeRules.whitelist[fullType] == true then
+    if RuntimeRules.isWhitelisted(fullType) then
         return false
+    end
+    if matchesPatterns(fullType, RuntimeRules.blacklistPatterns) then
+        return true
     end
     return RuntimeRules.blacklist[fullType] == true
 end
@@ -188,6 +282,67 @@ end
 function RuntimeRules.getTagAddition(tag)
     RuntimeRules.loadFromFile(false)
     return RuntimeRules.tagAdditionData[tag]
+end
+
+function RuntimeRules.getRules()
+    RuntimeRules.loadFromFile(false)
+    return {
+        blacklist = cloneMap(RuntimeRules.blacklist),
+        whitelist = cloneMap(RuntimeRules.whitelist),
+        blacklistPatterns = cloneMap(RuntimeRules.blacklistPatterns),
+        whitelistPatterns = cloneMap(RuntimeRules.whitelistPatterns),
+        overridesById = cloneMap(RuntimeRules.overrideData),
+        tagAdditions = cloneMap(RuntimeRules.tagAdditionData),
+    }
+end
+
+function RuntimeRules.apply(ruleTable)
+    if type(ruleTable) ~= "table" then
+        return false
+    end
+
+    RuntimeRules.loadFromFile(false)
+
+    for _, itemId in ipairs(ruleTable.blacklist or {}) do
+        if type(itemId) == "string" and itemId ~= "" then
+            RuntimeRules.blacklist[itemId] = true
+        end
+    end
+
+    for _, itemId in ipairs(ruleTable.whitelist or {}) do
+        if type(itemId) == "string" and itemId ~= "" then
+            RuntimeRules.whitelist[itemId] = true
+        end
+    end
+
+    for _, pattern in ipairs(ruleTable.blacklistPatterns or {}) do
+        if type(pattern) == "string" and pattern ~= "" then
+            RuntimeRules.blacklistPatterns[#RuntimeRules.blacklistPatterns + 1] = pattern
+        end
+    end
+
+    for _, pattern in ipairs(ruleTable.whitelistPatterns or {}) do
+        if type(pattern) == "string" and pattern ~= "" then
+            RuntimeRules.whitelistPatterns[#RuntimeRules.whitelistPatterns + 1] = pattern
+        end
+    end
+
+    for itemId, entry in pairs(ruleTable.overridesById or {}) do
+        local override = normalizeOverride(entry)
+        if override then
+            applyOverride(itemId, override)
+        end
+    end
+
+    for _, entry in ipairs(ruleTable.overrides or {}) do
+        local itemId = type(entry) == "table" and entry.id or nil
+        local override = normalizeOverride(entry)
+        if type(itemId) == "string" and itemId ~= "" and override then
+            applyOverride(itemId, override)
+        end
+    end
+
+    return true
 end
 
 return RuntimeRules

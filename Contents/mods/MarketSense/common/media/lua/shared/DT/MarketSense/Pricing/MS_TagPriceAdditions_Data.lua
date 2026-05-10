@@ -18,9 +18,11 @@ return {
         ["Misc"]           = 2,
         -- Food
         ["FoodNonPerishable"]         = 15,
+        ["FoodNonPerishableBoxed"]    = 20,
         ["FoodNonPerishableCanned"]   = 24,
         ["FoodPerishable"]            = 5,
         ["FoodPreserved"]             = 18,
+        ["FoodPreservedPickled"]      = 16,
         -- Beverage subtypes
         ["BeverageAlcohol"]  = 12,
         ["BeverageWater"]    = 2,
@@ -30,6 +32,7 @@ return {
         ["BeverageTea"]      = 4,
         ["BeverageSoda"]     = 3,
         ["BeverageDairy"]    = 5,
+        ["BeverageMilk"]     = 5,
         ["BeverageJuice"]    = 4,
         -- Weapon subtypes
         ["Firearm"]          = 65,

@@ -15,9 +15,21 @@ end
 local function displayIs(ctx, t)
     return (ctx.displayCategoryToken or "") == t
 end
+local function teachesSkillXp(ctx)
+    local skill = ctx.skillTrainedLower or ""
+    if skill ~= "" and skill ~= "none" and skill ~= "nil" then
+        return true
+    end
+    return (tonumber(ctx.lvlSkillTrained) or -1) >= 0
+        or (tonumber(ctx.maxLevelTrained) or -1) >= 0
+end
 
 function Signature.match(ctx)
-    if not itemTypeIs(ctx, "literature") and not hasTag(ctx, "hollowbook") then
+    local learnsRecipe = ctx.learnedRecipes and #ctx.learnedRecipes > 0
+    local trainsSkill = teachesSkillXp(ctx)
+
+    if not itemTypeIs(ctx, "literature") and not hasTag(ctx, "hollowbook")
+        and not learnsRecipe and not trainsSkill then
         return { matched = false, confidence = 0 }
     end
     if displayIs(ctx, "gardening") or displayIs(ctx, "memento") then
@@ -27,8 +39,11 @@ function Signature.match(ctx)
     if ctx.canBeWrite then
         return TagMapper.makeResult("LiteratureOrJunk", 0.90, { source = "lit_writable" })
     end
-    if ctx.learnedRecipes and #ctx.learnedRecipes > 0 then
+    if learnsRecipe then
         return TagMapper.makeResult("LiteratureRecipe", 0.94, { source = "lit_recipe" })
+    end
+    if trainsSkill then
+        return TagMapper.makeResult("SkillBook", 0.95, { source = "lit_skillbook", skill = ctx.skillTrainedLower })
     end
     if hasTag(ctx, "uninteresting") then
         return TagMapper.makeResult("LiteratureOrJunk", 0.85, { source = "lit_uninteresting" })
@@ -53,9 +68,6 @@ function Signature.match(ctx)
     end
     if hasTag(ctx, "magazine") then
         return TagMapper.makeResult("LiteratureMagazine", 0.91, { source = "lit_magazine" })
-    end
-    if (ctx.skillTrainedLower or "") ~= "" then
-        return TagMapper.makeResult("SkillBook", 0.95, { source = "lit_skillbook" })
     end
     if (ctx.readTypeLower or "") == "photo" then
         return TagMapper.makeResult("LiteraturePhoto", 0.88, { source = "lit_photo" })

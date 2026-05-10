@@ -14,6 +14,7 @@ local TagMapper = MarketSense.TagMapper
 -- ============================================================
 local TOKEN_TO_ROOT = {
     -- Weapon
+    Weapon = "Weapon",
     Ammo = "Weapon", AmmoBox = "Weapon", AmmoCarton = "Weapon", AmmoMag = "Weapon",
     WeaponAxe = "Weapon", WeaponBlunt = "Weapon", WeaponSmallBlunt = "Weapon",
     WeaponLongBlade = "Weapon", WeaponSmallBlade = "Weapon",
@@ -21,13 +22,14 @@ local TOKEN_TO_ROOT = {
     WeaponMelee = "Weapon", WeaponRanged = "Weapon",
     Firearm = "Weapon", FirearmHandgun = "Weapon", FirearmRifle = "Weapon", FirearmShotgun = "Weapon",
     Explosive = "Weapon", WeaponExplosive = "Weapon", WeaponPart = "Weapon",
-    -- Beverage
-    Beverage = "Beverage",
-    BeverageWater = "Beverage", BeverageMilk = "Beverage", BeverageCoffee = "Beverage",
-    BeverageTea = "Beverage", BeverageSoftDrink = "Beverage", BeverageJuice = "Beverage",
-    BeverageBeer = "Beverage", BeverageWine = "Beverage", BeverageAlcohol = "Beverage",
-    BeverageCocktail = "Beverage", BeverageEnergyDrink = "Beverage", BeverageBox = "Beverage",
+    -- Beverage (filed under Food for registry output)
+    Beverage = "Food",
+    BeverageWater = "Food", BeverageMilk = "Food", BeverageDairy = "Food", BeverageCoffee = "Food",
+    BeverageTea = "Food", BeverageSoftDrink = "Food", BeverageJuice = "Food",
+    BeverageBeer = "Food", BeverageWine = "Food", BeverageAlcohol = "Food", BeverageSoda = "Food",
+    BeverageCocktail = "Food", BeverageEnergyDrink = "Food", BeverageBox = "Food",
     -- Clothing
+    Clothing = "Clothing",
     ClothingFullBody = "Clothing", ClothingOuterwear = "Clothing", ClothingVest = "Clothing",
     ClothingTop = "Clothing", ClothingBottom = "Clothing", ClothingFootwear = "Clothing",
     ClothingSocks = "Clothing", ClothingHead = "Clothing", ClothingHands = "Clothing",
@@ -46,18 +48,27 @@ local TOKEN_TO_ROOT = {
     Food = "Food", FoodNonPerishable = "Food", FoodPerishable = "Food",
     -- Food non-perishable
     FoodBaking = "Food", FoodCandy = "Food", FoodCheese = "Food", FoodCoffee = "Food",
-    FoodEgg = "Food", FoodFruits = "Food", FoodHerb = "Food", FoodLivestock = "Food",
+    FoodEgg = "Food", FoodFruits = "Food", FoodHerb = "Food", FoodHotPepper = "Food",
+    FoodInsect = "Food", FoodLivestock = "Food",
     FoodMeat = "Food", FoodMushroom = "Food", FoodNoExplicit = "Food", FoodNut = "Food",
-    FoodPetFood = "Food", FoodPreserved = "Food", FoodSnack = "Food", FoodSpice = "Food",
-    FoodStaple = "Food", FoodStock = "Food", FoodTea = "Food", FoodVegetables = "Food",
-    FoodNonPerishableCanned = "Food", FoodNonPerishableSnack = "Food",
+    FoodPetFood = "Food", FoodPreserved = "Food", FoodSeed = "Food",
+    FoodSnack = "Food", FoodSpice = "Food", FoodStaple = "Food",
+    FoodStock = "Food", FoodSugar = "Food", FoodTea = "Food", FoodVegetables = "Food",
+    FoodNonPerishableBaking = "Food", FoodNonPerishableBread = "Food", FoodNonPerishableCandy = "Food",
+    FoodNonPerishableCheese = "Food", FoodNonPerishableDairy = "Food",
+    FoodNonPerishableFruits = "Food", FoodNonPerishableMeat = "Food",
+    FoodNonPerishableDish = "Food", FoodNonPerishablePortion = "Food",
+    FoodNonPerishableSeafood = "Food", FoodNonPerishableVegetables = "Food",
+    FoodNonPerishableBoxed = "Food", FoodNonPerishableCanned = "Food",
+    FoodNonPerishableSnack = "Food",
     -- Food perishable
     FoodDish = "Food", FoodPortion = "Food", FoodSeafood = "Food",
     FoodPerishableBaking = "Food", FoodPerishableCandy = "Food", FoodPerishableCheese = "Food",
     FoodPerishableDairy = "Food", FoodPerishableBread = "Food", FoodPerishableDish = "Food",
-    FoodPerishableFruits = "Food", FoodPerishableMeat = "Food", FoodPerishableSeafood = "Food",
-    FoodPerishableSnack = "Food", FoodPerishableMeal = "Food",
-    FoodOrFirstAid = "Medical",
+    FoodPerishableFruits = "Food", FoodPerishableMeat = "Food",
+    FoodPerishablePortion = "Food", FoodPerishableSeafood = "Food",
+    FoodPerishableSnack = "Food", FoodPerishableVegetables = "Food", FoodPerishableMeal = "Food",
+    FoodOrFirstAid = "Medical", FoodPreservedPickled = "Food",
     -- Cooking (under Tool)
     Cooking = "Tool", CookingCup = "Tool", CookingPan = "Tool",
     CookingCutlery = "Tool", CookingUtensil = "Tool", CookingOrTool = "Tool",
@@ -69,7 +80,8 @@ local TOKEN_TO_ROOT = {
     ToolTailoring = "Tool", ToolWelding = "Tool", ToolFarming = "Tool",
     Smoking = "Tool",
     -- Material / Resource
-    Material = "Resource", ResourceFuel = "Resource",
+    Resource = "Resource",
+    Material = "Resource", ResourceFuel = "Resource", ResourceParts = "Resource",
     MaterialMetalworking = "Resource", MaterialTailoring = "Resource",
     MaterialPottery = "Resource", MaterialCarpentry = "Resource",
     MaterialMaintenance = "Resource", MaterialButchering = "Resource",
@@ -103,7 +115,8 @@ local TOKEN_TO_ROOT = {
     BuildingFixture = "Building", BuildingFixtureAppliance = "Building",
     BuildingFixturePlumbing = "Building", BuildingFurniture = "Building",
     BuildingFurnitureBed = "Building", BuildingFurnitureChair = "Building",
-    BuildingFurnitureStorage = "Building", BuildingGarden = "Building",
+    BuildingFurnitureStorage = "Building", BuildingFurnitureCounter = "Building",
+    BuildingFurnitureDecor = "Building", BuildingGarden = "Building",
     BuildingMoveable = "Building", BuildingSurvival = "Building",
     BuildingSurvivalTrap = "Building", BuildingVehicle = "Building",
     -- Memento / Misc
@@ -129,9 +142,10 @@ local TOKEN_PARENTS = {
     FirearmShotgun = { "Firearm", "WeaponRanged" },
     WeaponExplosive = { "Explosive" },
     -- Beverage
-    BeverageWater = { "Beverage" }, BeverageMilk = { "Beverage" },
+    BeverageWater = { "Beverage" }, BeverageMilk = { "Beverage" }, BeverageDairy = { "Beverage" },
     BeverageCoffee = { "Beverage" }, BeverageTea = { "Beverage" },
     BeverageSoftDrink = { "Beverage" }, BeverageJuice = { "Beverage" },
+    BeverageSoda = { "BeverageSoftDrink", "Beverage" },
     BeverageBeer = { "Beverage" }, BeverageWine = { "Beverage" },
     BeverageAlcohol = { "Beverage" }, BeverageCocktail = { "Beverage" },
     BeverageEnergyDrink = { "Beverage" }, BeverageBox = { "Beverage" },
@@ -158,13 +172,27 @@ local TOKEN_PARENTS = {
     FoodBaking = { "FoodNonPerishable" }, FoodCandy = { "FoodNonPerishable" },
     FoodCheese = { "FoodNonPerishable" }, FoodCoffee = { "FoodNonPerishable" },
     FoodEgg = { "FoodNonPerishable" }, FoodFruits = { "FoodNonPerishable" },
-    FoodHerb = { "FoodNonPerishable" }, FoodLivestock = { "FoodNonPerishable" },
+    FoodHerb = { "FoodNonPerishable" }, FoodHotPepper = { "FoodSpice" },
+    FoodInsect = { "FoodNonPerishable" }, FoodLivestock = { "FoodNonPerishable" },
     FoodMeat = { "FoodNonPerishable" }, FoodMushroom = { "FoodNonPerishable" },
     FoodNoExplicit = { "FoodNonPerishable" }, FoodNut = { "FoodNonPerishable" },
     FoodPetFood = { "FoodNonPerishable" }, FoodPreserved = { "FoodNonPerishable" },
-    FoodSnack = { "FoodNonPerishable" }, FoodSpice = { "FoodNonPerishable" },
-    FoodStaple = { "FoodNonPerishable" }, FoodStock = { "FoodNonPerishable" },
+    FoodSeed = { "FoodNonPerishable" }, FoodSnack = { "FoodNonPerishable" },
+    FoodSpice = { "FoodNonPerishable" }, FoodStaple = { "FoodNonPerishable" },
+    FoodStock = { "FoodNonPerishable" }, FoodSugar = { "FoodNonPerishable" },
     FoodTea = { "FoodNonPerishable" }, FoodVegetables = { "FoodNonPerishable" },
+    FoodNonPerishableBaking = { "FoodNonPerishable", "FoodBaking" },
+    FoodNonPerishableBread = { "FoodNonPerishable" },
+    FoodNonPerishableCandy = { "FoodNonPerishable", "FoodCandy" },
+    FoodNonPerishableCheese = { "FoodNonPerishable", "FoodCheese" },
+    FoodNonPerishableDairy = { "FoodNonPerishable", "FoodCheese" },
+    FoodNonPerishableFruits = { "FoodNonPerishable", "FoodFruits" },
+    FoodNonPerishableMeat = { "FoodNonPerishable", "FoodMeat" },
+    FoodNonPerishableDish = { "FoodNonPerishable", "FoodDish" },
+    FoodNonPerishablePortion = { "FoodNonPerishable", "FoodPortion" },
+    FoodNonPerishableSeafood = { "FoodNonPerishable", "FoodSeafood" },
+    FoodNonPerishableVegetables = { "FoodNonPerishable", "FoodVegetables" },
+    FoodNonPerishableBoxed = { "FoodNonPerishable" },
     FoodNonPerishableCanned = { "FoodNonPerishable" },
     FoodNonPerishableSnack = { "FoodNonPerishable", "FoodSnack" },
     -- Food perishable
@@ -178,9 +206,12 @@ local TOKEN_PARENTS = {
     FoodPerishableDish = { "FoodPerishable", "FoodDish" },
     FoodPerishableFruits = { "FoodPerishable", "FoodFruits" },
     FoodPerishableMeat = { "FoodPerishable", "FoodMeat" },
+    FoodPerishablePortion = { "FoodPerishable", "FoodPortion" },
     FoodPerishableSeafood = { "FoodPerishable", "FoodSeafood" },
     FoodPerishableSnack = { "FoodPerishable", "FoodSnack" },
+    FoodPerishableVegetables = { "FoodPerishable", "FoodVegetables" },
     FoodPerishableMeal = { "FoodPerishable" },
+    FoodPreservedPickled = { "FoodPreserved", "FoodNonPerishable" },
     -- Cooking
     CookingCup = { "Cooking" }, CookingPan = { "Cooking" },
     CookingCutlery = { "Cooking" }, CookingUtensil = { "Cooking" },
@@ -200,6 +231,7 @@ local TOKEN_PARENTS = {
     MaterialFireSource = { "Material" }, MaterialOrJunk = { "Material" },
     MaterialBundled = { "Material" }, MaterialHardware = { "Material" },
     MaterialWood = { "Material" }, MaterialChemical = { "Material" },
+    ResourceFuel = { "Resource" }, ResourceParts = { "Resource" },
     ResourceMetal = { "Material" }, ResourceFabric = { "Material" },
     ResourceMaterial = { "Material" }, ResourceHardware = { "Material" },
     -- Medical
@@ -231,6 +263,8 @@ local TOKEN_PARENTS = {
     BuildingFurnitureBed = { "BuildingFurniture" },
     BuildingFurnitureChair = { "BuildingFurniture" },
     BuildingFurnitureStorage = { "BuildingFurniture" },
+    BuildingFurnitureCounter = { "BuildingFurniture" },
+    BuildingFurnitureDecor = { "BuildingFurniture" },
     BuildingGarden = { "Building" }, BuildingMoveable = { "Building" },
     BuildingSurvival = { "Building" },
     BuildingSurvivalTrap = { "BuildingSurvival" },
@@ -309,33 +343,85 @@ function TagMapper.getDefinition(token)
     local text = tostring(token or "")
     local root = TOKEN_TO_ROOT[text] or "Misc"
 
-    -- Determine subcategory: strip root prefix from the first mid-level parent
-    local subcategory = "General"
+    if text == root then
+        return {
+            root          = root,
+            token         = text,
+            subcategory   = "General",
+            leaf          = "General",
+            primaryPrefix = root .. ".General",
+            path          = root .. "/General.txt",
+            parents       = TagMapper.getParents(text),
+        }
+    end
+
+    if root == "Food" and string.sub(text, 1, 8) == "Beverage" then
+        local leaf = string.sub(text, 9)
+        if leaf == "" then leaf = "Beverage" end
+        local primaryPrefix = "Food.Beverage"
+        local path = "Food/Beverage.txt"
+        if leaf ~= "Beverage" then
+            primaryPrefix = primaryPrefix .. "." .. leaf
+            path = "Food/Beverage/" .. leaf .. ".txt"
+        end
+        return {
+            root          = root,
+            token         = text,
+            subcategory   = "Beverage",
+            leaf          = leaf,
+            primaryPrefix = primaryPrefix,
+            path          = path,
+            parents       = TagMapper.getParents(text),
+        }
+    end
+
+    local function stripRootPrefix(value)
+        local input = tostring(value or "")
+        if #root < #input and string.sub(input, 1, #root) == root then
+            return string.sub(input, #root + 1)
+        end
+        return input
+    end
+
+    -- Prefer the closest parent branch as subcategory.
+    -- If unavailable, derive from the token itself so we do not create a generic bucket.
+    local subcategory = "Root"
     local directParents = TOKEN_PARENTS[text]
     if directParents and directParents[1] then
         local firstParent = directParents[1]
         if firstParent ~= root and TOKEN_TO_ROOT[firstParent] == root then
-            -- Only strip root prefix when the parent name actually starts with root
-            if string.sub(firstParent, 1, #root) == root then
-                local stripped = string.sub(firstParent, #root + 1)
-                subcategory = (stripped ~= "" and stripped) or "General"
-            end
+            local strippedParent = stripRootPrefix(firstParent)
+            subcategory = strippedParent ~= "" and strippedParent or "Root"
         end
     end
+    if subcategory == "Root" then
+        local strippedSelf = stripRootPrefix(text)
+        subcategory = strippedSelf ~= "" and strippedSelf or root
+    end
 
-    -- Determine leaf: strip "root+subcategory" prefix from token
+    -- Determine leaf: strip the flattened "root+subcategory" prefix when available.
     local leaf = text
-    local fullPrefix = root .. (subcategory ~= "General" and subcategory or "")
-    if subcategory ~= "General" and #fullPrefix < #text and string.sub(text, 1, #fullPrefix) == fullPrefix then
+    local fullPrefix = root .. (subcategory ~= "Root" and subcategory or "")
+    if #fullPrefix < #text and string.sub(text, 1, #fullPrefix) == fullPrefix then
         local stripped = string.sub(text, #fullPrefix + 1)
+        leaf = (stripped ~= "" and stripped) or text
+    elseif subcategory ~= "Root" and #subcategory < #text and string.sub(text, 1, #subcategory) == subcategory then
+        local stripped = string.sub(text, #subcategory + 1)
         leaf = (stripped ~= "" and stripped) or text
     elseif #root < #text and string.sub(text, 1, #root) == root then
         local stripped = string.sub(text, #root + 1)
         leaf = (stripped ~= "" and stripped) or text
     end
+    if leaf == "" then
+        leaf = subcategory
+    end
 
-    local primaryPrefix = root .. "." .. subcategory .. "." .. leaf
-    local path = root .. "/" .. subcategory .. "/" .. leaf .. ".txt"
+    local primaryPrefix = root .. "." .. subcategory
+    local path = root .. "/" .. subcategory .. ".txt"
+    if leaf ~= subcategory then
+        primaryPrefix = primaryPrefix .. "." .. leaf
+        path = root .. "/" .. subcategory .. "/" .. leaf .. ".txt"
+    end
 
     return {
         root          = root,

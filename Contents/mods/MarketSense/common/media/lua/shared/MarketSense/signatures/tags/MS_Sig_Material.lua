@@ -26,7 +26,33 @@ local function hasTag(ctx, token)
     return ctx.normalizedTags and ctx.normalizedTags[token] == true
 end
 
+local function hasTagAlias(ctx, token)
+    return hasTag(ctx, token) or hasTag(ctx, "base" .. token)
+end
+
+local function contains(text, token)
+    return string.find(tostring(text or ""), token, 1, true) ~= nil
+end
+
 function Signature.match(ctx)
+    local displayCategory = ctx.displayCategoryToken or ""
+    local fluidCategory = ctx.fluidCategoryLower or ""
+    local replaceOnDeplete = ctx.replaceOnDepleteLower or ""
+
+    if hasTagAlias(ctx, "paint")
+        or displayCategory == "paint"
+        or contains(replaceOnDeplete, "paintbucketempty") then
+        return TagMapper.makeResult("MaterialChemical", 0.98, { source = "material_paint_anchor" })
+    end
+
+    if fluidCategory == "dyes" or fluidCategory == "hairdyes" then
+        return TagMapper.makeResult("MaterialChemical", 0.96, { source = "material_fluid_category" })
+    end
+
+    if fluidCategory == "fuel" then
+        return TagMapper.makeResult("ResourceFuel", 0.96, { source = "material_fluid_category" })
+    end
+
     if (ctx.lootTypeLower or "") ~= "material" then
         return { matched = false, confidence = 0 }
     end

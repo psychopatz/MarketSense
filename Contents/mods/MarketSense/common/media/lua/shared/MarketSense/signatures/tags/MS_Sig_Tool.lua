@@ -33,7 +33,7 @@ local TOOL_TAG_MAP = {
 }
 
 local TOOL_DISP_CATS = {
-    tool=true, toolweapon=true, cooking=true, cookingweapon=true,
+    tool=true, toolweapon=true,
     firstaidweapon=true, vehiclemaintenance=true,
 }
 
@@ -63,9 +63,6 @@ function Signature.match(ctx)
 
     if disp == "vehiclemaintenance" then
         return TagMapper.makeResult("ToolMechanics", 0.82, { source = "tool_vehiclemaint" })
-    end
-    if disp == "cooking" or disp == "cookingweapon" then
-        return TagMapper.makeResult("Cooking", 0.88, { source = "tool_cooking" })
     end
     return TagMapper.makeResult("Tool", 0.80, { source = "tool_generic" })
 end

@@ -68,6 +68,15 @@ function Core.safeBoolean(obj, methodNames, defaultValue, ...)
     for _, methodName in ipairs(normalizeMethodNames(methodNames)) do
         local value = Core.safeCall(obj, methodName, nil, unpackArgs(args))
         if value ~= nil then
+            if type(value) == "string" then
+                local lower = string.lower(value)
+                if lower == "false" or lower == "0" or lower == "no" then
+                    return false
+                end
+                if lower == "true" or lower == "1" or lower == "yes" then
+                    return true
+                end
+            end
             return not not value
         end
     end

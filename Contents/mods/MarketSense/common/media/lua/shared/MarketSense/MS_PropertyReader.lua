@@ -17,6 +17,48 @@ local function normalizeToken(value)
     return text
 end
 
+local function readNumber(obj, methodNames)
+    if obj == nil or methodNames == nil then
+        return nil
+    end
+
+    local methods = type(methodNames) == "table" and methodNames or { methodNames }
+    for _, methodName in ipairs(methods) do
+        local value = Core.safeCall(obj, methodName, nil)
+        value = tonumber(value)
+        if value ~= nil then
+            return value
+        end
+    end
+    return nil
+end
+
+local function preferNumber(primaryObj, fallbackObj, methodNames, defaultValue)
+    local value = readNumber(primaryObj, methodNames)
+    if value ~= nil then
+        return value
+    end
+
+    value = readNumber(fallbackObj, methodNames)
+    if value ~= nil then
+        return value
+    end
+
+    return tonumber(defaultValue) or 0
+end
+
+local function preferString(primaryObj, fallbackObj, methodNames, defaultValue)
+    local value = Core.safeString(primaryObj, methodNames, "")
+    if value ~= "" then
+        return value
+    end
+    return Core.safeString(fallbackObj, methodNames, defaultValue or "")
+end
+
+local function isSentinelSpoilage(value)
+    return (tonumber(value) or 0) >= 365000
+end
+
 function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     if type(scriptItemOrFullType) == "table" and scriptItemOrFullType.fullType and scriptItemOrFullType.item ~= nil then
         return scriptItemOrFullType
@@ -43,7 +85,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         if readModuleName ~= "" then moduleName = readModuleName end
         local readTypeName = Core.safeString(scriptItem, { "getName", "getTypeString", "getDisplayName" }, typeName)
         if readTypeName ~= "" then typeName = readTypeName end
-        if fullType == "" and moduleName ~= "" and typeName ~= "" then
+        if moduleName ~= "" and moduleName ~= "Unknown" and typeName ~= "" then
             fullType = moduleName .. "." .. typeName
         end
     end
@@ -59,9 +101,12 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local bodyLocation    = Core.safeString(scriptItem, "getBodyLocation", "")
     local lootType        = Core.safeString(scriptItem, "getLootType", "")
     local eatType         = Core.safeString(scriptItem, "getEatType", "")
+    local foodType        = Core.safeString(scriptItem, "getFoodType", "")
     local icon            = Core.safeString(scriptItem, { "getIcon", "getIconName" }, "")
     local learnedRecipes  = Core.safeCall(scriptItem, "getLearnedRecipes", nil)
     local skillTrained    = Core.safeString(scriptItem, "getSkillTrained", "")
+    local lvlSkillTrained = Core.safeNumber(scriptItem, "getLvlSkillTrained", -1)
+    local maxLevelTrained = Core.safeNumber(scriptItem, "getMaxLevelTrained", -1)
     local readType        = Core.safeString(scriptItem, "getReadType", "")
     local worldStaticModel   = Core.safeString(scriptItem, "getWorldStaticModel", "")
     local worldObjectSprite  = Core.safeString(scriptItem, "getWorldObjectSprite", "")
@@ -71,6 +116,12 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local putInSound  = Core.safeString(scriptItem, "getPutInSound", "")
     local pourType    = Core.safeString(scriptItem, "getPourType", "")
     local doubleClickRecipe = Core.safeString(scriptItem, "getDoubleClickRecipe", "")
+    local replaceOnDeplete  = Core.safeString(scriptItem, "getReplaceOnDeplete", "")
+    local replaceOnUse      = Core.safeString(scriptItem, "getReplaceOnUse", "")
+    local replaceOnCooked   = Core.safeString(scriptItem, "getReplaceOnCooked", "")
+    local onCooked          = Core.safeString(scriptItem, "getOnCooked", "")
+    local evolvedRecipe     = Core.safeString(scriptItem, "getEvolvedRecipe", "")
+    local evolvedRecipeName = Core.safeString(scriptItem, "getEvolvedRecipeName", "")
     local canBeEquipped     = Core.safeString(scriptItem, "getCanBeEquipped", "")
     local acceptItemFunction = Core.safeString(scriptItem, "getAcceptItemFunction", "")
     local rangedToken       = Core.safeString(scriptItem, { "isRanged", "getRanged" }, "")
@@ -89,6 +140,34 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         isInventoryItemInstance = instanceof(instance, "InventoryItem") == true
         isLiteratureInstance  = instanceof(instance, "Literature") == true
     end
+
+    local instanceFoodType = Core.safeString(instance, "getFoodType", "")
+    if instanceFoodType ~= "" then foodType = instanceFoodType end
+    local instanceLootType = Core.safeString(instance, "getLootType", "")
+    if instanceLootType ~= "" then lootType = instanceLootType end
+    local instanceEatType = Core.safeString(instance, "getEatType", "")
+    if instanceEatType ~= "" then eatType = instanceEatType end
+
+    local hunger = positiveMagnitude(preferNumber(instance, scriptItem, "getHungerChange", 0))
+    local thirst = positiveMagnitude(preferNumber(instance, scriptItem, "getThirstChange", 0))
+    local calories = math.max(0, preferNumber(instance, scriptItem, "getCalories", 0))
+    local carbohydrates = math.max(0, preferNumber(instance, scriptItem, "getCarbohydrates", 0))
+    local lipids = math.max(0, preferNumber(instance, scriptItem, "getLipids", 0))
+    local proteins = math.max(0, preferNumber(instance, scriptItem, "getProteins", 0))
+    local daysFresh = math.max(0, preferNumber(instance, scriptItem, "getDaysFresh", 0))
+    local daysRotten = math.max(0, preferNumber(instance, scriptItem, "getDaysTotallyRotten", 0))
+    local unhappy = positiveMagnitude(preferNumber(instance, scriptItem, { "getUnhappyChange", "getUnhappy" }, 0))
+    local boredom = positiveMagnitude(preferNumber(instance, scriptItem, { "getBoredomChange", "getBoredom" }, 0))
+    local stress = positiveMagnitude(preferNumber(instance, scriptItem, { "getStressChange", "getStress" }, 0))
+    local customEatSound = preferString(instance, scriptItem, "getCustomEatSound", "")
+    local foodDaysFresh = isSentinelSpoilage(daysFresh) and 0 or daysFresh
+    local foodDaysRotten = isSentinelSpoilage(daysRotten) and 0 or daysRotten
+    local hasFoodNutritionEvidence = hunger > 0 or thirst > 0 or calories > 0
+        or carbohydrates > 0 or lipids > 0 or proteins > 0
+    local hasFoodSpoilageEvidence = foodDaysFresh > 0 or foodDaysRotten > 0
+    local hasFoodRecipeEvidence = evolvedRecipe ~= "" or evolvedRecipeName ~= ""
+        or doubleClickRecipe ~= "" or customEatSound ~= ""
+    local isDung = Core.safeBoolean(instance or scriptItem, { "isDung", "getIsDung" }, false)
 
     local fluidContainer = Core.safeCall(instance or scriptItem, "getFluidContainer", nil)
     local fluidType = ""
@@ -140,14 +219,19 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         lootType = lootType, lootTypeLower = Core.lower(lootType),
         lootTypeToken = normalizeToken(lootType),
         weight = math.max(0, Core.safeNumber(scriptItem, { "getActualWeight", "getWeight" }, 0)),
-        hunger = positiveMagnitude(Core.safeNumber(scriptItem, "getHungerChange", 0)),
-        thirst = positiveMagnitude(Core.safeNumber(scriptItem, "getThirstChange", 0)),
-        calories = math.max(0, Core.safeNumber(scriptItem, "getCalories", 0)),
-        daysFresh = math.max(0, Core.safeNumber(scriptItem, "getDaysFresh", 0)),
-        daysRotten = math.max(0, Core.safeNumber(scriptItem, "getDaysTotallyRotten", 0)),
-        unhappy = positiveMagnitude(Core.safeNumber(scriptItem, { "getUnhappyChange", "getUnhappy" }, 0)),
-        boredom = positiveMagnitude(Core.safeNumber(scriptItem, { "getBoredomChange", "getBoredom" }, 0)),
-        stress = positiveMagnitude(Core.safeNumber(scriptItem, { "getStressChange", "getStress" }, 0)),
+        hunger = hunger,
+        thirst = thirst,
+        calories = calories,
+        carbohydrates = carbohydrates,
+        lipids = lipids,
+        proteins = proteins,
+        daysFresh = daysFresh,
+        daysRotten = daysRotten,
+        foodDaysFresh = foodDaysFresh,
+        foodDaysRotten = foodDaysRotten,
+        unhappy = unhappy,
+        boredom = boredom,
+        stress = stress,
         minDamage = math.max(0, Core.safeNumber(scriptItem, "getMinDamage", 0)),
         maxDamage = math.max(0, Core.safeNumber(scriptItem, "getMaxDamage", 0)),
         maxRange = math.max(0, Core.safeNumber(scriptItem, "getMaxRange", 0)),
@@ -178,16 +262,26 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         acceptItemFunction = acceptItemFunction, acceptItemFunctionLower = Core.lower(acceptItemFunction),
         openSound = openSound, closeSound = closeSound, putInSound = putInSound,
         pourType = pourType, eatType = eatType, eatTypeLower = Core.lower(eatType),
+        foodType = foodType, foodTypeLower = Core.lower(foodType), foodTypeToken = normalizeToken(foodType),
         doubleClickRecipe = doubleClickRecipe, doubleClickRecipeLower = Core.lower(doubleClickRecipe),
+        replaceOnDeplete = replaceOnDeplete, replaceOnDepleteLower = Core.lower(replaceOnDeplete),
+        replaceOnUse = replaceOnUse, replaceOnUseLower = Core.lower(replaceOnUse),
+        replaceOnCooked = replaceOnCooked, replaceOnCookedLower = Core.lower(replaceOnCooked),
+        onCooked = onCooked, onCookedLower = Core.lower(onCooked),
+        evolvedRecipe = evolvedRecipe, evolvedRecipeLower = Core.lower(evolvedRecipe),
+        evolvedRecipeName = evolvedRecipeName, evolvedRecipeNameLower = Core.lower(evolvedRecipeName),
         icon = icon, iconLower = Core.lower(icon),
         learnedRecipes = Core.listFromJavaCollection(learnedRecipes),
         skillTrained = skillTrained, skillTrainedLower = Core.lower(skillTrained),
+        lvlSkillTrained = lvlSkillTrained,
+        maxLevelTrained = maxLevelTrained,
         readType = readType, readTypeLower = Core.lower(readType), readTypeToken = normalizeToken(readType),
         worldStaticModel = worldStaticModel, worldStaticModelLower = Core.lower(worldStaticModel),
         worldObjectSprite = worldObjectSprite, worldObjectSpriteLower = Core.lower(worldObjectSprite),
         bloodClothingType = bloodClothingType, bloodClothingTypeLower = Core.lower(bloodClothingType),
         bloodClothingTypeToken = normalizeToken(bloodClothingType),
-        fluidType = fluidType, fluidCategory = fluidCategory,
+        fluidType = fluidType, fluidTypeLower = Core.lower(fluidType),
+        fluidCategory = fluidCategory,
         fluidCategoryLower = Core.lower(fluidCategory),
         fluidTypeString = fluidTypeString, fluidTypeStringLower = Core.lower(fluidTypeString),
         fluidContainerName = fluidContainerName, fluidContainerNameLower = Core.lower(fluidContainerName),
@@ -205,21 +299,69 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         canAge = Core.safeBoolean(instance or scriptItem, "canAge", false),
         canBeWrite = Core.safeBoolean(instance or scriptItem, "canBeWrite", false),
         isCantEat = Core.safeBoolean(scriptItem, "isCantEat", false),
-        customEatSound = Core.safeString(instance or scriptItem, "getCustomEatSound", ""),
-        customEatSoundLower = Core.lower(Core.safeString(instance or scriptItem, "getCustomEatSound", "")),
+        customEatSound = customEatSound,
+        customEatSoundLower = Core.lower(customEatSound),
         isMoveable = Core.startsWith(typeName, "Mov_"),
         hasWorldStaticModel = Core.safeString(scriptItem, "getWorldStaticModel", "") ~= "",
         isCookable = Core.safeBoolean(scriptItem, "isCookable", false),
         isDrainable = Core.safeBoolean(scriptItem, "isDrainable", false),
         canStoreWater = Core.safeBoolean(scriptItem, "CanStoreWater", false),
+        isDung = isDung,
         hasOpenSound = openSound ~= "", hasCloseSound = closeSound ~= "",
         hasPutInSound = putInSound ~= "", hasPourType = pourType ~= "",
         hasEatType = eatType ~= "",
+        isCannedFood = Core.safeBoolean(instance or scriptItem, { "isCannedFood", "getCannedFood" }, false),
+        isPackaged = Core.safeBoolean(instance or scriptItem, { "isPackaged", "getPackaged" }, false),
+        isFishingLure = Core.safeBoolean(instance or scriptItem, { "isFishingLure", "getFishingLure" }, false),
+        isDangerousUncooked = Core.safeBoolean(instance or scriptItem, { "isDangerousUncooked", "getDangerousUncooked" }, false),
+        isGoodHot = Core.safeBoolean(instance or scriptItem, { "isGoodHot", "getGoodHot" }, false),
         hasFluidContainer = Core.safeBoolean(scriptItem, { "isCanStoreWater", "CanStoreWater" }, false),
         instanceCreated = instance ~= nil,
         isFoodInstance = isFoodInstance,
         isInventoryItemInstance = isInventoryItemInstance,
         isLiteratureInstance = isLiteratureInstance,
+        hasFoodNutritionEvidence = hasFoodNutritionEvidence,
+        hasFoodSpoilageEvidence = hasFoodSpoilageEvidence,
+        hasFoodRecipeEvidence = hasFoodRecipeEvidence,
+        foodFacts = {
+            isFoodInstance = isFoodInstance,
+            displayCategory = displayCategory,
+            itemType = itemType,
+            lootType = lootType,
+            foodType = foodType,
+            hunger = hunger,
+            thirst = thirst,
+            calories = calories,
+            carbohydrates = carbohydrates,
+            lipids = lipids,
+            proteins = proteins,
+            daysFresh = foodDaysFresh,
+            daysRotten = foodDaysRotten,
+            isCantEat = Core.safeBoolean(scriptItem, "isCantEat", false),
+            isCookable = Core.safeBoolean(scriptItem, "isCookable", false),
+            isDung = isDung,
+            normalizedTags = normalizedTagList,
+        },
+        foodFactTrace = {
+            fullType = fullType ~= "" and fullType or (moduleName .. "." .. typeName),
+            instanceCreated = instance ~= nil,
+            isTemporary = isTemporary,
+            isFoodInstance = isFoodInstance,
+            foodType = foodType,
+            lootType = lootType,
+            eatType = eatType,
+            doubleClickRecipe = doubleClickRecipe,
+            replaceOnUse = replaceOnUse,
+            onCooked = onCooked,
+            isCannedFood = Core.safeBoolean(instance or scriptItem, { "isCannedFood", "getCannedFood" }, false),
+            isPackaged = Core.safeBoolean(instance or scriptItem, { "isPackaged", "getPackaged" }, false),
+            hasFoodNutritionEvidence = hasFoodNutritionEvidence,
+            hasFoodSpoilageEvidence = hasFoodSpoilageEvidence,
+            hasFoodRecipeEvidence = hasFoodRecipeEvidence,
+            foodDaysFresh = foodDaysFresh,
+            foodDaysRotten = foodDaysRotten,
+            isDung = isDung,
+        },
     }
 
     if isTemporary then Core.releaseTemporaryInstance(instance) end

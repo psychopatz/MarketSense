@@ -24,8 +24,8 @@ local Mapping = MarketSense.TagMapper
 Registry.SCHEMA_VERSION = 4
 Registry.FILE_SCHEMA = "DT_ITEMS_V2"
 Registry.GENERATOR_VERSION = 2
-Registry.PRICING_HEURISTIC_VERSION = 2
-Registry.SIGNATURE_VERSION = "market-sense-v3-flat-tokens"
+Registry.PRICING_HEURISTIC_VERSION = 3
+Registry.SIGNATURE_VERSION = "market-sense-v11-root-arbiter-food-pipeline"
 -- Keep DT_Items paths for compatibility with the existing DynamicTrading loader.
 Registry.ROOT_FOLDER = "DT_Items"
 Registry.INDEX_PATH = Registry.ROOT_FOLDER .. "/DT_ItemsIndex.lua"
@@ -53,7 +53,6 @@ Shared.CATEGORY_ORDER = {
     Literature = 9,
     Building = 10,
     Misc = 11,
-    Beverage = 12,
 }
 
 Shared.DESCRIPTOR_ROOTS = {
