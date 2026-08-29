@@ -112,6 +112,60 @@ def parse_properties(body: str) -> dict[str, str]:
     return result
 
 
+def _fluid_name(value: str) -> str:
+    """Extract the fluid type from a PZ ``Name:weight`` entry."""
+
+    cleaned = clean_value(value)
+    return cleaned.split(":", 1)[0].strip()
+
+
+def parse_fluid_container(body: str) -> dict[str, Any]:
+    """Read the nested FluidContainer component from an item definition.
+
+    FluidContainer is deliberately kept separate from the ordinary item
+    ``capacity`` field: the former is liters of content, while the latter is
+    normally inventory/container capacity.  Static script data describes the
+    default/available fluid; the Lua bridge turns it into a primary fluid at
+    evaluation time, matching the runtime API path.
+    """
+
+    component_match = re.search(
+        r"\b(?:component\s+)?FluidContainer\s*\{", body, re.IGNORECASE
+    )
+    if component_match is None:
+        return {}
+    closing = matching_brace(body, component_match.end() - 1)
+    if closing is None:
+        return {"fluidContainer": True}
+    component = body[component_match.end():closing]
+    scalar = normalize_properties(parse_properties(component))
+    result: dict[str, Any] = {"fluidContainer": True}
+
+    if scalar.get("capacity") is not None:
+        result["fluidCapacity"] = scalar["capacity"]
+    for source_key, result_key in (
+        ("fluidContainerName", "fluidContainerName"),
+        ("fluidPickRandom", "fluidPickRandom"),
+        ("fluidOpened", "fluidOpened"),
+    ):
+        if source_key in scalar:
+            result[result_key] = scalar[source_key]
+
+    fluid_types: list[str] = []
+    # PZ normally stores these entries inside ``Fluids { ... }``.  Reading
+    # both singular/plural assignments also covers Workshop script variants.
+    for match in re.finditer(
+        r"^\s*fluids?\s*=\s*([^\r\n]+)", component, re.IGNORECASE | re.MULTILINE
+    ):
+        for entry in re.split(r"[,;]", clean_value(match.group(1))):
+            name = _fluid_name(entry)
+            if name and name not in fluid_types:
+                fluid_types.append(name)
+    if fluid_types:
+        result["fluidTypes"] = fluid_types
+    return result
+
+
 def parse_bool(value: str) -> bool | None:
     lowered = value.casefold()
     if lowered in {"true", "yes", "1"}:
@@ -153,10 +207,12 @@ def parse_script(path: Path, mod: WorkshopMod) -> list[ItemDefinition]:
         for item_name, item_body in named_blocks(module_body, "item"):
             if not item_name or "." in item_name:
                 continue
+            props = normalize_properties(parse_properties(item_body))
+            props.update(parse_fluid_container(item_body))
             definitions.append(ItemDefinition(
                 full_type=f"{module}.{item_name}",
                 module=module,
-                props=normalize_properties(parse_properties(item_body)),
+                props=props,
                 mod=mod,
                 script_path=str(path),
             ))

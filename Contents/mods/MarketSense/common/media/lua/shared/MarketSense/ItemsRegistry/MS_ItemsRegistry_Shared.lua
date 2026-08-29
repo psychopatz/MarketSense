@@ -8,10 +8,9 @@ require "MarketSense/MS_Pricing"
 require "MarketSense/MS_Stock"
 require "MarketSense/signatures/tags/MS_TagMapper"
 
-DynamicTrading = DynamicTrading or {}
-DynamicTrading.ItemsRegistry = DynamicTrading.ItemsRegistry or {}
+MarketSense.ItemsRegistry = MarketSense.ItemsRegistry or {}
 
-Shared.Registry = DynamicTrading.ItemsRegistry
+Shared.Registry = MarketSense.ItemsRegistry
 
 local Registry = Shared.Registry
 local Core = MarketSense.Core
@@ -22,16 +21,15 @@ local Config = MarketSense.ItemRuntimeConfig
 local Mapping = MarketSense.TagMapper
 
 Registry.SCHEMA_VERSION = 4
-Registry.FILE_SCHEMA = "DT_ITEMS_V2"
+Registry.FILE_SCHEMA = "MS_ITEMS_V1"
 Registry.GENERATOR_VERSION = 2
-Registry.PRICING_HEURISTIC_VERSION = 3
-Registry.SIGNATURE_VERSION = "market-sense-v11-root-arbiter-food-pipeline"
--- Keep DT_Items paths for compatibility with the existing DynamicTrading loader.
-Registry.ROOT_FOLDER = "DT_Items"
-Registry.INDEX_PATH = Registry.ROOT_FOLDER .. "/DT_ItemsIndex.lua"
-Registry.REQUEST_PATH = Registry.ROOT_FOLDER .. "/DT_RebuildRequest.json"
-Registry.AUDIT_PATH = Registry.ROOT_FOLDER .. "/DT_PrebuildAudit.json"
-Registry.OUTPUT_HINT = "Zomboid/Lua/DT_Items/"
+Registry.PRICING_HEURISTIC_VERSION = 4
+Registry.SIGNATURE_VERSION = "market-sense-v17-melee-evidence-runtime"
+Registry.ROOT_FOLDER = "MS_Items"
+Registry.INDEX_PATH = Registry.ROOT_FOLDER .. "/MS_ItemsIndex.lua"
+Registry.REQUEST_PATH = Registry.ROOT_FOLDER .. "/MS_RebuildRequest.json"
+Registry.AUDIT_PATH = Registry.ROOT_FOLDER .. "/MS_PrebuildAudit.json"
+Registry.OUTPUT_HINT = "Zomboid/Lua/MS_Items/"
 
 Registry.state = Registry.state or {
     loaded = false,
@@ -211,22 +209,21 @@ function Shared.buildEmptyCatalog(activeState, source)
 end
 
 function Shared.log(level, message)
-    if not DynamicTrading or not DynamicTrading.Log then
-        return
+    if type(MarketSense.Log) == "function" then
+        MarketSense.Log(level, "Registry", message)
     end
-    DynamicTrading.Log("MarketSense", "Registry", tostring(level or "Info"), tostring(message or ""))
 end
 
 function Shared.debugLog(message)
-    if DynamicTrading and DynamicTrading.IsItemRuntimeDebugEnabled and DynamicTrading.IsItemRuntimeDebugEnabled() then
-        Shared.log("Info", "[debug] " .. tostring(message or ""))
+    if MarketSense.IsItemRuntimeDebugEnabled and MarketSense.IsItemRuntimeDebugEnabled() then
+        Shared.log("Debug", tostring(message or ""))
     end
 end
 
 function Shared.ensureRuntimeRules()
     local ok = pcall(require, "MarketSense/MS_RuntimeRules")
-    if ok and DynamicTrading.RuntimeRules then
-        return DynamicTrading.RuntimeRules
+    if ok and MarketSense.RuntimeRules then
+        return MarketSense.RuntimeRules
     end
     return nil
 end

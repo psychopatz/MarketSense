@@ -19,7 +19,11 @@ from .models import ItemDefinition
 from .heuristics import heuristic_coverage
 from .reporting import build_summary
 from .review import low_confidence_rows, review_row
-from .sandbox import effective_sandbox_settings, load_sandbox_option_specs
+from .sandbox import (
+    effective_sandbox_settings,
+    load_sandbox_option_specs,
+    sandbox_definition_audit,
+)
 from .tile_parser import build_tile_property_index
 from .workshop import discover_base_items, discover_items, merge_definitions
 from .workshop_paths import game_scripts_root
@@ -358,6 +362,21 @@ def evaluate(
     }
     summary["sandbox"].setdefault("requested", dict(effective_sandbox))
     summary["sandbox"]["overrides"] = dict(options.sandbox_options)
+    sandbox_audit = sandbox_definition_audit(options.game_version)
+    # Keep cached summaries and terminal output bounded.  The GUI performs a
+    # fresh full audit on demand, while the scan result carries enough context
+    # to warn without serializing every missing taxonomy option.
+    summary["sandbox"]["definitionAudit"] = {
+        key: sandbox_audit.get(key)
+        for key in (
+            "status", "declaredCount", "recommendedCount",
+            "recommendationGapCount", "generatedOptionCount",
+            "staleGeneratedCount",
+        )
+    }
+    summary["sandbox"]["definitionAudit"]["warnings"] = (
+        sandbox_audit.get("warnings") or []
+    )[:24]
     cache_status = "disabled"
     if result_cache is not None:
         cache_status = "miss" if not options.refresh_cache else "refreshed"

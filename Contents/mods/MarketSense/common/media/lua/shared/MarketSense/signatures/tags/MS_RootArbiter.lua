@@ -1,4 +1,5 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 require "MarketSense/MS_ItemSignals"
 
 MarketSense = MarketSense or {}
@@ -6,9 +7,10 @@ MarketSense.RootArbiter = MarketSense.RootArbiter or {}
 
 local RootArbiter = MarketSense.RootArbiter
 local Signals = MarketSense.ItemSignals
+local TagEvidence = MarketSense.TagEvidence
 
 local function hasTag(ctx, token)
-    return ctx and ctx.normalizedTags and ctx.normalizedTags[token] == true
+    return TagEvidence.has(ctx, token)
 end
 
 local function hasTagAlias(ctx, token)
@@ -59,6 +61,18 @@ local function staticOverride(ctx)
     return nil
 end
 
+local function liquidRoot(ctx)
+    -- A FluidContainer describes the vessel.  Only a non-empty primary fluid
+    -- is eligible for the Liquid root; empty bottles, buckets, and cans still
+    -- belong to ContainerLiquid.
+    if ctx.isActualLiquid == true
+        or (ctx.fluidTypeStringLower or "") ~= ""
+        or (ctx.fluidTypeLower or "") ~= "" then
+        return resolved("Liquid", "root_liquid")
+    end
+    return nil
+end
+
 local function materialRoot(ctx)
     local displayCategory = ctx.displayCategoryToken or ""
     local fluidCategory = ctx.fluidCategoryLower or ""
@@ -89,6 +103,13 @@ local function materialRoot(ctx)
 end
 
 local function ammoRoot(ctx)
+    -- Ammo cases are inventory containers, not ammunition. They may carry an
+    -- ammo tag, but their container type/capacity is the authoritative root.
+    -- Keep this guard before the generic ammo signals because the stage is
+    -- intentionally evaluated before containerRoot.
+    if itemTypeIs(ctx, "container") then
+        return nil
+    end
     if (ctx.displayCategoryToken or "") == "ammo"
         or (ctx.ammoTypeLower or "") ~= ""
         or (ctx.magazineTypeLower or "") ~= ""
@@ -112,8 +133,12 @@ local function medicalRoot(ctx)
 end
 
 local function foodRoot(ctx)
-    if ctx.isFluidContainer == true then
-        return resolved("Food", "root_fluid_or_beverage")
+    -- Filled fluid containers have already been claimed by liquidRoot.  Do
+    -- not let the old beverage compatibility path turn them back into Food.
+    if ctx.isActualLiquid == true
+        or (ctx.fluidTypeStringLower or "") ~= ""
+        or (ctx.fluidTypeLower or "") ~= "" then
+        return nil
     end
 
     local sig = MarketSense.Signatures and MarketSense.Signatures.Food or nil
@@ -189,6 +214,7 @@ local function containerRoot(ctx)
     if (ctx.displayCategoryToken or "") == "watercontainer"
         or itemTypeIs(ctx, "container")
         or (tonumber(ctx.capacity) or 0) > 0
+        or (ctx.isFluidContainer == true and ctx.isActualLiquid ~= true)
         or (ctx.canStoreWater == true and ctx.isFluidContainer ~= true) then
         return resolved("Container", "root_container")
     end
@@ -235,6 +261,7 @@ function RootArbiter.resolve(ctx)
 
     local stages = {
         staticOverride,
+        liquidRoot,
         materialRoot,
         ammoRoot,
         medicalRoot,

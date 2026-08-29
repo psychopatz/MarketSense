@@ -1,4 +1,4 @@
--- DynamicTrading Tag Price Additions
+-- MarketSense Tag Price Additions
 -- Flat token keys. Rewritten by refactor for market-sense-v3-flat-tokens.
 
 return {
@@ -6,6 +6,9 @@ return {
         -- Root categories
         ["Food"]           = 194,
         ["Beverage"]       = 60,
+        -- Liquid price comes from the dedicated per-litre fluid data table;
+        -- keep the taxonomy root neutral so it cannot charge for the vessel.
+        ["Liquid"]         = 0,
         ["Medical"]        = 40,
         ["Weapon"]         = 13,
         ["Tool"]           = 25,
@@ -41,9 +44,13 @@ return {
         ["FirearmShotgun"]   = 28,
         ["WeaponAxe"]        = 10,
         ["WeaponBlunt"]      = 6,
+        ["WeaponSmallBlade"] = 4,
+        ["WeaponSmallBlunt"] = 5,
         ["WeaponLongBlade"]  = 18,
         ["WeaponSpear"]      = 8,
+        ["WeaponImprovised"] = 4,
         ["WeaponCrafted"]    = 4,
+        ["WeaponUnarmed"]    = 0,
         ["Ammo"]             = 10,
         ["AmmoBox"]          = 14,
         ["AmmoMag"]          = 18,

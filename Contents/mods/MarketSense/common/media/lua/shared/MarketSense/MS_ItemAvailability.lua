@@ -8,7 +8,7 @@
 --
 -- The registry uses this module as a hard gate.  The Python application may
 -- compare its static source audit with this result, but it must not decide
--- which rows enter DynamicTrading's MasterList.
+-- which rows enter the MarketSense catalog and its optional consumer bridges.
 -- ============================================================================
 
 require "MarketSense/MS_Core"

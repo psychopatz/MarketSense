@@ -20,14 +20,13 @@ PsychopatzCore.DebugHub.RegisterTool = function(definition)
     PsychopatzCore.DebugHub.testTool = definition
     return true
 end
-DynamicTrading = {
-    GetAllKnownItems = function() return {} end,
-    ClearRuntimeCache = function() DynamicTrading.cacheCleared = true end,
-    RegenerateItemRegistry = function()
-        return { total = 2, files = { {}, {} } }
-    end,
-}
+MarketSense.GetAllKnownItems = function() return {} end
+MarketSense.ClearRuntimeCache = function() MarketSense.cacheCleared = true end
+MarketSense.RegenerateItemRegistry = function()
+    return { total = 2, files = { {}, {} } }
+end
 
+-- The GUI must consume the canonical MarketSense API directly.
 local WindowBase = {}
 function WindowBase:derive()
     local child = {}
@@ -38,7 +37,7 @@ end
 PsychopatzWindow = WindowBase
 
 package.preload["ISUI/ISTextEntryBox"] = function() return true end
-package.preload["MarketSense/MS_PublicAPI"] = function() return DynamicTrading end
+package.preload["MarketSense/MS_PublicAPI"] = function() return MarketSense end
 package.preload["PsychopatzCore/UI/PsychopatzUI"] = function() return UI end
 package.preload["PsychopatzCore/UI/PsychopatzDebugHubWindow"] = function()
     return PsychopatzCore.DebugHub
@@ -79,7 +78,7 @@ T.equal(generatedWindow.runtimeGenerationBusy, false,
     "runtime generation clears busy state")
 T.equal(type(generatedWindow.runtimeGenerationStatus), "string",
     "runtime generation reports status")
-T.equal(DynamicTrading.cacheCleared, true,
+T.equal(MarketSense.cacheCleared, true,
     "runtime generation clears stale price details")
 
 T.finish("marketsense_catalog_ui_smoke")

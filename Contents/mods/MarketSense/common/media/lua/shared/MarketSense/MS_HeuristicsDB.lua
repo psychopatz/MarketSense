@@ -33,6 +33,10 @@ DB.registerCategory("Beverage", {
     stockMultiplier = Config.categories and Config.categories.Beverage and Config.categories.Beverage.stock_multiplier or 1.15,
     minRatio = Config.categories and Config.categories.Beverage and Config.categories.Beverage.stock_min_ratio or 0.25
 })
+DB.registerCategory("Liquid", {
+    stockMultiplier = Config.categories and Config.categories.Liquid and Config.categories.Liquid.stock_multiplier or 1.0,
+    minRatio = Config.categories and Config.categories.Liquid and Config.categories.Liquid.stock_min_ratio or 0.15
+})
 DB.registerCategory("Weapon", {
     stockMultiplier = Config.categories and Config.categories.Weapon and Config.categories.Weapon.stock_multiplier or 0.80,
     minRatio = Config.categories and Config.categories.Weapon and Config.categories.Weapon.stock_min_ratio or 0.05

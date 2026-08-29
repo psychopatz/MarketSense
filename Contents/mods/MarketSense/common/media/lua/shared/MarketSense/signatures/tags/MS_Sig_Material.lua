@@ -1,10 +1,12 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 -- These are semantic buckets for MarketSense and future consumers. They do
 -- not change the native Project Zomboid item category.
@@ -27,7 +29,7 @@ local MAT_TAG_MAP = {
 }
 
 local function hasTag(ctx, token)
-    return ctx.normalizedTags and ctx.normalizedTags[token] == true
+    return TagEvidence.has(ctx, token)
 end
 
 local function hasTagAlias(ctx, token)
@@ -96,10 +98,9 @@ function Signature.match(ctx)
         return { matched = false, confidence = 0 }
     end
 
-    for token, category in pairs(MAT_TAG_MAP) do
-        if hasTagAlias(ctx, token) then
-            return materialResult(category, 0.90, "material_tag_" .. token)
-        end
+    local token, category = TagEvidence.best(ctx, MAT_TAG_MAP)
+    if token then
+        return materialResult(category, 0.90, "material_tag_" .. token)
     end
 
     local text = evidenceText(ctx)

@@ -1,8 +1,15 @@
 MarketSense = MarketSense or {}
 MarketSense.Config = MarketSense.Config or {}
 
+MarketSense.Log = MarketSense.Log or function(level, subsystem, message)
+    if type(print) == "function" then
+        print("[MarketSense][" .. tostring(level or "Info") .. "]["
+            .. tostring(subsystem or "Runtime") .. "] " .. tostring(message or ""))
+    end
+end
+
 local rootConfig = MarketSense.Config
-rootConfig.DynamicItemRuntime = rootConfig.DynamicItemRuntime or {}
+rootConfig.Runtime = rootConfig.Runtime or {}
 
 local defaults = {
     debug = false,
@@ -30,7 +37,7 @@ local defaults = {
     }
 }
 
-local runtime = rootConfig.DynamicItemRuntime
+local runtime = rootConfig.Runtime
 
 local function mergeDefaults(target, source)
     for key, value in pairs(source) do
@@ -53,7 +60,7 @@ local function getSandboxVarsTable()
 end
 
 function MarketSense.Config.reloadExported()
-    local ok, exported = pcall(require, "DT/MarketSense/Pricing/MS_PricingConfig_Data")
+    local ok, exported = pcall(require, "MarketSense/Pricing/MS_PricingConfig_Data")
     if ok and type(exported) == "table" then
         if exported.global then
             runtime.pricing.minPrice = exported.global.min_price or runtime.pricing.minPrice
@@ -160,12 +167,7 @@ MarketSense.Config.reloadExported()
 MarketSense.Config.applySandboxOptions()
 
 MarketSense.ItemRuntimeConfig = runtime
-
--- DynamicTrading compatibility alias (for DT framework checks)
-DynamicTrading = DynamicTrading or {}
-DynamicTrading.ItemRuntimeConfig = MarketSense.ItemRuntimeConfig
-
-function DynamicTrading.IsItemRuntimeDebugEnabled()
+function MarketSense.IsItemRuntimeDebugEnabled()
     return MarketSense.ItemRuntimeConfig
         and MarketSense.ItemRuntimeConfig.debug == true
 end

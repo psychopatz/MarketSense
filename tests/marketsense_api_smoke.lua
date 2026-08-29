@@ -36,29 +36,77 @@ _G.instanceof = function(_, className)
 end
 _G.instanceItem = function(_) return inventoryItem end
 
+local weaponScriptItem = {
+    fullName = "Base.HarnessSpear",
+}
+function weaponScriptItem:getFullName() return self.fullName end
+function weaponScriptItem:getModuleName() return "Base" end
+function weaponScriptItem:getName() return "HarnessSpear" end
+function weaponScriptItem:getDisplayCategory() return "Weapon" end
+function weaponScriptItem:getItemType() return "base:weapon" end
+function weaponScriptItem:getDisplayName() return "Harness Spear" end
+function weaponScriptItem:getWeaponCategories() return { "base:spear", "base:improvised" } end
+function weaponScriptItem:getMinDamage() return 1 end
+function weaponScriptItem:getMaxDamage() return 2 end
+function weaponScriptItem:getMaxRange() return 1.5 end
+function weaponScriptItem:getMaxHitCount() return 2 end
+function weaponScriptItem:getConditionMax() return 100 end
+function weaponScriptItem:getActualWeight() return 1.2 end
+function weaponScriptItem:getTooltip() return "a crafted spear" end
+
 local scriptManager = {}
 function scriptManager:FindItem(fullType)
     if fullType == scriptItem.fullName then
         return scriptItem
     end
+    if fullType == "Base.HarnessSpear" then
+        return weaponScriptItem
+    end
 end
 _G.getScriptManager = function() return scriptManager end
 
-_G.DynamicTrading = {
-    Log = function() end,
-}
+local function weaponInstance(condition)
+    local item = {}
+    function item:getCondition() return condition end
+    function item:getConditionMax() return 100 end
+    function item:getActualWeight() return 1.2 end
+    function item:Remove() end
+    return item
+end
 
 local api = assert(require "MarketSense/MS_PublicAPI")
+T.equal(api, MarketSense, "canonical public API is MarketSense")
+MarketSense.Config.MasterList = {
+    ["Base.HarnessRegistryItem"] = {
+        fullType = "Base.HarnessRegistryItem",
+    },
+}
+T.truthy(MarketSense.Config.MasterList["Base.HarnessRegistryItem"],
+    "MarketSense owns the canonical master list")
+T.truthy(api.GetPriceDetails(scriptItem.fullName),
+    "MarketSense evaluator works as a standalone mod")
 local propertyReader = assert(MarketSense.PropertyReader)
 local registry = assert(MarketSense.ItemsRegistry)
 
 T.truthy(api.ApplyRuntimeRule({
     overridesById = {
-        [scriptItem.fullName] = { price = 77 },
+        [scriptItem.fullName] = {
+            price = 77,
+            tags = { "FoodNonPerishableCanned" },
+            stock = { min = 2, max = 4 },
+        },
     },
 }), "fresh public runtime-rule API")
 T.equal(api.GetRuntimeRules().overridesById[scriptItem.fullName].price, 77,
-    "public runtime-rule API applies overrides")
+    "public runtime-rule API applies exact price override")
+T.truthy(api.ApplyRuntimeRule({
+    blacklist = { "Base.HarnessBlocked" },
+    whitelist = { "Base.HarnessWhitelistWins" },
+}), "public blacklist and whitelist API")
+T.truthy(MarketSense.RuntimeRules.isBlacklisted("Base.HarnessBlocked"),
+    "blacklist blocks an exact item")
+T.falsy(MarketSense.RuntimeRules.isBlacklisted("Base.HarnessWhitelistWins"),
+    "whitelist takes precedence over blacklist decisions")
 
 local context = propertyReader.buildContext(scriptItem, inventoryItem)
 T.equal(context.itemType, "Food", "PZ Item.getItemType is read")
@@ -70,7 +118,9 @@ T.equal(context.conditionMax, 99, "live condition overrides script condition")
 local details = assert(api.GetPriceDetails(scriptItem.fullName, true))
 T.equal(details.category, "Food", "food root")
 T.equal(details.primary, "FoodNonPerishableCanned", "description drives canned subtype")
-T.truthy(details.price > 0, "generated price")
+T.equal(details.price, 77, "exact item price override is authoritative")
+T.equal(details.stock.min, 2, "item stock override minimum")
+T.equal(details.stock.max, 4, "item stock override maximum")
 T.equal(type(details.balanceAudit), "table", "audit is present")
 
 local debugDetails = assert(api.DebugItem(scriptItem.fullName, false))
@@ -89,6 +139,23 @@ T.equal(type(withAudit.balanceAudit), "table", "audit cache miss is repaired")
 
 T.falsy(api.GetPriceDetails(nil), "invalid full type is rejected")
 T.equal(type(api.IsItemRuntimeDebugEnabled()), "boolean", "debug API is boolean")
+
+local fullCondition = assert(api.GetPriceDetailsForInstance(
+    weaponScriptItem.fullName, weaponInstance(100), true
+))
+local halfCondition = assert(api.GetPriceDetailsForInstance(
+    weaponScriptItem.fullName, weaponInstance(50), true
+))
+local brokenCondition = assert(api.GetPriceDetailsForInstance(
+    weaponScriptItem.fullName, weaponInstance(0), true
+))
+T.equal(fullCondition.primary, "WeaponSpear", "instance pricing keeps spear leaf")
+T.equal(fullCondition.weaponEvidence.mechanicalClass, "WeaponSpear", "instance exposes melee evidence")
+T.equal(fullCondition.priceHeuristic.model, "weapon_melee_v1", "melee pricing model is exposed")
+T.truthy(fullCondition.price > halfCondition.price, "condition curve lowers half-condition price")
+T.truthy(halfCondition.price > brokenCondition.price, "condition curve lowers broken price")
+T.equal(fullCondition.priceHeuristic.conditionRatio, 1, "full condition ratio is visible")
+T.equal(halfCondition.priceHeuristic.conditionRatio, 0.5, "half condition ratio is visible")
 
 registry.state.catalog = {
     items = {

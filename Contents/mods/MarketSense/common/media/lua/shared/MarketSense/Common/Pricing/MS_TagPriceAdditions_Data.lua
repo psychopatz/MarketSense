@@ -1,12 +1,14 @@
--- DynamicTrading Tag Price Additions
--- Compatibility export for DynamicTrading. Canonical data lives at
--- DT/MarketSense/Pricing/MS_TagPriceAdditions_Data.lua and uses flat keys.
+-- MarketSense Tag Price Additions
+-- Flat token additions used by the standalone MarketSense runtime.
 
 return {
     tagAdditions = {
         -- Root categories
         ["Food"]           = 194,
         ["Beverage"]       = 60,
+        -- Liquid price comes from the dedicated per-litre fluid data table;
+        -- keep the taxonomy root neutral so it cannot charge for the vessel.
+        ["Liquid"]         = 0,
         ["Medical"]        = 40,
         ["Weapon"]         = 13,
         ["Tool"]           = 25,
@@ -42,9 +44,13 @@ return {
         ["FirearmShotgun"]   = 28,
         ["WeaponAxe"]        = 10,
         ["WeaponBlunt"]      = 6,
+        ["WeaponSmallBlade"] = 4,
+        ["WeaponSmallBlunt"] = 5,
         ["WeaponLongBlade"]  = 18,
         ["WeaponSpear"]      = 8,
+        ["WeaponImprovised"] = 4,
         ["WeaponCrafted"]    = 4,
+        ["WeaponUnarmed"]    = 0,
         ["Ammo"]             = 10,
         ["AmmoBox"]          = 14,
         ["AmmoMag"]          = 18,

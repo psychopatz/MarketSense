@@ -2,11 +2,13 @@ local T = require "tests/support/test"
 T.addPackagePaths()
 
 _G.unpack = _G.unpack or table.unpack
-_G.DynamicTrading = { Log = function() end }
-
 local runtimeRules = assert(T.load("MarketSense/MS_RuntimeRules.lua"))
 local shared = assert(T.load("MarketSense/ItemsRegistry/MS_ItemsRegistry_Shared.lua"))
 local availability = assert(T.load("MarketSense/MS_ItemAvailability.lua"))
+local build = assert(T.load("MarketSense/ItemsRegistry/MS_ItemsRegistry_Build.lua"))
+
+T.equal(shared.Registry.FILE_SCHEMA, "MS_ITEMS_V1", "standalone cache schema")
+T.equal(shared.Registry.ROOT_FOLDER, "MS_Items", "standalone cache folder")
 
 T.truthy(runtimeRules.apply({
     overridesById = {
@@ -17,6 +19,32 @@ local override = assert(runtimeRules.getOverride("Base.HarnessRule"))
 T.equal(override.price, 42, "runtime price override")
 T.equal(override.stock.min, 2, "runtime stock override")
 T.equal(override.stock.max, 5, "runtime stock override max")
+
+T.truthy(runtimeRules.apply({
+    overridesById = {
+        ["Base.HarnessMinPrice"] = { minPrice = 42 },
+    },
+}), "runtime minimum-price override application")
+T.equal(runtimeRules.getOverride("Base.HarnessMinPrice").minPrice, 42,
+    "minimum-price override survives normalization")
+
+local generated = build.applyRuntimeOverride("Base.HarnessGenerated", {
+    basePrice = 12,
+    tags = { "Misc" },
+    stockRange = { min = 0, max = 10 },
+}, {
+    getOverride = function()
+        return {
+            price = 88,
+            tags = { "ToolCraft" },
+            stock = { min = 2, max = 3 },
+        }
+    end,
+})
+T.equal(generated.basePrice, 88, "generated cache exact price override")
+T.equal(generated.tags[1], "ToolCraft", "generated cache tag override")
+T.equal(generated.stockRange.min, 2, "generated cache stock minimum")
+T.equal(generated.stockRange.max, 3, "generated cache stock maximum")
 
 local empty = shared.buildEmptyCatalog({ activeModsHash = "test" }, "harness")
 T.equal(type(empty.items), "table", "empty catalog has item map")

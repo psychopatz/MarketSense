@@ -1,4 +1,5 @@
 require "MarketSense/MS_Stock"
+require "MarketSense/Pricing/MS_FluidPricing"
 
 MarketSense = MarketSense or {}
 MarketSense.Pricing = MarketSense.Pricing or {}
@@ -8,12 +9,50 @@ local Core     = MarketSense.Core
 local TagUtils = MarketSense.TagUtils
 local DB       = MarketSense.HeuristicsDB
 local Config   = MarketSense.ItemRuntimeConfig
+local FluidPricing = MarketSense.FluidPricing
 
 local CATEGORY_BASE_SCORES = {
     Food = 7, Beverage = 8, Medical = 18, Weapon = 18, Tool = 14,
     Container = 14, Clothing = 4, Electronics = 14, Resource = 7,
-    Building = 5, Misc = 2,
+    Building = 5, Liquid = 0, Misc = 2,
 }
+
+-- Melee is intentionally anchored by mechanical family before any future
+-- market-role overlay is applied. These are relative multipliers, not hard
+-- coded prices: damage, reach, hit count, durability, weight, and sandbox
+-- settings still determine the final result.
+local DEFAULT_MELEE_SUBTYPE_MULTIPLIERS = {
+    WeaponImprovised = 0.72,
+    WeaponCrafted    = 0.72, -- legacy token accepted for existing overrides
+    WeaponUnarmed    = 0.35,
+    WeaponSmallBlade = 0.86,
+    WeaponSmallBlunt = 0.92,
+    WeaponBlunt      = 1.00,
+    WeaponSpear      = 1.03,
+    WeaponAxe        = 1.08,
+    WeaponLongBlade  = 1.22,
+}
+
+local function clamp(value, minimum, maximum)
+    return math.max(minimum, math.min(maximum, value))
+end
+
+local function configuredMeleeMultiplier(cc, subtype)
+    local configured = cc.melee_subtype_multipliers
+    local value = type(configured) == "table" and configured[subtype] or nil
+    if value == nil then value = DEFAULT_MELEE_SUBTYPE_MULTIPLIERS[subtype] end
+    return clamp(tonumber(value) or 1.0, 0.35, 1.50)
+end
+
+local function conditionMultiplier(ctx, cc)
+    if ctx.hasRuntimeState ~= true or ctx.hasRuntimeCondition ~= true
+        or ctx.conditionRatio == nil then
+        return 1.0
+    end
+    local floor = clamp(tonumber(cc.condition_floor) or 0.35, 0.10, 0.80)
+    local curve = math.max(0.10, tonumber(cc.condition_curve) or 0.65)
+    return clamp(floor + ((1.0 - floor) * (ctx.conditionRatio ^ curve)), floor, 1.0)
+end
 
 local function addAudit(audit, label, before, after, extra)
     if not audit then return end
@@ -79,6 +118,11 @@ function Pricing.calculateRawScore(ctx, details)
         score = base + ((ctx.thirst or 0) * (cc.thirst_weight or 90)) - weightPenalty
         if hasTag(details, "BeverageAlcohol") then score = score + (cc.alcohol_bonus or 12) end
 
+    elseif category == "Liquid" then
+        -- The vessel is deliberately excluded.  Only the primary fluid's
+        -- measured volume contributes to the content value.
+        score = FluidPricing.calculate(ctx, details)
+
     elseif category == "Medical" then
         score = base + 12 - weightPenalty
         if hasTag(details, "FirstAid")  then score = score + 16 end
@@ -86,12 +130,23 @@ function Pricing.calculateRawScore(ctx, details)
 
     elseif category == "Weapon" then
         local avgDamage = ((ctx.minDamage or 0) + (ctx.maxDamage or 0)) * 0.5
+        local mechanicalClass = details.weaponEvidence and details.weaponEvidence.mechanicalClass
+            or details.primary or "Weapon"
+        local meleeMultiplier = configuredMeleeMultiplier(cc, mechanicalClass)
+        local isMelee = DEFAULT_MELEE_SUBTYPE_MULTIPLIERS[mechanicalClass] ~= nil
         score = base
             + (avgDamage * (cc.damage_weight or 28))
             + ((ctx.maxRange  or 0) * (cc.range_weight      or 4))
             + ((ctx.maxHit    or 1) * (cc.multi_hit_weight  or 10))
             + ((ctx.conditionMax or 0) * (cc.durability_weight or 2.2))
             - weightPenalty
+        local preStateScore = score
+        if isMelee then
+            score = score * meleeMultiplier
+            if ctx.isTwoHandWeapon == true then
+                score = score + (cc.two_handed_bonus or 12)
+            end
+        end
         if hasTag(details, "Ammo") then
             score = base + ((ctx.conditionMax or 0) * (cc.reliability_weight or 0.6)) + (cc.ammo_base or 10)
         elseif hasTag(details, "Firearm") then
@@ -101,6 +156,32 @@ function Pricing.calculateRawScore(ctx, details)
         elseif hasTag(details, "WeaponPart") then
             score = score + 20
         end
+
+        local stateMult = isMelee and conditionMultiplier(ctx, cc) or 1.0
+        local preConditionScore = score
+        if isMelee then score = score * stateMult end
+        details.priceHeuristic = {
+            model = isMelee and "weapon_melee_v1" or "weapon_v1",
+            mechanicalClass = mechanicalClass,
+            mechanicalFamily = isMelee and "Melee" or "Weapon",
+            averageDamage = avgDamage,
+            range = ctx.maxRange or 0,
+            maxHitCount = ctx.maxHit or 1,
+            conditionMax = ctx.conditionMax or 0,
+            condition = ctx.condition,
+            conditionRatio = ctx.conditionRatio,
+            hasRuntimeState = ctx.hasRuntimeState == true,
+            hasRuntimeCondition = ctx.hasRuntimeCondition == true,
+            subtypeMultiplier = isMelee and meleeMultiplier or 1.0,
+            conditionMultiplier = stateMult,
+            twoHanded = ctx.isTwoHandWeapon == true,
+            preStateScore = preStateScore,
+            preConditionScore = preConditionScore,
+            score = score,
+            unavailableRuntimeMetrics = {
+                "swingTime", "criticalChance", "knockdown", "pushback",
+            },
+        }
 
     elseif category == "Tool" then
         local durabilityWeight = (ctx.conditionMax or 0) * (ctx.useDelta and ctx.useDelta > 0 and 18 or 8)
@@ -161,14 +242,34 @@ end
 function Pricing.applyBalances(ctx, details, audit)
     local working = tonumber(details.rawScore or 0) or 0
     addAudit(audit, "raw score", working, working)
+    if details.priceHeuristic then
+        addAudit(audit, tostring(details.priceHeuristic.model or "content") .. " heuristic",
+            details.priceHeuristic.preConditionScore or working, working, {
+                model = details.priceHeuristic.model,
+                mechanicalClass = details.priceHeuristic.mechanicalClass,
+                subtypeMultiplier = details.priceHeuristic.subtypeMultiplier,
+                conditionMultiplier = details.priceHeuristic.conditionMultiplier,
+                pricePerLiter = details.priceHeuristic.pricePerLiter,
+                volume = details.priceHeuristic.volume,
+                contentValue = details.priceHeuristic.contentValue,
+            })
+    end
 
     local beforeSandbox = working
     local sandboxAdd = Config.pricing.globalValue or 0
     if Config.getSandboxTagMultiplier then
         local tags = { details.primary }
-        for _, t in ipairs(details.tags or {}) do
-            if string.find(t, ".", 1, true) then
-                tags[#tags + 1] = t
+        -- Liquid content has its own per-litre anchor.  Do not inherit
+        -- generic item descriptor additions (for example Rarity.Common),
+        -- because those additions describe the vessel/item and would turn
+        -- Water at $5/L into a different price merely because it is in a
+        -- bottle or can.  A future Liquid.* sandbox override can still use
+        -- the primary liquid token above.
+        if details.category ~= "Liquid" then
+            for _, t in ipairs(details.tags or {}) do
+                if string.find(t, ".", 1, true) then
+                    tags[#tags + 1] = t
+                end
             end
         end
         sandboxAdd = sandboxAdd + Config.getSandboxTagMultiplier("Price", tags)
@@ -180,9 +281,17 @@ function Pricing.applyBalances(ctx, details, audit)
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
 
-    working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
-    for _, tag in ipairs(details.expandedTags or details.tags or {}) do
-        working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
+    if details.category ~= "Liquid" then
+        working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
+        for _, tag in ipairs(details.expandedTags or details.tags or {}) do
+            working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
+        end
+    else
+        addAudit(audit, "liquid vessel-neutral balance", working, working, {
+            fluidType = details.priceHeuristic and details.priceHeuristic.fluidType,
+            pricePerLiter = details.priceHeuristic and details.priceHeuristic.pricePerLiter,
+            volume = details.priceHeuristic and details.priceHeuristic.volume,
+        })
     end
     working = applyAdjustment(working, DB.getModule(ctx.moduleName), "module:" .. tostring(ctx.moduleName), audit)
 
@@ -241,9 +350,15 @@ local function applyTagOverrideIfPresent(ctx, details)
     return itemEntry
 end
 
-function Pricing.calculateDetails(fullTypeOrContext, withAudit)
-    local ctx = type(fullTypeOrContext) == "table" and fullTypeOrContext.fullType
-        and fullTypeOrContext or MarketSense.PropertyReader.buildContext(fullTypeOrContext)
+function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem)
+    local ctx
+    if type(fullTypeOrContext) == "table" and fullTypeOrContext.fullType and inventoryItem == nil then
+        ctx = fullTypeOrContext
+    elseif type(fullTypeOrContext) == "table" and fullTypeOrContext.fullType then
+        ctx = MarketSense.PropertyReader.buildContext(fullTypeOrContext.item or fullTypeOrContext.fullType, inventoryItem)
+    else
+        ctx = MarketSense.PropertyReader.buildContext(fullTypeOrContext, inventoryItem)
+    end
     local tagInfo = MarketSense.AutoTag.generate(ctx)
 
     local details = {
@@ -251,6 +366,8 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit)
         sourceModId = ctx.sourceModId, sourceModName = ctx.sourceModName,
         category = tagInfo.category, primary = tagInfo.primary,
         tags = Core.deepCopy(tagInfo.tags), expandedTags = Core.deepCopy(tagInfo.expandedTags),
+        classificationDetails = Core.deepCopy(tagInfo.details or {}),
+        weaponEvidence = Core.deepCopy((tagInfo.details or {}).weaponEvidence),
         confidence = tagInfo.confidence, rawScore = 0, price = 0, stock = nil, source = "lazy",
     }
 

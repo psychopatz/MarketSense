@@ -47,7 +47,7 @@ function Registry.get(fullType)
         return nil
     end
 
-    local masterList = DynamicTrading.Config and DynamicTrading.Config.MasterList
+    local masterList = MarketSense.Config and MarketSense.Config.MasterList
     if type(masterList) == "table" and type(masterList[fullType]) == "table" then
         return MarketSense.Core.deepCopy(masterList[fullType])
     end
@@ -66,7 +66,7 @@ function Registry.getAllKnown()
         return MarketSense.Core.deepCopy(catalog.items)
     end
 
-    local masterList = DynamicTrading.Config and DynamicTrading.Config.MasterList
+    local masterList = MarketSense.Config and MarketSense.Config.MasterList
     if type(masterList) == "table" then
         return MarketSense.Core.deepCopy(masterList)
     end

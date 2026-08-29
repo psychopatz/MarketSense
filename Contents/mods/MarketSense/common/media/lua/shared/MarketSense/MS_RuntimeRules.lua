@@ -1,12 +1,7 @@
 require "MarketSense/MS_HeuristicsDB"
 
--- Data module paths inside the mod (common/media/lua/shared/):
---   DT/MarketSense/Items/MS_RuntimeRules_Data.lua
---   DT/Common/Pricing/DT_TagPriceAdditions_Data.lua
--- Written by DynamicTrading ModManager. Do not hand-edit while manager is running.
-local DATA_MODULE = "DT/MarketSense/Items/MS_RuntimeRules_Data"
-local TAG_DATA_MODULE = "DT/Common/Pricing/DT_TagPriceAdditions_Data"
-local LEGACY_TAG_DATA_MODULE = "DT/MarketSense/Pricing/MS_TagPriceAdditions_Data"
+local DATA_MODULE = "MarketSense/Items/MS_RuntimeRules_Data"
+local TAG_DATA_MODULE = "MarketSense/Common/Pricing/MS_TagPriceAdditions_Data"
 
 local function cloneMap(source)
     local out = {}
@@ -24,7 +19,6 @@ local function cloneMap(source)
     return out
 end
 
-DynamicTrading = DynamicTrading or {}
 MarketSense.RuntimeRules = MarketSense.RuntimeRules or {
     loaded = false,
     blacklist = {},
@@ -74,6 +68,11 @@ local function normalizeOverride(entry)
     end
     if type(entry.mult) == "number" then
         override.mult = entry.mult
+    end
+    if type(entry.minPrice) == "number" then
+        override.minPrice = entry.minPrice
+    elseif type(entry.min) == "number" then
+        override.min = entry.min
     end
 
     if type(entry.tags) == "table" and #entry.tags > 0 then
@@ -223,9 +222,6 @@ function RuntimeRules.loadFromFile(force)
 
     -- Tag additions exported from ModManager Tag Pricing page.
     local okTags, tagData = pcall(require, TAG_DATA_MODULE)
-    if (not okTags or type(tagData) ~= "table") then
-        okTags, tagData = pcall(require, LEGACY_TAG_DATA_MODULE)
-    end
     if okTags and type(tagData) == "table" then
         for tag, addition in pairs(tagData.tagAdditions or {}) do
             local numeric = tonumber(addition)

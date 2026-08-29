@@ -1,10 +1,12 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local CUTLERY_TAGS = {
     fork = true, spoon = true, chopsticks = true, cutlery = true,
@@ -17,14 +19,12 @@ local UTENSIL_TAGS = {
 }
 
 local function hasTag(ctx, token)
-    return ctx.normalizedTags and ctx.normalizedTags[token] == true
+    return TagEvidence.has(ctx, token)
 end
 
 local function anyTag(ctx, map)
-    for token, _ in pairs(map) do
-        if hasTag(ctx, token) then return token end
-    end
-    return nil
+    local token = TagEvidence.best(ctx, map)
+    return token
 end
 
 local function contains(text, token)
@@ -43,9 +43,13 @@ function Signature.match(ctx)
     local search = id .. " " .. name .. " " .. (ctx.descriptionLower or "")
         .. " " .. (ctx.iconLower or "")
     local cookingDisplay = disp == "cooking" or disp == "cookingweapon"
+    local tag = anyTag(ctx, CUTLERY_TAGS)
+    if not tag then
+        tag = anyTag(ctx, UTENSIL_TAGS)
+    end
 
     if not cookingDisplay and not ctx.isCookable then
-        if not contains(search, "pan") and not contains(search, "pot")
+        if not tag and not contains(search, "pan") and not contains(search, "pot")
             and not contains(search, "cup") and not contains(search, "mug")
             and not contains(search, "glass") and not contains(search, "spoon")
             and not contains(search, "fork") and not contains(search, "tongs")
@@ -55,7 +59,7 @@ function Signature.match(ctx)
         end
     end
 
-    local tag = anyTag(ctx, CUTLERY_TAGS)
+    tag = anyTag(ctx, CUTLERY_TAGS)
     if tag then
         return TagMapper.makeResult("CookingCutlery", 0.93, { source = "cooking_cutlery", tag = tag })
     end

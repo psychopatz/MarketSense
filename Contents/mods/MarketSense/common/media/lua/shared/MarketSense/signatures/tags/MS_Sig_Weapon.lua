@@ -1,10 +1,12 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local WEAPON_COMBO_CATS = {
     animalpart=true, cooking=true, firstaid=true, fishing=true,
@@ -23,14 +25,7 @@ local function itemTypeIs(ctx, ...)
 end
 
 local function hasTag(ctx, token)
-    if not ctx or not ctx.normalizedTags then
-        return false
-    end
-    -- Vanilla item scripts commonly expose tags as Base:<tag>. The
-    -- PropertyReader keeps the namespace in the normalized key, while the
-    -- signatures use the short gameplay token.
-    return ctx.normalizedTags[token] == true
-        or ctx.normalizedTags["base" .. token] == true
+    return TagEvidence.has(ctx, token)
 end
 
 local function idContains(ctx, sub)
@@ -61,6 +56,12 @@ function Signature.match(ctx)
         return TagMapper.makeResult("WeaponPart", 0.94, { source = "weapon_part_type" })
     end
     if not itemTypeIs(ctx, "weapon") then return { matched = false, confidence = 0 } end
+    -- BareHands intentionally has no maintenance XP but is still an
+    -- explicit native weapon category. Handle it before the generic
+    -- maintenance-XP exclusion so it gets its own melee leaf.
+    if weaponCatIs(ctx, "Unarmed") then
+        return TagMapper.makeResult("WeaponUnarmed", 0.96, { source = "weapon_melee_unarmed" })
+    end
     if hasTag(ctx, "nomaintenancexp") then return { matched = false, confidence = 0 } end
 
     -- Firearm
@@ -87,7 +88,7 @@ function Signature.match(ctx)
     elseif weaponCatIs(ctx, "SmallBlade") then cat = "WeaponSmallBlade"
     elseif weaponCatIs(ctx, "LongBlade") then cat = "WeaponLongBlade"
     elseif weaponCatIs(ctx, "Spear") then cat = "WeaponSpear"
-    elseif weaponCatIs(ctx, "Improvised") then cat = "WeaponCrafted"
+    elseif weaponCatIs(ctx, "Improvised") then cat = "WeaponImprovised"
     end
 
     if cat then

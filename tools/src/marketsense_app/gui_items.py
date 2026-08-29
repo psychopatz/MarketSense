@@ -5,6 +5,16 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from .lua_rules import (
+    RUNTIME_RULES_PATH,
+    RuntimeRuleError,
+    load_rules,
+    remove_all_item_rules,
+    remove_item_override,
+    save_rules,
+    set_item_override,
+    set_membership_rule,
+)
 from .review import review_row, searchable_text
 
 
@@ -83,6 +93,7 @@ class ItemsMixin:
         self.item_tree.bind(
             "<<TreeviewSelect>>", lambda _event: self._show_item_details()
         )
+        self.item_tree.bind("<Button-3>", self._show_item_context_menu)
         self.ttk.Label(
             frame, text="Selected item runtime evidence"
         ).pack(anchor="w", pady=(6, 2))
@@ -268,3 +279,227 @@ class ItemsMixin:
         self.item_detail.delete("1.0", "end")
         self.item_detail.insert("end", detail)
         self.item_detail.configure(state="disabled")
+
+    def _show_item_context_menu(self, event: Any) -> str:
+        """Open the MarketSense rule editor for a leaf item row."""
+
+        item_iid = self.item_tree.identify_row(event.y)
+        row = self.item_row_by_iid.get(item_iid)
+        if row is None:
+            return "break"
+        if self.busy:
+            self.status_var.set("Finish the current scan before editing runtime rules.")
+            return "break"
+
+        self.item_tree.selection_set(item_iid)
+        self.item_tree.focus(item_iid)
+        item_id = str(row.get("fullType") or "").strip()
+        if not item_id:
+            return "break"
+
+        menu = self.tk.Menu(self.root, tearoff=False)
+        menu.add_command(
+            label="Blacklist this item",
+            command=lambda: self._edit_item_membership(item_id, "blacklist"),
+        )
+        menu.add_command(
+            label="Whitelist this item",
+            command=lambda: self._edit_item_membership(item_id, "whitelist"),
+        )
+        menu.add_command(
+            label="Clear blacklist / whitelist status",
+            command=lambda: self._edit_item_membership(item_id, None),
+        )
+        menu.add_separator()
+        menu.add_command(
+            label="Set exact price…",
+            command=lambda: self._edit_item_price(item_id, row),
+        )
+        menu.add_command(
+            label="Set exact tags…",
+            command=lambda: self._edit_item_tags(item_id, row),
+        )
+        menu.add_command(
+            label="Set stock range…",
+            command=lambda: self._edit_item_stock(item_id, row),
+        )
+        menu.add_command(
+            label="Remove item override",
+            command=lambda: self._remove_item_override(item_id),
+        )
+        menu.add_command(
+            label="Clear all MarketSense rules for item",
+            command=lambda: self._clear_item_rules(item_id),
+        )
+        menu.add_separator()
+        menu.add_command(
+            label=f"Edit: {RUNTIME_RULES_PATH.name}",
+            command=lambda: self._show_rule_file_location(),
+        )
+        menu.tk_popup(event.x_root, event.y_root)
+        menu.grab_release()
+        return "break"
+
+    def _show_rule_file_location(self) -> None:
+        self.status_var.set(f"MarketSense runtime rules: {RUNTIME_RULES_PATH}")
+        self._append_log(
+            f"Runtime-rule file: {RUNTIME_RULES_PATH}\n"
+            "GUI edits are written as standalone MarketSense Lua data."
+        )
+
+    def _load_rules_for_edit(self) -> dict[str, Any] | None:
+        try:
+            return load_rules()
+        except RuntimeError as error:
+            self.messagebox.showerror("Read MarketSense runtime rules", str(error))
+            return None
+
+    def _save_rules_after_edit(
+        self,
+        rules: dict[str, Any],
+        item_id: str,
+        action: str,
+    ) -> None:
+        try:
+            path = save_rules(rules)
+        except (OSError, RuntimeRuleError) as error:
+            self.messagebox.showerror("Save MarketSense runtime rules", str(error))
+            return
+        self.status_var.set(f"{action} saved; rescanning with the updated Lua rules…")
+        self._append_log(
+            json.dumps(
+                {
+                    "event": "runtime_rule_saved",
+                    "action": action,
+                    "item": item_id,
+                    "path": str(path),
+                    "note": "cache invalidated by the rule-file manifest; rescan started",
+                },
+                indent=2,
+            )
+        )
+        self._rescan_after_rule_edit(item_id)
+
+    def _edit_item_membership(
+        self, item_id: str, membership: str | None
+    ) -> None:
+        rules = self._load_rules_for_edit()
+        if rules is None:
+            return
+        set_membership_rule(rules, item_id, membership)
+        action = {
+            "blacklist": "Blacklist",
+            "whitelist": "Whitelist",
+            None: "Membership cleared",
+        }[membership]
+        self._save_rules_after_edit(rules, item_id, action)
+
+    def _item_override(self, rules: dict[str, Any], item_id: str) -> dict[str, Any]:
+        return next(
+            (
+                entry for entry in rules.get("overrides", [])
+                if entry.get("id") == item_id
+            ),
+            {},
+        )
+
+    def _edit_item_price(self, item_id: str, row: dict[str, Any]) -> None:
+        rules = self._load_rules_for_edit()
+        if rules is None:
+            return
+        existing = self._item_override(rules, item_id)
+        current = existing.get("price", row.get("price"))
+        try:
+            current_value = int(float(current)) if current not in (None, "") else 0
+        except (TypeError, ValueError):
+            current_value = 0
+        value = self.simpledialog.askinteger(
+            "MarketSense exact price",
+            f"Exact price for {item_id}:\n(blank/cancel leaves the file unchanged)",
+            initialvalue=max(0, current_value),
+            minvalue=0,
+            parent=self.root,
+        )
+        if value is None:
+            return
+        set_item_override(rules, item_id, price=value)
+        self._save_rules_after_edit(rules, item_id, "Exact price")
+
+    def _edit_item_tags(self, item_id: str, row: dict[str, Any]) -> None:
+        rules = self._load_rules_for_edit()
+        if rules is None:
+            return
+        existing = self._item_override(rules, item_id)
+        current_tags = (
+            existing.get("tags")
+            or row.get("tags")
+            or row.get("expandedTags")
+            or []
+        )
+        value = self.simpledialog.askstring(
+            "MarketSense exact tags",
+            "Comma-separated tags (blank removes exact tags):",
+            initialvalue=", ".join(str(tag) for tag in current_tags),
+            parent=self.root,
+        )
+        if value is None:
+            return
+        tags = [tag.strip() for tag in value.split(",") if tag.strip()]
+        set_item_override(rules, item_id, tags=tags)
+        self._save_rules_after_edit(rules, item_id, "Exact tags")
+
+    def _edit_item_stock(self, item_id: str, row: dict[str, Any]) -> None:
+        rules = self._load_rules_for_edit()
+        if rules is None:
+            return
+        existing = self._item_override(rules, item_id)
+        stock = (
+            existing.get("stock")
+            if isinstance(existing.get("stock"), dict)
+            else {}
+        )
+        row_stock = (
+            row.get("stock") if isinstance(row.get("stock"), dict) else {}
+        )
+        current_min = stock.get("min", row_stock.get("min", 0))
+        current_max = stock.get("max", row_stock.get("max", 1))
+        try:
+            current_min, current_max = int(current_min), int(current_max)
+        except (TypeError, ValueError):
+            current_min, current_max = 0, 1
+        minimum = self.simpledialog.askinteger(
+            "MarketSense stock minimum",
+            f"Minimum stock for {item_id}:",
+            initialvalue=max(0, current_min),
+            minvalue=0,
+            parent=self.root,
+        )
+        if minimum is None:
+            return
+        maximum = self.simpledialog.askinteger(
+            "MarketSense stock maximum",
+            f"Maximum stock for {item_id}:",
+            initialvalue=max(minimum, current_max),
+            minvalue=minimum,
+            parent=self.root,
+        )
+        if maximum is None:
+            return
+        set_item_override(rules, item_id, stock={"min": minimum, "max": maximum})
+        self._save_rules_after_edit(rules, item_id, "Stock range")
+
+    def _remove_item_override(self, item_id: str) -> None:
+        rules = self._load_rules_for_edit()
+        if rules is None or not remove_item_override(rules, item_id):
+            if rules is not None:
+                self.status_var.set(f"No item override exists for {item_id}.")
+            return
+        self._save_rules_after_edit(rules, item_id, "Item override removal")
+
+    def _clear_item_rules(self, item_id: str) -> None:
+        rules = self._load_rules_for_edit()
+        if rules is None or not remove_all_item_rules(rules, item_id):
+            if rules is not None:
+                self.status_var.set(f"No MarketSense rules exist for {item_id}.")
+            return
+        self._save_rules_after_edit(rules, item_id, "All item rules cleared")

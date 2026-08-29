@@ -14,12 +14,14 @@ from .config import (
 from .gui_audits import AuditMixin
 from .gui_controller import ALL_MODS_LABEL, ControllerMixin
 from .gui_items import ItemsMixin
+from .gui_liquid import LiquidPricingMixin
 from .gui_overview import OverviewMixin
 from .gui_sandbox import SandboxMixin
 from .gui_widgets import WidgetMixin
 from .preferences import load_preferences, normalize_preferences
 from .sandbox import (
     SandboxSettingsError,
+    sandbox_definition_audit,
     load_sandbox_option_specs,
     load_sandbox_settings,
 )
@@ -30,6 +32,7 @@ class MarketSenseGui(
     WidgetMixin,
     OverviewMixin,
     ItemsMixin,
+    LiquidPricingMixin,
     AuditMixin,
     SandboxMixin,
     ControllerMixin,
@@ -49,10 +52,12 @@ class MarketSenseGui(
         scrolledtext: Any,
         filedialog: Any,
         messagebox: Any,
+        simpledialog: Any,
         args: Any,
     ) -> None:
         self.root, self.tk, self.ttk = root, tk, ttk
         self.filedialog, self.messagebox = filedialog, messagebox
+        self.simpledialog = simpledialog
         self.args = args
         self.scrolledtext = scrolledtext
         self.busy = False
@@ -169,14 +174,24 @@ class MarketSenseGui(
             )
         )
 
+        configured_sandbox = getattr(args, "sandbox_config", None)
+        configured_sandbox_path = (
+            Path(configured_sandbox).expanduser().resolve()
+            if configured_sandbox else None
+        )
+        default_sandbox_path = DEFAULT_SANDBOX_SETTINGS_PATH.expanduser().resolve()
         self.sandbox_path = Path(
-            getattr(args, "sandbox_config", None)
+            configured_sandbox
+            if configured_sandbox_path and configured_sandbox_path != default_sandbox_path
+            else self.preferences.get("sandboxConfig")
+            or configured_sandbox
             or DEFAULT_SANDBOX_SETTINGS_PATH
         ).expanduser()
         self.sandbox_specs = load_sandbox_option_specs(self.version_var.get())
         self.sandbox_spec_by_key = {
             spec.key: spec for spec in self.sandbox_specs
         }
+        self.sandbox_audit = sandbox_definition_audit(self.version_var.get())
         self.sandbox_overrides: dict[str, int | float] = {}
         self.sandbox_settings_error = ""
         try:
@@ -295,11 +310,13 @@ class MarketSenseGui(
         self._build_low_confidence()
         self._build_heuristic_gaps()
         self._build_sandbox()
+        self._build_liquid_pricing()
         self._build_mods()
         self.log = scrolledtext.ScrolledText(
             self.notebook, wrap="none", state="disabled"
         )
         self.notebook.add(self.log, text="Diagnostics")
+        self._append_log(self._sandbox_audit_log())
         self.status_var = self.tk.StringVar(
             value="Ready — choose Scan all / cache to begin."
         )
@@ -350,7 +367,7 @@ class MarketSenseGui(
 def launch(args: Any) -> int:
     try:
         import tkinter as tk
-        from tkinter import filedialog, messagebox, scrolledtext, ttk
+        from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
     except ImportError as error:
         print(f"MarketSense GUI requires tkinter: {error}", file=sys.stderr)
         return 1
@@ -363,7 +380,7 @@ def launch(args: Any) -> int:
         )
         return 1
     MarketSenseGui(
-        root, tk, ttk, scrolledtext, filedialog, messagebox, args
+        root, tk, ttk, scrolledtext, filedialog, messagebox, simpledialog, args
     )
     root.mainloop()
     return 0

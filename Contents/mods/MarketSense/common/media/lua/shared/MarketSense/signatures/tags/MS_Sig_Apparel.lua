@@ -1,10 +1,12 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local JEWELRY_TAGS = {
     "amethystjewellery","diamondjewellery","emeraldjewellery","rubyjewellery",
@@ -68,7 +70,7 @@ local BLTOK_TO_CAT = {
 }
 
 local function hasTag(ctx, token)
-    return ctx.normalizedTags and ctx.normalizedTags[token] == true
+    return TagEvidence.has(ctx, token)
 end
 local function hasAnyTag(ctx, list)
     for _, t in ipairs(list) do if hasTag(ctx, t) then return true end end

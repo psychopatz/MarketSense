@@ -12,7 +12,7 @@ from .config import DEFAULT_CACHE_DIR, MOD_ROOT, TOOLS_ROOT
 
 
 # Bumped when the result row universe or exposed runtime evidence changes.
-CACHE_FORMAT_VERSION = 8
+CACHE_FORMAT_VERSION = 9
 
 # Presentation changes (GUI, terminal formatting, exports, and heuristic
 # reports) must not force the expensive Workshop/Lua evaluation to run again.
@@ -20,6 +20,7 @@ CACHE_FORMAT_VERSION = 8
 EVALUATOR_FILES = (
     "availability.py", "bridge.py", "bridge_runtime.lua", "bridge_template.py",
     "config.py", "evaluation.py", "models.py", "sandbox.py",
+    "sandbox_defaults.json",
     "script_fields.py", "script_parser.py", "tile_parser.py", "workshop.py",
     "workshop_paths.py",
 )

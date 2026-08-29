@@ -18,7 +18,8 @@ local TOKEN_TO_ROOT = {
     Ammo = "Weapon", AmmoBox = "Weapon", AmmoCarton = "Weapon", AmmoMag = "Weapon",
     WeaponAxe = "Weapon", WeaponBlunt = "Weapon", WeaponSmallBlunt = "Weapon",
     WeaponLongBlade = "Weapon", WeaponSmallBlade = "Weapon",
-    WeaponSpear = "Weapon", WeaponCrafted = "Weapon", BrokenWeapon = "Weapon",
+    WeaponSpear = "Weapon", WeaponCrafted = "Weapon", WeaponImprovised = "Weapon",
+    WeaponUnarmed = "Weapon", BrokenWeapon = "Weapon",
     WeaponMelee = "Weapon", WeaponRanged = "Weapon",
     Firearm = "Weapon", FirearmHandgun = "Weapon", FirearmRifle = "Weapon", FirearmShotgun = "Weapon",
     Explosive = "Weapon", WeaponExplosive = "Weapon", WeaponPart = "Weapon",
@@ -28,6 +29,17 @@ local TOKEN_TO_ROOT = {
     BeverageTea = "Food", BeverageSoftDrink = "Food", BeverageJuice = "Food",
     BeverageBeer = "Food", BeverageWine = "Food", BeverageAlcohol = "Food", BeverageSoda = "Food",
     BeverageCocktail = "Food", BeverageEnergyDrink = "Food", BeverageBox = "Food",
+    -- Liquid contents (the vessel remains Container/ContainerLiquid only
+    -- when no primary fluid is present at runtime)
+    Liquid = "Liquid", LiquidBeverage = "Liquid", LiquidWater = "Liquid",
+    LiquidTaintedWater = "Liquid", LiquidCarbonatedWater = "Liquid",
+    LiquidSoda = "Liquid", LiquidJuice = "Liquid", LiquidSyrup = "Liquid", LiquidMilk = "Liquid",
+    LiquidCoffee = "Liquid", LiquidTea = "Liquid", LiquidBeer = "Liquid",
+    LiquidWine = "Liquid", LiquidAlcohol = "Liquid", LiquidBlood = "Liquid",
+    LiquidAnimalBlood = "Liquid", LiquidAnimalGrease = "Liquid",
+    LiquidFuel = "Liquid", LiquidDye = "Liquid", LiquidHairDye = "Liquid",
+    LiquidChemical = "Liquid", LiquidMedical = "Liquid", LiquidIndustrial = "Liquid",
+    LiquidUnknown = "Liquid",
     -- Clothing
     Clothing = "Clothing",
     ClothingFullBody = "Clothing", ClothingOuterwear = "Clothing", ClothingVest = "Clothing",
@@ -162,7 +174,8 @@ local TOKEN_PARENTS = {
     WeaponAxe = { "WeaponMelee" }, WeaponBlunt = { "WeaponMelee" },
     WeaponSmallBlunt = { "WeaponMelee" }, WeaponLongBlade = { "WeaponMelee" },
     WeaponSmallBlade = { "WeaponMelee" }, WeaponSpear = { "WeaponMelee" },
-    WeaponCrafted = { "WeaponMelee" },
+    WeaponCrafted = { "WeaponMelee" }, WeaponImprovised = { "WeaponMelee" },
+    WeaponUnarmed = { "WeaponMelee" },
     Firearm = { "WeaponRanged" },
     FirearmHandgun = { "Firearm", "WeaponRanged" },
     FirearmRifle = { "Firearm", "WeaponRanged" },
@@ -176,6 +189,24 @@ local TOKEN_PARENTS = {
     BeverageBeer = { "Beverage" }, BeverageWine = { "Beverage" },
     BeverageAlcohol = { "Beverage" }, BeverageCocktail = { "Beverage" },
     BeverageEnergyDrink = { "Beverage" }, BeverageBox = { "Beverage" },
+    -- Liquid hierarchy.  The special hierarchy renderer below presents
+    -- these as Liquid > branch > leaf while these flat parents preserve
+    -- useful inheritance for pricing and downstream consumers.
+    LiquidBeverage = { "Liquid" }, LiquidWater = { "LiquidBeverage", "Liquid" },
+    LiquidTaintedWater = { "LiquidWater", "LiquidBeverage", "Liquid" },
+    LiquidCarbonatedWater = { "LiquidWater", "LiquidBeverage", "Liquid" },
+    LiquidSoda = { "LiquidBeverage", "Liquid" }, LiquidJuice = { "LiquidBeverage", "Liquid" },
+    LiquidSyrup = { "LiquidBeverage", "Liquid" },
+    LiquidMilk = { "LiquidBeverage", "Liquid" }, LiquidCoffee = { "LiquidBeverage", "Liquid" },
+    LiquidTea = { "LiquidBeverage", "Liquid" }, LiquidAlcohol = { "LiquidBeverage", "Liquid" },
+    LiquidBeer = { "LiquidAlcohol", "LiquidBeverage", "Liquid" },
+    LiquidWine = { "LiquidAlcohol", "LiquidBeverage", "Liquid" },
+    LiquidBlood = { "LiquidIndustrial", "Liquid" },
+    LiquidAnimalBlood = { "LiquidBlood", "LiquidIndustrial", "Liquid" },
+    LiquidAnimalGrease = { "LiquidIndustrial", "Liquid" }, LiquidFuel = { "LiquidIndustrial", "Liquid" },
+    LiquidDye = { "LiquidIndustrial", "Liquid" }, LiquidHairDye = { "LiquidDye", "LiquidIndustrial", "Liquid" },
+    LiquidChemical = { "LiquidIndustrial", "Liquid" }, LiquidMedical = { "LiquidIndustrial", "Liquid" },
+    LiquidIndustrial = { "Liquid" }, LiquidUnknown = { "Liquid" },
     -- Clothing
     ClothingVest = { "ClothingOuterwear" },
     ClothingSocks = { "ClothingFootwear" },
@@ -459,6 +490,44 @@ function TagMapper.getDefinition(token)
             leaf          = leaf,
             primaryPrefix = primaryPrefix,
             path          = path,
+            parents       = TagMapper.getParents(text),
+        }
+    end
+
+    if root == "Liquid" then
+        local hierarchy = {
+            LiquidBeverage       = { "Beverage", "Beverage" },
+            LiquidWater          = { "Water", "Water" },
+            LiquidTaintedWater   = { "Water", "TaintedWater" },
+            LiquidCarbonatedWater = { "Water", "CarbonatedWater" },
+            LiquidSoda           = { "Soda", "Soda" },
+            LiquidJuice          = { "Juice", "Juice" },
+            LiquidSyrup          = { "Beverage", "Syrup" },
+            LiquidMilk           = { "Dairy", "Milk" },
+            LiquidCoffee         = { "Coffee", "Coffee" },
+            LiquidTea            = { "Tea", "Tea" },
+            LiquidAlcohol        = { "Alcohol", "Alcohol" },
+            LiquidBeer           = { "Alcohol", "Beer" },
+            LiquidWine           = { "Alcohol", "Wine" },
+            LiquidBlood          = { "Blood", "Blood" },
+            LiquidAnimalBlood    = { "Blood", "AnimalBlood" },
+            LiquidAnimalGrease   = { "Animal", "Grease" },
+            LiquidFuel           = { "Fuel", "Fuel" },
+            LiquidDye            = { "Industrial", "Dye" },
+            LiquidHairDye        = { "Industrial", "HairDye" },
+            LiquidChemical       = { "Industrial", "Chemical" },
+            LiquidMedical        = { "Medical", "Medical" },
+            LiquidIndustrial     = { "Industrial", "Industrial" },
+            LiquidUnknown        = { "Unknown", "Unknown" },
+        }
+        local selected = hierarchy[text] or { "Unknown", "Unknown" }
+        return {
+            root          = root,
+            token         = text,
+            subcategory   = selected[1],
+            leaf          = selected[2],
+            primaryPrefix = root .. "." .. selected[1] .. "." .. selected[2],
+            path          = root .. "/" .. selected[1] .. "/" .. selected[2] .. ".txt",
             parents       = TagMapper.getParents(text),
         }
     end

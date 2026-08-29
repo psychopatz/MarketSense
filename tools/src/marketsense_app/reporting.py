@@ -202,7 +202,8 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fields = [
         "fullType", "category", "subcategory", "leaf", "primaryPrefix", "categoryPath",
-        "primary", "detector", "resolver", "price", "basePrice", "rawScore",
+        "primary", "mechanicalClass", "mechanicalFamily", "marketRole",
+        "detector", "resolver", "price", "basePrice", "rawScore",
         "baseStock", "confidence", "source",
         "availabilityStatus", "availabilityConfidence", "availabilityChannels",
         "availabilityReason", "availabilityReferences", "availabilityExclusions",
@@ -211,7 +212,8 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh",
         "daysRotten", "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity",
         "workshopMod", "workshopName", "workshopId", "workshopVersion", "scriptPath",
-        "description", "tags", "definitionSources", "priceAudit", "context", "detection",
+        "description", "tags", "definitionSources", "priceAudit", "priceHeuristic",
+        "context", "detection",
     ]
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
@@ -239,6 +241,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             output["baseStock"] = json.dumps(row.get("baseStock") or {}, sort_keys=True)
             output["definitionSources"] = ";".join(row.get("definitionSources") or [])
             output["priceAudit"] = json.dumps(row.get("priceAudit") or [], sort_keys=True)
+            output["priceHeuristic"] = json.dumps(row.get("priceHeuristic") or {}, sort_keys=True)
             output["context"] = json.dumps(row.get("context") or {}, sort_keys=True)
             output["detection"] = json.dumps(row.get("detection") or {}, sort_keys=True)
             writer.writerow(output)

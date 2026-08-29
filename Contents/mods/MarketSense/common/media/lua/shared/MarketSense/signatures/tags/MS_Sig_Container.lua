@@ -1,17 +1,19 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local AMMO_CONTAINER_TAGS = {
     "ammocase","reloadfastbullets","reloadfastmagazines","reloadfastshells"
 }
 
 local function hasTag(ctx, token)
-    return ctx.normalizedTags and ctx.normalizedTags[token] == true
+    return TagEvidence.has(ctx, token)
 end
 local function hasAnyTag(ctx, list)
     for _, t in ipairs(list) do if hasTag(ctx, t) then return true end end
@@ -95,7 +97,11 @@ end
 function Signature.match(ctx)
     local waterContainer = (ctx.displayCategoryToken or "") == "watercontainer"
         or ctx.canStoreWater == true
-    if not itemTypeIs(ctx, "container") and not waterContainer then
+    local emptyFluidContainer = ctx.isFluidContainer == true
+        and ctx.isActualLiquid ~= true
+        and (ctx.fluidTypeStringLower or "") == ""
+        and (ctx.fluidTypeLower or "") == ""
+    if not itemTypeIs(ctx, "container") and not waterContainer and not emptyFluidContainer then
         return { matched = false, confidence = 0 }
     end
     if hasTag(ctx, "hollowbook") then return { matched = false, confidence = 0 } end

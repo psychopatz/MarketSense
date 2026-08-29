@@ -236,9 +236,6 @@ end
 function Build.buildLiveEntry(fullType, itemData, sourceOrigin, category, primary)
     local moduleName, typeName = Core.splitFullType(fullType)
     local effectiveBasePrice = tonumber(itemData.basePrice) or (Config.pricing.minPrice or 1)
-    if DynamicTrading.PriceConfig and DynamicTrading.PriceConfig.GetEffectiveBasePrice then
-        effectiveBasePrice = DynamicTrading.PriceConfig.GetEffectiveBasePrice(fullType, itemData)
-    end
 
     local expandedTags = TagUtils.expandHierarchy(itemData.tags or {})
     return {
@@ -334,7 +331,7 @@ function Build.collectGeneratedItems()
                 local reason = syntheticSkip and (syntheticReason or "synthetic")
                     or availabilitySkip and (availability.reason or availability.status)
                     or "runtime rule"
-                Shared.debugLog("Skipped item during DT_Items generation: " .. tostring(ctx.fullType) .. " (" .. tostring(reason) .. ")")
+                Shared.debugLog("Skipped item during MarketSense catalog generation: " .. tostring(ctx.fullType) .. " (" .. tostring(reason) .. ")")
             end
         end
     end

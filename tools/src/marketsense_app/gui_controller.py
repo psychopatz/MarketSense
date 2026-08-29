@@ -174,6 +174,7 @@ class ControllerMixin:
         return {
             "workshopRoots": roots,
             "gameRoot": "" if self._game_root_is_auto else self.game_root_var.get().strip(),
+            "sandboxConfig": str(self.sandbox_path),
             "modFilters": ", ".join(self._selected_mod_filters()),
             "gameVersion": self.version_var.get().strip(),
             "maxItems": max_items,
@@ -300,6 +301,25 @@ class ControllerMixin:
             return
         self._persist_preferences()
         self._start("scan", options)
+
+    def _rescan_after_rule_edit(self, item_id: str) -> None:
+        """Re-evaluate the master result after the Lua rule file changes."""
+
+        if self.busy:
+            self.status_var.set(
+                f"Rule for {item_id} was saved; finish the current scan before refreshing."
+            )
+            return
+        try:
+            options = self._options()
+        except ValueError as error:
+            self.messagebox.showerror("Invalid settings", str(error))
+            return
+        self._persist_preferences()
+        # The MarketSense Lua file is part of the cache key.  evaluate() will
+        # therefore reject the old result and create a new one using the rule
+        # just written, while preserving the normal background-worker UX.
+        self._start("rule-edit", options)
 
     def self_test(self) -> None:
         self._start("self-test", None)

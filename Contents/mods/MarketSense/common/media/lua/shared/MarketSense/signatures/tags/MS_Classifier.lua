@@ -23,6 +23,7 @@ require "MarketSense/signatures/tags/MS_Sig_CategoryOverride"
 require "MarketSense/signatures/tags/MS_Sig_Medical"
 require "MarketSense/signatures/tags/MS_Sig_Food"
 require "MarketSense/signatures/tags/MS_Sig_Beverage"
+require "MarketSense/signatures/tags/MS_Sig_Liquid"
 require "MarketSense/signatures/tags/MS_RootArbiter"
 
 MarketSense = MarketSense or {}
@@ -33,6 +34,10 @@ local Classifier = MarketSense.Classifier
 -- Root-specific pipelines keep broad signatures from stealing another root's
 -- obvious stock, while preserving each category's own leaf classifier.
 local ROOT_PIPELINES = {
+    Liquid = {
+        "Liquid",
+        "CategoryOverride",
+    },
     Food = {
         "Beverage",
         "Food",
@@ -91,6 +96,7 @@ local ROOT_PIPELINES = {
 }
 
 local FALLBACK_PIPELINE = {
+    "Liquid",
     "Material",
     "Ammo",
     "Medical",

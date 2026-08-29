@@ -1,10 +1,12 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.PostLabelResolver = MarketSense.PostLabelResolver or {}
 
 local Resolver = MarketSense.PostLabelResolver
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local PERISHABLE_VARIANTS = {
     Baking = true, Bread = true, Candy = true, Cheese = true, Dairy = true,
@@ -44,7 +46,7 @@ local function containsAny(text, tokens, hits)
 end
 
 local function hasTag(ctx, token)
-    return ctx and ctx.normalizedTags and ctx.normalizedTags[token] == true
+    return TagEvidence.has(ctx, token)
 end
 
 local function hasTagAlias(ctx, token)

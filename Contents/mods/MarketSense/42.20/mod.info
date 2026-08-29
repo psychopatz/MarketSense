@@ -1,7 +1,7 @@
 name=Market Sense
 id=MarketSense
-description=Dynamic Trading dependency module for dynamically detecting items tag and pricing data.
+description=MarketSense item taxonomy, runtime availability detection, and price evaluation service for Project Zomboid mods.
 category=features
 version=1.0.0
-versionMin=42.16
+versionMin=42.20
 require=PsychopatzCore

@@ -7,6 +7,7 @@ from typing import Any
 
 from .bridge import run_lua, run_lua_result
 from .models import ItemDefinition, WorkshopMod
+from .sandbox import recommended_sandbox_settings
 
 
 def mock_definitions() -> list[ItemDefinition]:
@@ -68,6 +69,54 @@ def mock_definitions() -> list[ItemDefinition]:
             "displayCategory": "FirstAid", "bandagePower": 1, "actualWeight": 0.1,
             "description": "sterile medical dressing", "canBeForaged": True,
         }),
+        # These fixtures intentionally use the same namespaced tag form as
+        # vanilla 42.20 (for example Base:Smokable). They guard the category
+        # gates that previously compared only the short token.
+        make("NamespacedFirearm", {
+            "itemType": "base:weapon", "displayCategory": "Weapon",
+            "tags": ["base:firearm"], "ammoType": "base:bullets_9mm",
+            "minDamage": 0.6, "maxDamage": 1.0, "maxRange": 15,
+            "maxHitCount": 1, "conditionMax": 10, "actualWeight": 1.5,
+            "description": "a compact handgun", "canSpawnAsLoot": True,
+        }),
+        make("NamespacedMemento", {
+            "itemType": "base:normal", "displayCategory": "General",
+            "tags": ["base:ismemento"], "description": "a keepsake",
+            "canSpawnAsLoot": True,
+        }),
+        make("NamespacedSmoking", {
+            "itemType": "base:normal", "displayCategory": "Tool",
+            "tags": ["base:smokable"], "description": "a tobacco pipe",
+            "canSpawnAsLoot": True,
+        }),
+        make("WorkshopNamespacedSmoking", {
+            "itemType": "base:normal", "displayCategory": "Tool",
+            "tags": ["WorkshopTools:smokable"], "description": "a tobacco pipe",
+            "canSpawnAsLoot": True,
+        }),
+        make("NamespacedCookingUtensil", {
+            "itemType": "base:normal", "displayCategory": "Tool",
+            "tags": ["base:spatula"], "description": "a kitchen utensil",
+            "canSpawnAsLoot": True,
+        }),
+        make("NamespacedFood", {
+            "itemType": "base:normal", "displayCategory": "General",
+            "foodType": "Meat", "tags": ["base:meat"],
+            "hungerChange": -0.25, "calories": 300, "daysFresh": 2,
+            "daysRotten": 4, "actualWeight": 0.4,
+            "description": "a portion of meat", "canSpawnAsLoot": True,
+        }),
+        make("NamespacedJewelry", {
+            "itemType": "base:clothing", "displayCategory": "Clothing",
+            "bodyLocation": "base:neck", "tags": ["base:diamondjewellery"],
+            "description": "a diamond necklace", "canSpawnAsLoot": True,
+        }),
+        make("NamespacedAmmoContainer", {
+            "itemType": "base:container", "displayCategory": "Bag",
+            "bodyLocation": "base:back", "tags": ["base:ammocase"],
+            "capacity": 10, "weightReduction": 20,
+            "description": "a wearable ammunition case", "canSpawnAsLoot": True,
+        }),
         make("Axe", {
             "itemType": "Weapon", "displayCategory": "Weapon", "weaponCategories": ["Axe"],
             "minDamage": 1, "maxDamage": 2, "maxRange": 1, "conditionMax": 10,
@@ -86,6 +135,19 @@ def mock_definitions() -> list[ItemDefinition]:
             "maxRange": 1.5, "conditionMax": 8, "actualWeight": 1.1,
             "description": "a Workshop spear without a Categories field",
             "canSpawnAsLoot": True,
+        }),
+        make("ImprovisedClub", {
+            "itemType": "base:weapon", "displayCategory": "WeaponCrafted",
+            "weaponCategories": ["base:improvised"], "minDamage": 0.7,
+            "maxDamage": 1.1, "maxRange": 1, "conditionMax": 5,
+            "actualWeight": 1.4, "description": "a crude improvised club",
+            "canSpawnAsLoot": True,
+        }),
+        make("Unarmed", {
+            "itemType": "base:weapon", "displayCategory": "Weapon",
+            "weaponCategories": ["base:unarmed"], "minDamage": 0,
+            "maxDamage": 0, "maxRange": 1, "conditionMax": 0,
+            "actualWeight": 0, "description": "unarmed combat",
         }),
         make("Bag", {
             "itemType": "Container", "displayCategory": "Bag",
@@ -465,6 +527,50 @@ def mock_definitions() -> list[ItemDefinition]:
             "canStoreWater": True, "capacity": 10, "description": "an empty bucket",
             "canSpawnAsLoot": True,
         }),
+        # The vessel is not the category: these rows exercise the primary
+        # fluid path used by the live InventoryItem API.
+        make("LiquidWater", {
+            "itemType": "base:drainable", "displayCategory": "Water",
+            "fluidContainer": True, "fluidContainerName": "Bottle",
+            "fluidTypes": ["Water"], "fluidCapacity": 1.0, "fluidAmount": 1.0,
+            "thirstChange": -0.25, "description": "a bottle of water",
+            "canSpawnAsLoot": True,
+        }),
+        make("LiquidWaterTwoLiter", {
+            "itemType": "base:drainable", "displayCategory": "Water",
+            "fluidContainer": True, "fluidContainerName": "LargeBottle",
+            "fluidTypes": ["Water"], "fluidCapacity": 2.0, "fluidAmount": 2.0,
+            "thirstChange": -0.50, "actualWeight": 0.8,
+            "description": "two litres of water",
+            "canSpawnAsLoot": True,
+        }),
+        make("LiquidWaterInCan", {
+            "itemType": "base:drainable", "displayCategory": "Water",
+            "fluidContainer": True, "fluidContainerName": "MetalCan",
+            "fluidTypes": ["Water"], "fluidCapacity": 2.0, "fluidAmount": 2.0,
+            "thirstChange": -0.50, "actualWeight": 3.0,
+            "description": "two litres of water in a can",
+            "canSpawnAsLoot": True,
+        }),
+        make("LiquidSoda", {
+            "itemType": "base:drainable", "displayCategory": "Food",
+            "fluidContainer": True, "fluidContainerName": "PopBottle",
+            "fluidTypes": ["Cola"], "fluidCapacity": 2.0, "fluidAmount": 2.0,
+            "thirstChange": -0.20, "description": "a bottle of soda",
+            "canSpawnAsLoot": True,
+        }),
+        make("LiquidBlood", {
+            "itemType": "base:drainable", "displayCategory": "Medical",
+            "fluidContainer": True, "fluidContainerName": "BloodBag",
+            "fluidTypes": ["Blood"], "fluidCapacity": 0.5, "fluidAmount": 0.5,
+            "description": "a blood bag", "canSpawnAsLoot": True,
+        }),
+        make("EmptyFluidBottle", {
+            "itemType": "base:drainable", "displayCategory": "Water",
+            "fluidContainer": True, "fluidContainerName": "Bottle",
+            "fluidTypes": [], "fluidCapacity": 1.0,
+            "description": "an empty bottle", "canSpawnAsLoot": True,
+        }),
         make("ProtectiveGorget", {
             "itemType": "base:clothing", "displayCategory": "ProtectiveGear",
             "bodyLocation": "Gorget", "description": "a protective neck guard",
@@ -490,9 +596,15 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.CannedMeal", "MarketSenseFixture.VanillaReceipt",
         "MarketSenseFixture.NarcoticsSeedPacket", "MarketSenseFixture.Bandage",
         "Base.Flier_Nolans",
+        "MarketSenseFixture.NamespacedFirearm", "MarketSenseFixture.NamespacedMemento",
+        "MarketSenseFixture.NamespacedSmoking", "MarketSenseFixture.NamespacedCookingUtensil",
+        "MarketSenseFixture.NamespacedFood",
+        "MarketSenseFixture.NamespacedJewelry", "MarketSenseFixture.NamespacedAmmoContainer",
+        "MarketSenseFixture.WorkshopNamespacedSmoking",
         "MarketSenseFixture.Axe", "MarketSenseFixture.Bag",
         "MarketSenseFixture.Spear",
         "MarketSenseFixture.SpearTagFallback",
+        "MarketSenseFixture.ImprovisedClub", "MarketSenseFixture.Unarmed",
         "MarketSenseFixture.Backpack", "MarketSenseFixture.Satchel",
         "MarketSenseFixture.FannyPackFront", "MarketSenseFixture.FannyPackBack",
         "MarketSenseFixture.Bandolier", "MarketSenseFixture.Duffel",
@@ -517,6 +629,9 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.MoveableTannedHide", "MarketSenseFixture.MoveableBrokenGlass",
         "MarketSenseFixture.SkillBook", "MarketSenseFixture.CartographyMap",
         "MarketSenseFixture.WeaponPart", "MarketSenseFixture.WaterContainer",
+        "MarketSenseFixture.LiquidWater", "MarketSenseFixture.LiquidSoda",
+        "MarketSenseFixture.LiquidWaterTwoLiter", "MarketSenseFixture.LiquidWaterInCan",
+        "MarketSenseFixture.LiquidBlood", "MarketSenseFixture.EmptyFluidBottle",
         "MarketSenseFixture.ProtectiveGorget",
         "MarketSenseFixture.ComboWasherDryer", "MarketSenseFixture.LaundryBin",
         "MarketSenseFixture.LightRoundTable", "MarketSenseFixture.Counter",
@@ -542,6 +657,14 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.NarcoticsSeedPacket": "Building",
         "Base.Flier_Nolans": "Literature",
         "MarketSenseFixture.Bandage": "Medical",
+        "MarketSenseFixture.NamespacedFirearm": "Weapon",
+        "MarketSenseFixture.NamespacedMemento": "Misc",
+        "MarketSenseFixture.NamespacedSmoking": "Tool",
+        "MarketSenseFixture.NamespacedCookingUtensil": "Tool",
+        "MarketSenseFixture.NamespacedFood": "Food",
+        "MarketSenseFixture.NamespacedJewelry": "Clothing",
+        "MarketSenseFixture.NamespacedAmmoContainer": "Container",
+        "MarketSenseFixture.WorkshopNamespacedSmoking": "Tool",
         "MarketSenseFixture.Axe": "Weapon",
         "MarketSenseFixture.Spear": "Weapon",
         "MarketSenseFixture.SpearTagFallback": "Weapon",
@@ -588,6 +711,12 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.CartographyMap": "Literature",
         "MarketSenseFixture.WeaponPart": "Weapon",
         "MarketSenseFixture.WaterContainer": "Container",
+        "MarketSenseFixture.LiquidWater": "Liquid",
+        "MarketSenseFixture.LiquidWaterTwoLiter": "Liquid",
+        "MarketSenseFixture.LiquidWaterInCan": "Liquid",
+        "MarketSenseFixture.LiquidSoda": "Liquid",
+        "MarketSenseFixture.LiquidBlood": "Liquid",
+        "MarketSenseFixture.EmptyFluidBottle": "Container",
         "MarketSenseFixture.ProtectiveGorget": "Clothing",
         "MarketSenseFixture.ComboWasherDryer": "Electronics",
         "MarketSenseFixture.LaundryBin": "Building",
@@ -659,8 +788,18 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
 
     expected_primary = {
         "MarketSenseFixture.Bag": "ContainerBag",
+        "MarketSenseFixture.NamespacedFirearm": "FirearmHandgun",
+        "MarketSenseFixture.NamespacedMemento": "Memento",
+        "MarketSenseFixture.NamespacedSmoking": "Smoking",
+        "MarketSenseFixture.NamespacedCookingUtensil": "CookingUtensil",
+        "MarketSenseFixture.NamespacedFood": "FoodPerishableMeat",
+        "MarketSenseFixture.NamespacedJewelry": "AccessoryJewelry",
+        "MarketSenseFixture.NamespacedAmmoContainer": "ContainerWearableAmmo",
+        "MarketSenseFixture.WorkshopNamespacedSmoking": "Smoking",
         "MarketSenseFixture.Spear": "WeaponSpear",
         "MarketSenseFixture.SpearTagFallback": "WeaponSpear",
+        "MarketSenseFixture.ImprovisedClub": "WeaponImprovised",
+        "MarketSenseFixture.Unarmed": "WeaponUnarmed",
         "MarketSenseFixture.Backpack": "ContainerBagBackpack",
         "MarketSenseFixture.Satchel": "ContainerBagSatchel",
         "MarketSenseFixture.FannyPackFront": "ContainerBagFanny",
@@ -703,6 +842,12 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.CartographyMap": "LiteratureMap",
         "MarketSenseFixture.WeaponPart": "WeaponPart",
         "MarketSenseFixture.WaterContainer": "ContainerLiquid",
+        "MarketSenseFixture.LiquidWater": "LiquidWater",
+        "MarketSenseFixture.LiquidWaterTwoLiter": "LiquidWater",
+        "MarketSenseFixture.LiquidWaterInCan": "LiquidWater",
+        "MarketSenseFixture.LiquidSoda": "LiquidSoda",
+        "MarketSenseFixture.LiquidBlood": "LiquidBlood",
+        "MarketSenseFixture.EmptyFluidBottle": "ContainerLiquid",
         "MarketSenseFixture.ProtectiveGorget": "ProtectiveGearNeck",
         "MarketSenseFixture.ComboWasherDryer": "ElectronicsLaundry",
         "MarketSenseFixture.LaundryBin": "BuildingFurnitureLaundry",
@@ -732,8 +877,18 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
     )
     expected_paths = {
         "MarketSenseFixture.Bag": "Container > Bag > Bag",
+        "MarketSenseFixture.NamespacedFirearm": "Weapon > Firearm > Handgun",
+        "MarketSenseFixture.NamespacedMemento": "Misc > Memento > Memento",
+        "MarketSenseFixture.NamespacedSmoking": "Tool > Smoking > Smoking",
+        "MarketSenseFixture.NamespacedCookingUtensil": "Tool > Cooking > Utensil",
+        "MarketSenseFixture.NamespacedFood": "Food > Perishable > Meat",
+        "MarketSenseFixture.NamespacedJewelry": "Clothing > Accessory > Jewelry",
+        "MarketSenseFixture.NamespacedAmmoContainer": "Container > Wearable > Ammo",
+        "MarketSenseFixture.WorkshopNamespacedSmoking": "Tool > Smoking > Smoking",
         "MarketSenseFixture.Spear": "Weapon > Melee > Spear",
         "MarketSenseFixture.SpearTagFallback": "Weapon > Melee > Spear",
+        "MarketSenseFixture.ImprovisedClub": "Weapon > Melee > Improvised",
+        "MarketSenseFixture.Unarmed": "Weapon > Melee > Unarmed",
         "MarketSenseFixture.Backpack": "Container > Bag > Backpack",
         "MarketSenseFixture.Satchel": "Container > Bag > Satchel",
         "MarketSenseFixture.FannyPackFront": "Container > Bag > Fanny",
@@ -780,6 +935,12 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.WallClock": "Electronics > Appliance > Clock",
         "MarketSenseFixture.Gurney": "Building > Medical > Gurney",
         "MarketSenseFixture.ConcreteMixer": "Building > Crafting > Masonry",
+        "MarketSenseFixture.LiquidWater": "Liquid > Water > Water",
+        "MarketSenseFixture.LiquidWaterTwoLiter": "Liquid > Water > Water",
+        "MarketSenseFixture.LiquidWaterInCan": "Liquid > Water > Water",
+        "MarketSenseFixture.LiquidSoda": "Liquid > Soda > Soda",
+        "MarketSenseFixture.LiquidBlood": "Liquid > Blood > Blood",
+        "MarketSenseFixture.EmptyFluidBottle": "Container > Liquid > Liquid",
     }
     check(
         "audited nested hierarchy paths",
@@ -791,6 +952,43 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         ),
     )
 
+    water = by_type.get("MarketSenseFixture.LiquidWater", {})
+    water_two_liter = by_type.get("MarketSenseFixture.LiquidWaterTwoLiter", {})
+    water_in_can = by_type.get("MarketSenseFixture.LiquidWaterInCan", {})
+    soda = by_type.get("MarketSenseFixture.LiquidSoda", {})
+    blood = by_type.get("MarketSenseFixture.LiquidBlood", {})
+    empty_fluid = by_type.get("MarketSenseFixture.EmptyFluidBottle", {})
+    water_context = water.get("context") or {}
+    liquid_checks = (
+        water.get("category") == "Liquid"
+        and water.get("primary") == "LiquidWater"
+        and water.get("categoryPath") == "Liquid > Water > Water"
+        and soda.get("primary") == "LiquidSoda"
+        and soda.get("categoryPath") == "Liquid > Soda > Soda"
+        and blood.get("primary") == "LiquidBlood"
+        and blood.get("categoryPath") == "Liquid > Blood > Blood"
+        and water_context.get("isActualLiquid") is True
+        and water_context.get("fluidTypeString") == "Water"
+        and abs(float(water_context.get("fluidAmount", 0)) - 1.0) < 1e-9
+        and abs(float(water_context.get("fluidCapacity", 0)) - 1.0) < 1e-9
+        and water.get("price") == 5
+        and water_two_liter.get("price") == 10
+        and water_in_can.get("price") == 10
+        and (water_two_liter.get("priceHeuristic") or {}).get("pricePerLiter") == 5
+        and (water_two_liter.get("priceHeuristic") or {}).get("volume") == 2
+        and (water_two_liter.get("priceHeuristic") or {}).get("vesselIndependent") is True
+        and empty_fluid.get("category") == "Container"
+        and empty_fluid.get("primary") == "ContainerLiquid"
+    )
+    check(
+        "filled liquid content is separate from empty vessel",
+        liquid_checks,
+        f"water={water.get('categoryPath', '?')} type={water_context.get('fluidTypeString', '?')} "
+        f"amount={water_context.get('fluidAmount', '?')} one_liter={water.get('price', '?')} "
+        f"two_liter={water_two_liter.get('price', '?')} can={water_in_can.get('price', '?')} "
+        f"empty={empty_fluid.get('primary', '?')}",
+    )
+
     def classifier_source(item: str) -> str:
         detection = by_type.get(item, {}).get("detection") or {}
         classifier = detection.get("classifier") or {}
@@ -799,6 +997,8 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
 
     spear = by_type.get("MarketSenseFixture.Spear", {})
     spear_fallback = by_type.get("MarketSenseFixture.SpearTagFallback", {})
+    improvised = by_type.get("MarketSenseFixture.ImprovisedClub", {})
+    unarmed = by_type.get("MarketSenseFixture.Unarmed", {})
     check(
         "melee spear evidence is authoritative before fallbacks",
         (
@@ -813,6 +1013,38 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         f"category={spear.get('primary', '?')} source={classifier_source('MarketSenseFixture.Spear')} "
         f"fallback={spear_fallback.get('primary', '?')} source="
         f"{classifier_source('MarketSenseFixture.SpearTagFallback')}",
+    )
+    check(
+        "melee subtypes expose dedicated folders and evidence",
+        (
+            improvised.get("primary") == "WeaponImprovised"
+            and improvised.get("categoryPath") == "Weapon > Melee > Improvised"
+            and ((improvised.get("detection") or {}).get("final") or {}).get("details", {}).get("mechanicalClass")
+            == "WeaponImprovised"
+            and unarmed.get("primary") == "WeaponUnarmed"
+            and unarmed.get("categoryPath") == "Weapon > Melee > Unarmed"
+        ),
+        f"improvised={improvised.get('categoryPath', '?')} unarmed={unarmed.get('categoryPath', '?')}",
+    )
+
+    namespaced_gate_expectations = {
+        "MarketSenseFixture.NamespacedFirearm": "firearm_handgun",
+        "MarketSenseFixture.NamespacedMemento": "memento_tag",
+        "MarketSenseFixture.NamespacedSmoking": "smoking_tag",
+        "MarketSenseFixture.NamespacedCookingUtensil": "cooking_utensil",
+        "MarketSenseFixture.NamespacedFood": "food_meat_tag",
+        "MarketSenseFixture.NamespacedJewelry": "apparel_jewelry",
+        "MarketSenseFixture.NamespacedAmmoContainer": "container_wearable_ammo",
+        "MarketSenseFixture.WorkshopNamespacedSmoking": "smoking_tag",
+    }
+    check(
+        "namespaced tags pass category gates",
+        all(classifier_source(item) == source
+            for item, source in namespaced_gate_expectations.items()),
+        ", ".join(
+            f"{item.rsplit('.', 1)[-1]}={classifier_source(item)}"
+            for item in sorted(namespaced_gate_expectations)
+        ),
     )
 
     wallpaper = by_type.get("MarketSenseFixture.Wallpaper", {})
@@ -995,7 +1227,7 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
             and canned_hierarchy.get("leaf") == "Canned"
             and (canned_detection.get("classifier") or {}).get("signature") == "Food"
             and (canned_detection.get("final") or {}).get("primary") == "FoodNonPerishableCanned"
-            and canned.get("evaluator", {}).get("api") == "DynamicTrading.GetPriceDetails"
+            and canned.get("evaluator", {}).get("api") == "MarketSense.GetPriceDetails"
         ),
         f"path={canned.get('categoryPath', '?')}, detector={(canned_detection.get('classifier') or {}).get('signature', '?')}",
     )
@@ -1041,6 +1273,20 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         ),
         f"base={canned.get('price', '?')} overridden="
         f"{overridden_by_type.get('MarketSenseFixture.CannedMeal', {}).get('price', '?')}",
+    )
+    recommended = run_lua_result(
+        lua, mock_definitions(), recommended_sandbox_settings()
+    )
+    recommended_by_type = {row.get("fullType"): row for row in recommended.rows}
+    check(
+        "Python sandbox recommendations reach Lua pricing",
+        (
+            recommended_by_type.get("MarketSenseFixture.Spear", {}).get("price", 0)
+            == by_type.get("MarketSenseFixture.Spear", {}).get("price", 0) + 24
+            and recommended.metadata.get("requested", {}).get("StockWeaponSpearMult") == 1.0
+        ),
+        f"spear={by_type.get('MarketSenseFixture.Spear', {}).get('price', '?')} -> "
+        f"{recommended_by_type.get('MarketSenseFixture.Spear', {}).get('price', '?')}",
     )
     return all(check["passed"] for check in checks), checks
 

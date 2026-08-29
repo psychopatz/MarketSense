@@ -21,6 +21,20 @@ from marketsense_app.availability import (
 from marketsense_app.evaluation import ScanOptions, load_cached_result, merge_scan_definitions
 from marketsense_app.heuristics import heuristic_coverage, heuristic_gap
 from marketsense_app.gui_filters import filter_rows, view_summary
+from marketsense_app.lua_rules import (
+    load_rules,
+    remove_all_item_rules,
+    remove_item_override,
+    save_rules,
+    set_item_override,
+    set_membership_rule,
+)
+from marketsense_app.liquid_pricing import (
+    LiquidPricingCatalog,
+    load_liquid_catalog,
+    render_liquid_overrides,
+    save_liquid_overrides,
+)
 from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
 from marketsense_app.runtime_comparison import compare_harness_to_runtime
@@ -31,6 +45,8 @@ from marketsense_app.sandbox import (
     effective_sandbox_settings,
     load_sandbox_option_specs,
     load_sandbox_settings,
+    recommended_sandbox_settings,
+    sandbox_definition_audit,
     save_sandbox_settings,
 )
 from marketsense_app.workshop import discover_items, discover_mods, merge_definitions
@@ -43,6 +59,53 @@ def main() -> int:
     assert pz_version_int("42") == 42000
     assert pz_version_int("42.1200") == 42999
     assert pz_version_int("not-a-version") == 0
+
+    liquid_catalog = LiquidPricingCatalog(
+        {
+            "defaultPricePerLiter": 5.0,
+            "liquids": {
+                "Water": {"pricePerLiter": 5.0, "primary": "LiquidWater"},
+            },
+            "primaryDefaults": {"LiquidWater": 5.0},
+        },
+        {},
+        Path("base.lua"),
+        Path("overrides.lua"),
+    )
+    water = next(row for row in liquid_catalog.rows() if row.key == "Water")
+    liquid_catalog.set_price(water, 7.5)
+    assert water.price_per_liter == 7.5 and water.source == "override"
+    rendered_liquids = render_liquid_overrides(liquid_catalog.override_payload())
+    assert '["Water"]' in rendered_liquids and '"pricePerLiter"] = 7.5' in rendered_liquids
+    liquid_catalog.clear_price(water)
+    assert water.price_per_liter == 5.0 and not water.overridden
+
+    with TemporaryDirectory(prefix="marketsense-liquid-smoke-") as liquid_temp:
+        liquid_root = Path(liquid_temp)
+        liquid_base = liquid_root / "base.lua"
+        liquid_override = liquid_root / "overrides.lua"
+        liquid_base.write_text(
+            "return { defaultPricePerLiter = 5, "
+            "liquids = { Water = { pricePerLiter = 5, primary = 'LiquidWater' } }, "
+            "primaryDefaults = { LiquidWater = 5 } }\n",
+            encoding="utf-8",
+        )
+        round_trip = load_liquid_catalog(
+            "lua", liquid_base, liquid_override
+        )
+        round_trip_water = next(
+            row for row in round_trip.rows() if row.key == "Water"
+        )
+        round_trip.set_price(round_trip_water, 8.25)
+        save_liquid_overrides(round_trip, liquid_override)
+        loaded_override = load_liquid_catalog(
+            "lua", liquid_base, liquid_override
+        )
+        loaded_water = next(
+            row for row in loaded_override.rows() if row.key == "Water"
+        )
+        assert loaded_water.price_per_liter == 8.25
+        assert loaded_water.source == "override"
 
     with TemporaryDirectory(prefix="marketsense-tool-smoke-") as temp_dir:
         root = Path(temp_dir)
@@ -328,9 +391,24 @@ tileset {
     specs = load_sandbox_option_specs()
     assert len(specs) >= 3
     assert next(spec for spec in specs if spec.key == "PriceMultiplier").default == 1.0
+    assert next(spec for spec in specs if spec.key == "PriceLiteratureMediaValue").default == 7
+    assert next(spec for spec in specs if spec.key == "PriceWeaponSpearValue").default == 8
+    assert next(spec for spec in specs if spec.key == "StockWeaponSpearMult").default == 1.0
+    recommendations = recommended_sandbox_settings(specs)
+    assert recommendations["PriceLiteratureMediaValue"] == 7
+    assert recommendations["StockWeaponSpearMult"] == 1.0
+    sandbox_audit = sandbox_definition_audit()
+    assert sandbox_audit["status"] == "warning"
+    assert sandbox_audit["recommendationGapCount"] > 0
+    assert any(
+        warning["key"] == "PriceLiteratureMediaValue"
+        and warning["kind"] == "pricing-definition-mismatch"
+        for warning in sandbox_audit["warnings"]
+    )
     effective = effective_sandbox_settings({"PriceGlobalValue": 123}, specs)
     assert effective["PriceGlobalValue"] == 123
     assert effective["PriceMultiplier"] == 1.0
+    assert effective["PriceWeaponSpearValue"] == 8
 
     with TemporaryDirectory(prefix="marketsense-result-cache-") as temp_dir:
         cache = ResultCache(Path(temp_dir), "fixture-key")
@@ -387,12 +465,45 @@ tileset {
         gap_report = json.loads(gap_path.read_text(encoding="utf-8"))
         assert gap_report["count"] == 1
 
+    with TemporaryDirectory(prefix="marketsense-runtime-rules-") as temp_dir:
+        rules_path = Path(temp_dir) / "MS_RuntimeRules_Data.lua"
+        rules_path.write_text(
+            """return {
+                blacklist = { "Base.Blocked" },
+                whitelist = { "Base.Allowed" },
+                overrides = { { id = "Base.Tool", add = 4 } },
+                overridesById = {
+                    ["Base.Tool"] = { price = 99, stock = { min = 1, max = 2 } },
+                },
+            }
+            """,
+            encoding="utf-8",
+        )
+        rules = load_rules(rules_path, "lua")
+        assert rules["blacklist"] == ["Base.Blocked"]
+        assert rules["whitelist"] == ["Base.Allowed"]
+        assert rules["overrides"] == [{
+            "id": "Base.Tool", "add": 4, "price": 99,
+            "stock": {"min": 1, "max": 2},
+        }]
+        set_membership_rule(rules, "Base.Blocked", "whitelist")
+        set_item_override(rules, "Base.Tool", tags=["Tool", "ToolCraft"])
+        save_rules(rules, rules_path)
+        round_trip = load_rules(rules_path, "lua")
+        assert "Base.Blocked" not in round_trip["blacklist"]
+        assert "Base.Blocked" in round_trip["whitelist"]
+        assert round_trip["overrides"][0]["price"] == 99
+        assert round_trip["overrides"][0]["tags"] == ["Tool", "ToolCraft"]
+        assert remove_item_override(round_trip, "Base.Tool") is True
+        assert remove_all_item_rules(round_trip, "Base.Blocked") is True
+        assert "Base.Blocked" not in round_trip["whitelist"]
+
     with TemporaryDirectory(prefix="marketsense-runtime-compare-") as temp_dir:
-        runtime_dir = Path(temp_dir) / "DT_Items" / "Weapon" / "Ranged"
+        runtime_dir = Path(temp_dir) / "MS_Items" / "Weapon" / "Ranged"
         runtime_dir.mkdir(parents=True)
         runtime_file = runtime_dir / "Ammo.txt"
         runtime_file.write_text(
-            """# schema=DT_ITEMS_V2
+            """# schema=MS_ITEMS_V1
 # root=Weapon
 # category=Weapon
 # subcategory=Ranged
@@ -416,27 +527,27 @@ Base.Shell|12|2|10
             "basePrice": 12,
             "baseStock": {"min": 2, "max": 10},
         }]
-        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "MS_Items")
         assert comparison["status"] == "match"
         assert comparison["matches"] == 1 and not comparison["differences"]
 
-        (Path(temp_dir) / "DT_Items" / "DT_ItemsIndex.lua").write_text(
+        (Path(temp_dir) / "MS_Items" / "MS_ItemsIndex.lua").write_text(
             'return { files = { { path = "Weapon/Ranged/Ammo.txt" } } }\n',
             encoding="utf-8",
         )
-        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "MS_Items")
         assert comparison["status"] == "match"
         assert comparison["runtime"]["index"]["indexedFileCount"] == 1
 
-        stale_file = Path(temp_dir) / "DT_Items" / "Weapon" / "Stale.txt"
+        stale_file = Path(temp_dir) / "MS_Items" / "Weapon" / "Stale.txt"
         stale_file.write_text(
-            "# schema=DT_ITEMS_V2\n"
+            "# schema=MS_ITEMS_V1\n"
             "@origin=Vanilla\n"
             "@tags=Stale\n"
             "Base.Stale|1|1|1\n",
             encoding="utf-8",
         )
-        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "MS_Items")
         assert comparison["status"] == "mismatch"
         assert comparison["fieldMismatches"] == {"index": 1}
         stale_file.unlink()
@@ -447,7 +558,7 @@ Base.Shell|12|2|10
             ),
             encoding="utf-8",
         )
-        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "MS_Items")
         assert comparison["status"] == "mismatch"
         assert comparison["fieldMismatches"] == {"basePrice": 1}
 

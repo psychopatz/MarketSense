@@ -1,10 +1,12 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local TOOL_TAG_MAP = {
     ballpeenhammer="Tool", boltcutters="Tool", clubhammer="Tool",
@@ -38,7 +40,7 @@ local TOOL_DISP_CATS = {
 }
 
 local function hasTag(ctx, token)
-    return ctx.normalizedTags and ctx.normalizedTags[token] == true
+    return TagEvidence.has(ctx, token)
 end
 local function itemTypeIs(ctx, t)
     return (ctx.itemTypeToken or "") == t
@@ -55,10 +57,9 @@ function Signature.match(ctx)
         return { matched = false, confidence = 0 }
     end
 
-    for token, cat in pairs(TOOL_TAG_MAP) do
-        if hasTag(ctx, token) then
-            return TagMapper.makeResult(cat, 0.90, { source = "tool_tag", tag = token })
-        end
+    local token, cat = TagEvidence.best(ctx, TOOL_TAG_MAP)
+    if token then
+        return TagMapper.makeResult(cat, 0.90, { source = "tool_tag", tag = token })
     end
 
     if disp == "vehiclemaintenance" then

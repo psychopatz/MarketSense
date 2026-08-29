@@ -12,13 +12,10 @@ local Catalog     = MarketSense.StaticCatalog
 local AutoTag     = MarketSense.AutoTag
 local Pricing     = MarketSense.Pricing
 local Availability = MarketSense.ItemAvailability
-
 local function safeLog(...)
-    local message = tostring((...) or "")
-    if DynamicTrading and DynamicTrading.LogDebug then
-        DynamicTrading.LogDebug("MarketSense", "DebugTools", "Inspect", message)
-    elseif DynamicTrading and DynamicTrading.Log then
-        DynamicTrading.Log("MarketSense", "DebugTools", "Inspect", message)
+    if MarketSense.IsItemRuntimeDebugEnabled and MarketSense.IsItemRuntimeDebugEnabled()
+        and type(MarketSense.Log) == "function" then
+        MarketSense.Log("Debug", "DebugTools", tostring((...) or ""))
     end
 end
 
@@ -34,6 +31,8 @@ function Debug.inspectItem(fullType, withAudit)
         expandedTags = details.expandedTags,
         price    = details.price,
         rawScore = details.rawScore,
+        weaponEvidence = details.weaponEvidence,
+        priceHeuristic = details.priceHeuristic,
         stock    = details.stock,
         source   = details.source,
         confidence = details.confidence,
@@ -106,10 +105,8 @@ function Debug.cacheStats()
     return Cache.getStats and Cache.getStats() or { note = "No stats available" }
 end
 
--- DynamicTrading-namespace debug wrappers (expected by DT debug panel and console helpers)
-DynamicTrading = DynamicTrading or {}
-DynamicTrading.DebugItem         = function(fullType, withAudit) return Debug.inspectItem(fullType, withAudit) end
-DynamicTrading.DebugScanAll      = function(items, withAudit)   return Debug.scanAll(items, withAudit) end
-DynamicTrading.ExportCatalogDebug = function(catalog)           return Debug.exportCatalog(catalog) end
+MarketSense.DebugItem          = function(fullType, withAudit) return Debug.inspectItem(fullType, withAudit) end
+MarketSense.DebugScanAll       = function(items, withAudit)   return Debug.scanAll(items, withAudit) end
+MarketSense.ExportCatalogDebug = function(catalog)            return Debug.exportCatalog(catalog) end
 
 return Debug

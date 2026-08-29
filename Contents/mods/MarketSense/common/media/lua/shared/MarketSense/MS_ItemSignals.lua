@@ -2,10 +2,13 @@
 -- These are intentionally conservative: a name match only becomes a
 -- classification when it is paired with an engine/display/placement signal.
 
+require "MarketSense/MS_TagEvidence"
+
 MarketSense = MarketSense or {}
 MarketSense.ItemSignals = MarketSense.ItemSignals or {}
 
 local Signals = MarketSense.ItemSignals
+local TagEvidence = MarketSense.TagEvidence
 
 local function lower(value)
     return string.lower(tostring(value or ""))
@@ -33,11 +36,7 @@ local function joined(fields)
 end
 
 function Signals.hasTag(ctx, token)
-    if not ctx or not ctx.normalizedTags then
-        return false
-    end
-    return ctx.normalizedTags[token] == true
-        or ctx.normalizedTags["base" .. token] == true
+    return TagEvidence.has(ctx, token)
 end
 
 function Signals.isMoveable(ctx)

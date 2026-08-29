@@ -6,11 +6,11 @@ Date: 2026-08-29
 
 Audited the complete mod tree under `Contents/mods/MarketSense`, including the
 pricing pipeline, property reader, classifier/signature pipeline, runtime cache,
-registry persistence, public DynamicTrading API, and load hook. The architecture
+registry persistence, public MarketSense API, and load hook. The architecture
 scan covered 48 production files, 3 generated files, and 4 test files.
 
 The mod remains interface-only with respect to item taxonomy: the implementation
-reads the PZ item metadata and writes MarketSense/DynamicTrading records. The
+reads the PZ item metadata and writes MarketSense records. The
 audit found no category/tag setter calls against the underlying PZ item objects.
 
 ## Confirmed fixes
@@ -28,6 +28,26 @@ audit found no category/tag setter calls against the underlying PZ item objects.
 - Kahlua-incompatible `table.unpack`, `next`, and `package.loaded` uses were
   removed. Registry timestamps now use Project Zomboid `getGameTime()` when
   available instead of sandboxed `os.date()`.
+
+## 42.20 category-gate audit
+
+The remaining false-negative gate was tag namespace handling. Several
+signatures compared only the short form (`smokable`) even though PZ 42.20
+commonly exposes `Base:smokable` and Workshop items may use an arbitrary
+namespace. `MS_TagEvidence` now matches the normalized lookup and the final
+raw-tag suffix, so all signature gates share the same behavior. It also picks
+the longest matching tag deterministically when an item carries multiple
+related tags.
+
+The root arbiter now lets container type outrank an `ammocase` tag, preventing
+ammo boxes from becoming Weapon/Ammo items. Cooking admission also checks
+namespaced cutlery/utensil tags before its text-only gate. A full signature
+search found no remaining direct short-tag gate outside the shared matcher.
+
+The 42.20 fresh scan remained stable at 5,403 evaluated definitions and zero
+Lua evaluator errors; two independent fresh scans produced the same semantic
+classification fingerprint. The remaining review flags are broad or
+low-evidence candidates for future heuristics, not tag-gate failures.
 
 ## Test and harness results
 
@@ -92,7 +112,7 @@ intentionally has no third-party Python dependencies. Discovery, evaluation,
 reporting, terminal output, and the dedicated availability scanner are kept in
 separate roles; the GUI is a cohesive presentation/controller module, and the
 static `bridge_runtime.lua` template is intentionally larger because it
-contains the complete PZ-shaped Lua compatibility surface.
+contains the complete PZ-shaped Lua surface.
 
 Completed scan results are cached under `tools/.cache/results` by default. Cache
 keys include scan settings, Workshop/base script metadata, MarketSense Lua
@@ -120,10 +140,50 @@ variables from `PropertyReader.buildContext`, raw and final detector results,
 `TagMapper.getDefinition` hierarchy, evaluator provenance, and the exact
 `balanceAudit` steps used to reach the generated price.
 
+## Liquid content taxonomy
+
+Verified on 2026-08-30 against the Project Zomboid 42.20 Java baseline and the
+installed vanilla item scripts:
+
+- `FluidContainer` is treated as vessel evidence only.  MarketSense reads
+  `getPrimaryFluid()` from the live item instance and uses that content for a
+  separate `Liquid` root.  `getAmount()`, `getCapacity()`,
+  `getPrimaryFluidAmount()`, `getFilledRatio()`, `isEmpty()`, and `isMixture()`
+  are retained in the context and the primary-fluid amount is the billable
+  volume.
+- Filled examples now resolve to paths such as `Liquid > Water > Water`,
+  `Liquid > Soda > Soda`, `Liquid > Alcohol > Beer`,
+  `Liquid > Fuel > Fuel`, and `Liquid > Blood > Blood`.  Empty bottles,
+  buckets, and other vessels remain `Container > Liquid > Liquid`.
+- The matcher uses deterministic longest fluid-name matches for vanilla and
+  Workshop names, then falls back to `Fluid.getCategories()` when an unknown
+  Workshop fluid has no known name.  Unresolved fluids become
+  `Liquid > Unknown > Unknown` at 0.50 confidence so they remain visible for
+  heuristic review instead of silently becoming Food or a generic container.
+- The standalone harness parses nested `component FluidContainer`/`Fluids`
+  blocks and supplies a PZ-shaped `getFluidContainer()` shim.  For static item
+  definitions with multiple allowed fluids, it uses the first declared fluid
+  only as a deterministic inspection representative; live runtime state is
+  authoritative in-game.
+- Liquid pricing is decoupled in `Pricing/MS_FluidPricing.lua` and
+  `Pricing/MS_LiquidPricing_Data.lua`.  Exact fluid names have a base price per
+  litre (`Water = $5/L`), with primary-token defaults for new Workshop fluids.
+  The content value is `pricePerLiter * primaryFluidAmount`; vessel name, item
+  weight, and generic item descriptor additions do not change that base value.
+  Global pricing multipliers, explicit sandbox overrides, and item overrides
+  still apply through the normal pricing pipeline.
+- The offline inspector now exposes this as a separate `Liquid pricing` tab.
+  It edits sparse exact-fluid, family-fallback, and unknown-fallback values in
+  `Pricing/MS_LiquidPricing_Overrides_Data.lua`; it does not edit
+  `MS_PricingConfig_Data.lua` or any `SandboxVars.MarketSense` category value.
+  `Apply & rescan` causes the changed Lua data file to participate in normal
+  cache invalidation and evaluates the edited per-litre value through the same
+  `MS_FluidPricing.calculate` path.
+
 ## Availability gate
 
 MarketSense now applies the obtainable-only gate inside the Lua mod before an
-item can enter DynamicTrading's MasterList or the persisted `DT_Items` cache.
+item can enter its runtime registry or the persisted `MS_Items` cache.
 `MS_ItemAvailability.lua` reads live PZ item state (`getObsolete`, `isHidden`,
 `canSpawnAsLoot`, `isCraftRecipeProduct`, and `canBeForaged`), scans the loaded
 recipe registries, and observes the loaded 42.20 runtime source tables for
@@ -153,6 +213,29 @@ obvious internal/debug definitions from reaching a market catalog while
 exposing uncertain rows for review. Availability source files are part of the
 result-cache invalidation key.
 
+## Standalone item-override audit
+
+Verified on 2026-08-30 against the MarketSense Lua evaluator and registry code:
+
+- Exact blacklist IDs and Lua patterns are supported by `RuntimeRules`; whitelist
+  IDs/patterns take precedence over blacklist matches. Neither whitelist form
+  bypasses the separate obtainable-only availability gate.
+- Exact `price` overrides are authoritative in `GetPriceDetails`; `tags`,
+  `addTags`, and `removeTags` update the returned category, primary tag, and
+  expanded taxonomy. `stock`/`stockMin`/`stockMax` are honored by the lazy stock
+  evaluator and normalized to a safe range.
+- `add`, `mult`, and `minPrice`/`min` are accepted by the lazy price evaluator;
+  the normalization path now preserves the minimum-price forms as well.
+- The persisted `MS_Items` cache is a lean generated-base snapshot. Its build
+  path applies exact price, tag, and stock overrides, but does not serialize
+  lazy sandbox/category/module adjustments. Additive/multiplicative item price
+  rules remain authoritative at `GetPriceDetails` time and should be compared
+  against the lazy evaluator, not the cache's `basePrice` column.
+- `MarketSense.ApplyRuntimeRule` now invalidates both lazy details and the
+  materialized registry automatically. Direct low-level calls to
+  `MarketSense.RuntimeRules.apply` remain process-local and should be followed
+  by a cache clear/reload when used outside the public API.
+
 ## Remaining audit items
 
 - The verifier still reports 14 hardcoded strings in
@@ -164,7 +247,7 @@ result-cache invalidation key.
   service modules stay below that threshold.
 - The new `tools/marketsense_offline.py` is an inspection harness, not a
   replacement for the missing prebuild/cache-generation workflow; it does not
-  write the runtime `DT_Items` catalog.
+  write the runtime `MS_Items` catalog.
 - The server settings `buildCatalogOnBoot`, `allowLazyGeneration`,
   `cacheLazyItems`, and `verboseBootScan` are currently defaults without runtime
   consumers. They should either be wired into registry/pricing behavior or
@@ -172,4 +255,4 @@ result-cache invalidation key.
 - The mock harness cannot prove the live PZ event order, Java collection bridge,
   or actual `getAllItems()`/file-I/O behavior. A final in-game server test should
   run the registry hook, inspect `console.txt`, and confirm a generated
-  `DT_ItemsIndex.lua` is loaded by DynamicTrading.
+  `MS_ItemsIndex.lua` is loaded by MarketSense.

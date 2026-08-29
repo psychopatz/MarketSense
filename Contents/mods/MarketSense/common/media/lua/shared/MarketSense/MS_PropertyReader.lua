@@ -73,8 +73,13 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
 
     if type(scriptItemOrFullType) == "string" then
         fullType = scriptItemOrFullType
-        local cached = Cache.getContext(fullType)
-        if cached then return Core.deepCopy(cached) end
+        -- A cached context is definition-level data. An explicit inventory
+        -- instance carries live state (condition, weight, etc.) and must
+        -- always be read afresh.
+        if inventoryItem == nil then
+            local cached = Cache.getContext(fullType)
+            if cached then return Core.deepCopy(cached) end
+        end
         scriptItem = Core.findScriptItem(fullType)
     else
         scriptItem = scriptItemOrFullType
@@ -133,6 +138,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local acceptItemFunction = Core.safeString(scriptItem, "getAcceptItemFunction", "")
     local rangedToken       = Core.safeString(scriptItem, { "isRanged", "getRanged" }, "")
     local aimedFirearmToken = Core.safeString(scriptItem, { "isAimedFirearm", "getIsAimedFirearm" }, "")
+    local hasRuntimeState = inventoryItem ~= nil
 
     if not instance then
         instance = Core.createTemporaryInstance(fullType)
@@ -169,6 +175,25 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local boredom = positiveMagnitude(preferNumber(instance, scriptItem, { "getBoredomChange", "getBoredom" }, 0))
     local stress = positiveMagnitude(preferNumber(instance, scriptItem, { "getStressChange", "getStress" }, 0))
     local customEatSound = preferString(instance, scriptItem, "getCustomEatSound", "")
+    local conditionMax = math.max(0, preferNumber(instance, scriptItem, "getConditionMax", 0))
+    local currentCondition = conditionMax
+    local hasRuntimeCondition = false
+    if hasRuntimeState then
+        local readCondition = readNumber(instance, "getCondition")
+        if readCondition ~= nil then
+            currentCondition = math.max(0, readCondition)
+            hasRuntimeCondition = true
+        end
+    end
+    local conditionRatio = nil
+    if conditionMax > 0 then
+        conditionRatio = math.max(0, math.min(1, currentCondition / conditionMax))
+    end
+    local hitChance = math.max(0, preferNumber(instance, scriptItem, "getHitChance", 0))
+    local aimingTime = math.max(0, preferNumber(instance, scriptItem, "getAimingTime", 0))
+    local isTwoHandWeapon = Core.safeBoolean(
+        instance, "isTwoHandWeapon", Core.safeBoolean(scriptItem, "isTwoHandWeapon", false)
+    )
     local foodDaysFresh = isSentinelSpoilage(daysFresh) and 0 or daysFresh
     local foodDaysRotten = isSentinelSpoilage(daysRotten) and 0 or daysRotten
     local hasFoodNutritionEvidence = hunger > 0 or thirst > 0 or calories > 0
@@ -183,15 +208,40 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local fluidCategory = ""
     local fluidTypeString = ""
     local fluidContainerName = ""
+    local fluidCategories = {}
+    local fluidAmount = 0
+    local fluidCapacity = 0
+    local fluidPrimaryAmount = 0
+    local fluidFilledRatio = 0
+    local fluidIsEmpty = true
+    local fluidIsMixture = false
+    local fluid = nil
     if fluidContainer then
         fluidContainerName = Core.safeString(fluidContainer, "getContainerName", "")
-        local fluid = Core.safeCall(fluidContainer, "getPrimaryFluid", nil)
+        fluidAmount = math.max(0, readNumber(fluidContainer, "getAmount") or 0)
+        fluidCapacity = math.max(0, readNumber(fluidContainer, "getCapacity") or 0)
+        fluidPrimaryAmount = math.max(0, readNumber(fluidContainer, "getPrimaryFluidAmount") or 0)
+        fluidFilledRatio = math.max(0, math.min(1,
+            readNumber(fluidContainer, "getFilledRatio") or 0))
+        fluid = Core.safeCall(fluidContainer, "getPrimaryFluid", nil)
+        fluidIsEmpty = Core.safeBoolean(fluidContainer, "isEmpty", fluid == nil)
+        fluidIsMixture = Core.safeBoolean(fluidContainer, "isMixture", false)
         if fluid then
             fluidType       = tostring(Core.safeCall(fluid, "getFluidType", ""))
             fluidCategory   = tostring(Core.safeCall(fluid, "getFluidCategory", ""))
             fluidTypeString = Core.safeString(fluid, "getFluidTypeString", "")
+            fluidCategories = Core.listFromJavaCollection(
+                Core.safeCall(fluid, "getCategories", nil)
+            )
         end
     end
+    local fluidCategoriesLower = {}
+    for _, category in ipairs(fluidCategories) do
+        fluidCategoriesLower[#fluidCategoriesLower + 1] = Core.lower(category)
+        if fluidCategory == "" then fluidCategory = tostring(category) end
+    end
+    local isActualLiquid = fluid ~= nil
+        and ((fluidType ~= "") or (fluidTypeString ~= ""))
 
     local modId   = Core.safeString(scriptItem, { "getModID", "getModId", "getSourceMod" }, "")
     local modName = Core.safeString(scriptItem, { "getModName", "getModID", "getModId", "getSourceMod" }, "")
@@ -251,8 +301,16 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         maxDamage = math.max(0, preferNumber(instance, scriptItem, "getMaxDamage", 0)),
         maxRange = math.max(0, preferNumber(instance, scriptItem, "getMaxRange", 0)),
         maxHit = math.max(1, preferNumber(instance, scriptItem, "getMaxHitCount", 1)),
-        conditionMax = math.max(0, preferNumber(instance, scriptItem, "getConditionMax", 0)),
-        reliability = math.max(0, preferNumber(instance, scriptItem, { "getHitChance", "getAimingTime" }, 0)),
+        conditionMax = conditionMax,
+        condition = currentCondition,
+        conditionRatio = conditionRatio,
+        hasRuntimeState = hasRuntimeState,
+        hasRuntimeCondition = hasRuntimeCondition,
+        hitChance = hitChance,
+        aimingTime = aimingTime,
+        -- Kept for consumers of the old field. It now means hit chance only;
+        -- aiming time is exposed separately instead of being conflated with it.
+        reliability = hitChance,
         useDelta = math.max(0, preferNumber(instance, scriptItem, "getUseDelta", 0)),
         capacity = math.max(0, preferNumber(instance, scriptItem, "getCapacity", 0)),
         weightReduction = math.max(0, preferNumber(instance, scriptItem, "getWeightReduction", 0)),
@@ -300,10 +358,19 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         fluidCategoryLower = Core.lower(fluidCategory),
         fluidTypeString = fluidTypeString, fluidTypeStringLower = Core.lower(fluidTypeString),
         fluidContainerName = fluidContainerName, fluidContainerNameLower = Core.lower(fluidContainerName),
+        fluidCategories = fluidCategories,
+        fluidCategoriesLower = fluidCategoriesLower,
+        fluidAmount = fluidAmount,
+        fluidCapacity = fluidCapacity,
+        fluidPrimaryAmount = fluidPrimaryAmount,
+        fluidFilledRatio = fluidFilledRatio,
+        fluidIsEmpty = fluidIsEmpty,
+        fluidIsMixture = fluidIsMixture,
+        isActualLiquid = isActualLiquid,
         isFluidContainer = fluidContainer ~= nil,
         tags = tags, normalizedTagList = normalizedTagList, normalizedTags = normalizedTags,
         weaponCategories = Core.listFromJavaCollection(Core.safeCall(scriptItem, "getWeaponCategories", nil)),
-        isTwoHandWeapon = Core.safeBoolean(scriptItem, "isTwoHandWeapon", false),
+        isTwoHandWeapon = isTwoHandWeapon,
         isSpice = Core.safeBoolean(scriptItem, "isSpice", false),
         isPoison = Core.safeBoolean(scriptItem, "isPoison", false),
         alcoholPower = Core.safeNumber(scriptItem, "getAlcoholPower", 0),

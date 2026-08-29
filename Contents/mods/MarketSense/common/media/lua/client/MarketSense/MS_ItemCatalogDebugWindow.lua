@@ -29,7 +29,7 @@ local TEXT_FALLBACKS = {
     UI_MarketSenseCatalog_Collapse = "Collapse all",
     UI_MarketSenseCatalog_Expand = "Expand all",
     UI_MarketSenseCatalog_Refresh = "Refresh catalog",
-    UI_MarketSenseCatalog_Generate = "Generate DT_Items",
+    UI_MarketSenseCatalog_Generate = "Generate MarketSense catalog",
 }
 
 local DISPLAY_NAME_CACHE = {}
@@ -346,17 +346,17 @@ end
 function MarketSenseItemCatalogDebugWindow:refreshCatalog()
     self.statusText = nil
     local loaded = true
-    if DynamicTrading and type(DynamicTrading.EnsureRuntimeRegistryLoaded) == "function" then
-        local ok, result = pcall(DynamicTrading.EnsureRuntimeRegistryLoaded, false)
+    if MarketSense and type(MarketSense.EnsureRuntimeRegistryLoaded) == "function" then
+        local ok, result = pcall(MarketSense.EnsureRuntimeRegistryLoaded, false)
         loaded = ok and result ~= false
         if not ok then self.statusText = tostring(result) end
     end
 
     local known = {}
-    if loaded and DynamicTrading
-        and type(DynamicTrading.GetAllKnownItems) == "function"
+    if loaded and MarketSense
+        and type(MarketSense.GetAllKnownItems) == "function"
     then
-        local ok, result = pcall(DynamicTrading.GetAllKnownItems)
+        local ok, result = pcall(MarketSense.GetAllKnownItems)
         if ok and type(result) == "table" then known = result end
         if not ok then self.statusText = tostring(result) end
     end
@@ -467,18 +467,18 @@ function MarketSenseItemCatalogDebugWindow:onGenerateRuntimeItems()
     if self.runtimeGenerationBusy then return end
     self.runtimeGenerationBusy = true
     self.runtimeGenerationStatus = tr("UI_MarketSenseCatalog_RuntimeGenerating",
-        "Generating runtime DT_Items...")
+        "Generating MarketSense runtime catalog...")
 
     local startedAt = timestampMs()
     local ok, result
-    if DynamicTrading and type(DynamicTrading.RegenerateItemRegistry) == "function" then
-        ok, result = pcall(DynamicTrading.RegenerateItemRegistry)
-    elseif DynamicTrading
-        and type(DynamicTrading.EnsureRuntimeRegistryLoaded) == "function"
+    if MarketSense and type(MarketSense.RegenerateItemRegistry) == "function" then
+        ok, result = pcall(MarketSense.RegenerateItemRegistry)
+    elseif MarketSense
+        and type(MarketSense.EnsureRuntimeRegistryLoaded) == "function"
     then
-        ok, result = pcall(DynamicTrading.EnsureRuntimeRegistryLoaded, true)
+        ok, result = pcall(MarketSense.EnsureRuntimeRegistryLoaded, true)
     else
-        ok, result = false, "Runtime DT_Items generation is unavailable."
+        ok, result = false, "MarketSense runtime catalog generation is unavailable."
     end
     local finishedAt = timestampMs()
     self.runtimeGenerationBusy = false
@@ -486,12 +486,12 @@ function MarketSenseItemCatalogDebugWindow:onGenerateRuntimeItems()
     if not ok then
         self.runtimeGenerationStatus = string.format(
             tr("UI_MarketSenseCatalog_RuntimeGenerationFailed",
-                "Runtime DT_Items generation failed: %s"), tostring(result))
+                "MarketSense runtime catalog generation failed: %s"), tostring(result))
         return
     end
 
-    if DynamicTrading and type(DynamicTrading.ClearRuntimeCache) == "function" then
-        pcall(DynamicTrading.ClearRuntimeCache)
+    if MarketSense and type(MarketSense.ClearRuntimeCache) == "function" then
+        pcall(MarketSense.ClearRuntimeCache)
     end
     self.selectedItem = nil
     self.selectedDetails = nil
@@ -505,12 +505,12 @@ function MarketSenseItemCatalogDebugWindow:onGenerateRuntimeItems()
         local elapsed = math.max(0, math.floor(finishedAt - startedAt))
         self.runtimeGenerationStatus = string.format(
             tr("UI_MarketSenseCatalog_RuntimeGeneration",
-                "Generated %d runtime items across %d DT_Items files in %d ms. Output: Zomboid/Lua/DT_Items"),
+                "Generated %d MarketSense items across %d files in %d ms. Output: Zomboid/Lua/MS_Items"),
             itemCount, fileCount, elapsed)
     else
         self.runtimeGenerationStatus = string.format(
             tr("UI_MarketSenseCatalog_RuntimeGenerationNoTiming",
-                "Generated %d runtime items across %d DT_Items files. Output: Zomboid/Lua/DT_Items"),
+                "Generated %d MarketSense items across %d files. Output: Zomboid/Lua/MS_Items"),
             itemCount, fileCount)
     end
 end
@@ -519,13 +519,13 @@ function MarketSenseItemCatalogDebugWindow:inspectItem(row)
     self.runtimeGenerationStatus = nil
     self.selectedItem = row
     self.selectedDetails = nil
-    if not row or not DynamicTrading then return end
-    if type(DynamicTrading.DebugItem) == "function" then
-        local ok, details = pcall(DynamicTrading.DebugItem, row.fullType, true)
+    if not row or not MarketSense then return end
+    if type(MarketSense.DebugItem) == "function" then
+        local ok, details = pcall(MarketSense.DebugItem, row.fullType, true)
         if ok then self.selectedDetails = details
         else self.statusText = tostring(details) end
-    elseif type(DynamicTrading.GetPriceDetails) == "function" then
-        local ok, details = pcall(DynamicTrading.GetPriceDetails,
+    elseif type(MarketSense.GetPriceDetails) == "function" then
+        local ok, details = pcall(MarketSense.GetPriceDetails,
             row.fullType, true)
         if ok then self.selectedDetails = details
         else self.statusText = tostring(details) end
@@ -629,8 +629,8 @@ if PsychopatzCore.DebugHub and PsychopatzCore.DebugHub.RegisterTool then
         description = tr("UI_MarketSenseCatalog_ToolDescription",
             "Display every available MarketSense item by taxonomy and test its runtime evaluator."),
         available = function()
-            return DynamicTrading
-                and type(DynamicTrading.GetAllKnownItems) == "function"
+            return MarketSense
+                and type(MarketSense.GetAllKnownItems) == "function"
         end,
         action = function() return MarketSenseItemCatalogDebugWindow.Open() end,
     })

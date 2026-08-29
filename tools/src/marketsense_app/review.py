@@ -79,6 +79,7 @@ def searchable_text(row: dict[str, Any]) -> str:
     gap = heuristic_gap(row) or {}
     fields = (
         row.get("fullType"), row.get("category"), row.get("primary"),
+        row.get("mechanicalClass"), row.get("mechanicalFamily"), row.get("marketRole"),
         row.get("subcategory"), row.get("leaf"), row.get("primaryPrefix"),
         row.get("categoryPath"), row.get("detector"), row.get("resolver"),
         row.get("source"), row.get("workshopMod"), row.get("workshopName"),

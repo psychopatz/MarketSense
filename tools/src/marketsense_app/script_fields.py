@@ -37,6 +37,8 @@ FIELD_ALIASES = {
     "ispackaged": "packaged", "isfishinglure": "fishingLure",
     "isdangerousuncooked": "dangerousUncooked", "isgoodhot": "goodHot",
     "modid": "modId", "modname": "modName",
+    "containername": "fluidContainerName", "pickrandomfluid": "fluidPickRandom",
+    "fluidcontainer": "fluidContainer", "fluidtype": "fluidType",
 }
 
 NUMBER_FIELDS = {
@@ -46,4 +48,5 @@ NUMBER_FIELDS = {
     "capacity", "weightReduction", "biteDefense", "scratchDefense", "bulletDefense", "insulation",
     "windResistance", "alcoholPower", "fatigueChange", "reduceInfectionPower", "bandagePower",
     "mechanicType",
+    "fluidCapacity", "fluidAmount", "fluidPrimaryAmount", "fluidFilledRatio",
 }

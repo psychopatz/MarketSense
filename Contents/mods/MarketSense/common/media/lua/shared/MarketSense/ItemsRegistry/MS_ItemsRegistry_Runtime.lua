@@ -8,40 +8,11 @@ local Registry = Shared.Registry
 local TagUtils = Shared.TagUtils
 local Config = Shared.Config
 
-local didLogAddItemFallback = false
-
-local function ensureAddItemApi()
-    if type(DynamicTrading.AddItem) == "function" then
-        return DynamicTrading.AddItem
-    end
-
-    pcall(require, "DT/Common/Config/DT_Config_ItemRegistry")
-    if type(DynamicTrading.AddItem) == "function" then
-        Shared.debugLog("Loaded DT item registry API on demand before cache registration.")
-        return DynamicTrading.AddItem
-    end
-
-    return nil
-end
-
 local function registerLiveItem(fullType, data)
-    DynamicTrading.Config = DynamicTrading.Config or {}
-    DynamicTrading.Config.MasterList = DynamicTrading.Config.MasterList or {}
-
-    local addItem = ensureAddItemApi()
-    if addItem then
-        addItem(fullType, data)
-        return true
-    end
-
-    DynamicTrading.Config.MasterList[fullType] = data
-    DynamicTrading.Config.ItemRegistryRevision = (tonumber(DynamicTrading.Config.ItemRegistryRevision) or 0) + 1
-
-    if not didLogAddItemFallback then
-        Shared.log("Warn", "DynamicTrading.AddItem was unavailable during registry load; using direct MasterList fallback for Project Zomboid compatibility.")
-        didLogAddItemFallback = true
-    end
-    Shared.debugLog("Registered item through direct MasterList fallback: " .. tostring(fullType))
+    MarketSense.Config = MarketSense.Config or {}
+    MarketSense.Config.MasterList = MarketSense.Config.MasterList or {}
+    MarketSense.Config.MasterList[fullType] = MarketSense.Core.deepCopy(data)
+    MarketSense.Config.ItemRegistryRevision = (tonumber(MarketSense.Config.ItemRegistryRevision) or 0) + 1
     return true
 end
 
@@ -51,9 +22,9 @@ local function populateMasterList(indexData, activeState)
         runtimeRules.loadFromFile(false)
     end
 
-    DynamicTrading.Config = DynamicTrading.Config or {}
-    DynamicTrading.Config.MasterList = {}
-    DynamicTrading.Config.ItemRegistryRevision = tonumber(DynamicTrading.Config.ItemRegistryRevision) or 0
+    MarketSense.Config = MarketSense.Config or {}
+    MarketSense.Config.MasterList = {}
+    MarketSense.Config.ItemRegistryRevision = (tonumber(MarketSense.Config.ItemRegistryRevision) or 0) + 1
 
     local catalog = {
         items = {},
@@ -130,7 +101,7 @@ function Runtime.loadCatalogFromCache()
         Shared.debugLog("Cache load skipped because index validation failed: " .. tostring(reason))
         return nil
     end
-    Shared.debugLog("Loading DT_Items cache from " .. Registry.OUTPUT_HINT .. " using hash " .. tostring(activeState.activeModsHash))
+    Shared.debugLog("Loading MS_Items cache from " .. Registry.OUTPUT_HINT .. " using hash " .. tostring(activeState.activeModsHash))
     return populateMasterList(indexData, activeState)
 end
 
@@ -144,13 +115,13 @@ function Runtime.rebuildCache(reason)
     local activeState = Shared.buildActiveModState()
     local previousIndex = IO.loadIndex()
     local rebuildReason = tostring(reason or "rebuild")
-    Shared.log("Info", "Rebuilding DT_Items runtime cache (" .. rebuildReason .. ") from live item data.")
+    Shared.log("Info", "Rebuilding MS_Items runtime cache (" .. rebuildReason .. ") from live item data.")
     Shared.debugLog("Active mods hash: " .. tostring(activeState.activeModsHash))
 
     local generatedItems = Build.collectGeneratedItems()
     if not Shared.hasEntries(generatedItems) then
         Shared.log("Warn", "Runtime cache rebuild produced no live items. Falling back to the previous cache if available.")
-        IO.writeRebuildRequest(rebuildReason, activeState, previousIndex, "Runtime rebuild produced no items and kept the previous DT_Items cache if one was available.")
+        IO.writeRebuildRequest(rebuildReason, activeState, previousIndex, "Runtime rebuild produced no items and kept the previous MS_Items cache if one was available.")
         if previousIndex and type(previousIndex.files) == "table" and #previousIndex.files > 0 then
             return populateMasterList(previousIndex, activeState)
         end
@@ -164,8 +135,8 @@ function Runtime.rebuildCache(reason)
 
     local grouped = Build.groupForWrite(mergedItems)
     if not Shared.hasEntries(grouped) then
-        Shared.log("Warn", "Runtime cache rebuild failed to group generated items for DT_Items persistence.")
-        IO.writeRebuildRequest(rebuildReason, activeState, previousIndex, "Runtime rebuild failed while grouping generated DT_Items.")
+        Shared.log("Warn", "Runtime cache rebuild failed to group generated items for MS_Items persistence.")
+        IO.writeRebuildRequest(rebuildReason, activeState, previousIndex, "Runtime rebuild failed while grouping generated MS_Items.")
         if previousIndex and type(previousIndex.files) == "table" and #previousIndex.files > 0 then
             return populateMasterList(previousIndex, activeState)
         end
@@ -175,8 +146,8 @@ function Runtime.rebuildCache(reason)
     local sourceManifestHash = Shared.buildSourceManifestHash(mergedItems, activeState)
     local indexData = Build.writeGroupedFiles(grouped, activeState, sourceManifestHash)
     if type(indexData) ~= "table" or type(indexData.files) ~= "table" or #indexData.files == 0 then
-        Shared.log("Warn", "Runtime cache rebuild could not persist DT_Items files. Falling back to the previous cache if available.")
-        IO.writeRebuildRequest(rebuildReason, activeState, previousIndex, "Runtime rebuild failed while writing DT_Items files.")
+        Shared.log("Warn", "Runtime cache rebuild could not persist MS_Items files. Falling back to the previous cache if available.")
+        IO.writeRebuildRequest(rebuildReason, activeState, previousIndex, "Runtime rebuild failed while writing MS_Items files.")
         if previousIndex and type(previousIndex.files) == "table" and #previousIndex.files > 0 then
             return populateMasterList(previousIndex, activeState)
         end
@@ -184,7 +155,7 @@ function Runtime.rebuildCache(reason)
     end
 
     Registry.state.lastRequestKey = nil
-    Shared.log("Info", "Rebuilt DT_Items runtime cache with " .. tostring(#indexData.files) .. " files for " .. tostring(activeState.activeModsHash) .. ".")
+    Shared.log("Info", "Rebuilt MS_Items runtime cache with " .. tostring(#indexData.files) .. " files for " .. tostring(activeState.activeModsHash) .. ".")
     return populateMasterList(indexData, activeState)
 end
 
@@ -201,7 +172,7 @@ function Runtime.ensureLoaded(forceRebuild)
     local valid, reason = IO.validateIndex(indexData, activeState)
     if forceRebuild or not valid then
         if forceRebuild then
-            Shared.log("Info", "Forced DT_Items runtime rebuild requested.")
+            Shared.log("Info", "Forced MS_Items runtime rebuild requested.")
         else
             if reason == "mods" then
                 local addedMods, removedMods = Shared.diffActiveMods(indexData and indexData.activeMods or {}, activeState.activeMods)
@@ -213,15 +184,15 @@ function Runtime.ensureLoaded(forceRebuild)
                     parts[#parts + 1] = "removed mods: " .. table.concat(removedMods, ", ")
                 end
                 local extra = #parts > 0 and (" | " .. table.concat(parts, " | ")) or ""
-                Shared.log("Warn", "DT_Items cache invalidated by active mod change; regenerating runtime cache." .. extra)
+                Shared.log("Warn", "MS_Items cache invalidated by active mod change; regenerating runtime cache." .. extra)
             else
-                Shared.log("Warn", "DT_Items cache invalidated (" .. tostring(reason) .. "); regenerating " .. Registry.OUTPUT_HINT)
+                Shared.log("Warn", "MS_Items cache invalidated (" .. tostring(reason) .. "); regenerating " .. Registry.OUTPUT_HINT)
             end
         end
         return Runtime.rebuildCache(forceRebuild and "forced" or reason)
     end
 
-    Shared.debugLog("DT_Items cache already valid; loading from " .. Registry.OUTPUT_HINT)
+    Shared.debugLog("MS_Items cache already valid; loading from " .. Registry.OUTPUT_HINT)
     return populateMasterList(indexData, activeState)
 end
 

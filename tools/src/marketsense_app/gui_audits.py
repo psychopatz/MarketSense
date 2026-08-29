@@ -43,7 +43,7 @@ class AuditMixin:
         self.notebook.add(frame, text="Verify")
         toolbar = self.ttk.Frame(frame)
         toolbar.pack(fill="x", pady=(0, 6))
-        self.ttk.Label(toolbar, text="Runtime DT_Items").pack(side="left")
+        self.ttk.Label(toolbar, text="MarketSense runtime cache (MS_Items)").pack(side="left")
         self.runtime_items_dir_var = self.tk.StringVar(
             value=str(DEFAULT_RUNTIME_ITEMS_DIR)
         )
@@ -60,7 +60,7 @@ class AuditMixin:
             toolbar, text="Save JSON…", command=self._save_runtime_comparison_json
         ).pack(side="left")
         self.runtime_verify_status_var = self.tk.StringVar(
-            value="Run a complete harness scan, then compare it with the PZ DT_Items output."
+            value="Run a complete harness scan, then compare it with the PZ MarketSense output."
         )
         self.ttk.Label(
             frame, textvariable=self.runtime_verify_status_var
@@ -68,7 +68,7 @@ class AuditMixin:
         self.ttk.Label(
             frame,
             text=(
-                "This compares the runtime cache consumed by DynamicTrading with "
+                "This compares the MarketSense runtime cache with "
                 "the offline harness at the cache stage: item membership, tags, "
                 "taxonomy, generated base price, and generated stock."
             ),
@@ -91,7 +91,7 @@ class AuditMixin:
 
     def _browse_runtime_items(self) -> None:
         selected = self.filedialog.askdirectory(
-            title="Select the PZ DT_Items directory",
+            title="Select the PZ MarketSense runtime cache directory",
             initialdir=str(Path(self.runtime_items_dir_var.get()).expanduser().parent),
         )
         if selected:
@@ -101,7 +101,7 @@ class AuditMixin:
         if not self.master_rows:
             self.messagebox.showinfo(
                 "Runtime verification",
-                "Run Scan all / cache before comparing runtime DT_Items output.",
+                "Run Scan all / cache before comparing the MarketSense runtime output.",
             )
             return
         try:
@@ -205,7 +205,7 @@ class AuditMixin:
         self.runtime_verify_tree.delete(*self.runtime_verify_tree.get_children())
         self.runtime_verify_difference_by_iid.clear()
         self.runtime_verify_status_var.set(
-            "Scan changed; run Compare again against the current DT_Items output."
+            "Scan changed; run Compare again against the current MarketSense runtime output."
         )
         self._show_runtime_difference()
 

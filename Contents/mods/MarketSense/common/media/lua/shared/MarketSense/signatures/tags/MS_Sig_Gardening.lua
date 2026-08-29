@@ -1,17 +1,15 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local function hasTag(ctx, token)
-    if not ctx or not ctx.normalizedTags then
-        return false
-    end
-    return ctx.normalizedTags[token] == true
-        or ctx.normalizedTags["base" .. token] == true
+    return TagEvidence.has(ctx, token)
 end
 
 local function contains(text, token)

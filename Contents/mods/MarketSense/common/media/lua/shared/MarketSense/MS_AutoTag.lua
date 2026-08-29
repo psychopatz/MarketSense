@@ -2,6 +2,7 @@ require "MarketSense/MS_PropertyReader"
 require "MarketSense/MS_TagUtils"
 require "MarketSense/MS_HeuristicsDB"
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/signatures/tags/MS_WeaponEvidence"
 require "MarketSense/signatures/tags/MS_Classifier"
 require "MarketSense/signatures/tags/MS_PostLabelResolver"
 require "MarketSense/signatures/TagFilters/MS_filter_Quality"
@@ -17,6 +18,14 @@ local TagUtils   = MarketSense.TagUtils
 local DB         = MarketSense.HeuristicsDB
 local Classifier = MarketSense.Classifier
 local PostLabelResolver = MarketSense.PostLabelResolver
+local WeaponEvidence = MarketSense.WeaponEvidence
+
+local function annotateWeaponEvidence(ctx, result)
+    if WeaponEvidence and WeaponEvidence.annotate then
+        return WeaponEvidence.annotate(ctx, result)
+    end
+    return result
+end
 
 local function addDescriptorTags(ctx, result)
     MarketSense.Filters.Quality.apply(ctx, result)
@@ -47,14 +56,14 @@ function AutoTag.generate(fullTypeOrContext)
     -- 1. Per-item override in HeuristicsDB
     local itemOverride = DB.getItem(ctx.fullType)
     if itemOverride and type(itemOverride.tags) == "table" and #itemOverride.tags > 0 then
-        return addDescriptorTags(ctx, TagUtils.normalizeResult({
+        return addDescriptorTags(ctx, annotateWeaponEvidence(ctx, TagUtils.normalizeResult({
             matched    = true,
             confidence = 1,
             category   = TagUtils.categoryFromPrimary(itemOverride.tags[1]),
             primary    = itemOverride.tags[1],
             tags       = itemOverride.tags,
             details    = { source = "item_override" },
-        }))
+        })))
     end
 
     -- 2. Classifier pipeline
@@ -64,11 +73,11 @@ function AutoTag.generate(fullTypeOrContext)
         if PostLabelResolver and type(PostLabelResolver.correct) == "function" then
             normalized = TagUtils.normalizeResult(PostLabelResolver.correct(ctx, normalized))
         end
-        return addDescriptorTags(ctx, normalized)
+        return addDescriptorTags(ctx, annotateWeaponEvidence(ctx, normalized))
     end
 
     -- 3. Fallback
-    return addDescriptorTags(ctx, AutoTag.fallback(ctx))
+    return addDescriptorTags(ctx, annotateWeaponEvidence(ctx, AutoTag.fallback(ctx)))
 end
 
 -- Compare all signatures (used by debug tools)

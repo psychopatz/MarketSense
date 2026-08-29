@@ -91,6 +91,79 @@ function methods.getRanged(self) return property(self, "ranged", "") end
 function methods.isAimedFirearm(self) return property(self, "aimedFirearm", "") end
 function methods.getIsAimedFirearm(self) return property(self, "aimedFirearm", "") end
 
+-- PZ exposes fluid contents through InventoryItem:getFluidContainer(), not
+-- through the item script's ordinary scalar properties.  This small bridge
+-- mirrors the methods consumed by MS_PropertyReader so the offline evaluator
+-- follows the same primary-fluid path as the game.
+local fluidMethods = {}
+function fluidMethods.getFluidType(self) return self._name end
+function fluidMethods.getFluidTypeString(self) return self._name end
+function fluidMethods.getCategories(self)
+    return property(self._item, "fluidCategories", {})
+end
+
+local function fluidNames(item)
+    local names = property(item, "fluidTypes", {})
+    if type(names) ~= "table" then names = {} end
+    if #names == 0 then
+        local direct = property(item, "fluidType", "")
+        if direct ~= "" then names = { direct } end
+    end
+    return names
+end
+
+local function primaryFluidName(item)
+    local names = fluidNames(item)
+    local first = names[1]
+    if type(first) == "table" then first = first.name or first.fluid or first.type end
+    return tostring(first or "")
+end
+
+local fluidContainerMethods = {}
+function fluidContainerMethods.getContainerName(self)
+    return property(self._item, "fluidContainerName", "")
+end
+function fluidContainerMethods.getCapacity(self)
+    return tonumber(property(self._item, "fluidCapacity", 0)) or 0
+end
+function fluidContainerMethods.getAmount(self)
+    local configured = property(self._item, "fluidAmount", nil)
+    if configured ~= nil then return tonumber(configured) or 0 end
+    local name = primaryFluidName(self._item)
+    return name ~= "" and (self:getCapacity()) or 0
+end
+function fluidContainerMethods.getPrimaryFluidAmount(self)
+    local configured = property(self._item, "fluidPrimaryAmount", nil)
+    if configured ~= nil then return tonumber(configured) or 0 end
+    return self:getAmount()
+end
+function fluidContainerMethods.getFilledRatio(self)
+    local capacity = self:getCapacity()
+    if capacity <= 0 then return 0 end
+    return math.max(0, math.min(1, self:getAmount() / capacity))
+end
+function fluidContainerMethods.isEmpty(self)
+    return primaryFluidName(self._item) == "" or self:getAmount() <= 0
+end
+function fluidContainerMethods.isMixture(self)
+    local configured = property(self._item, "fluidIsMixture", nil)
+    if configured ~= nil then return configured == true end
+    return #fluidNames(self._item) > 1
+end
+function fluidContainerMethods.getPrimaryFluid(self)
+    if self:isEmpty() then return nil end
+    local name = primaryFluidName(self._item)
+    return setmetatable({ _item = self._item, _name = name }, { __index = fluidMethods })
+end
+function methods.getFluidContainer(self)
+    local hasFluidDefinition = property(self, "fluidContainer", false) == true
+        or property(self, "fluidType", "") ~= ""
+        or type(property(self, "fluidTypes", nil)) == "table"
+        or property(self, "canStoreWater", false) == true
+    if not hasFluidDefinition then return nil end
+    return setmetatable({ _item = self }, { __index = fluidContainerMethods })
+end
+
 local numberMethods = {
     getActualWeight="actualWeight", getWeight="actualWeight", getHungerChange="hungerChange",
     getThirstChange="thirstChange", getCalories="calories", getCarbohydrates="carbohydrates",
@@ -103,14 +176,14 @@ local numberMethods = {
     getWindresist="windResistance", getWindresistance="windResistance",
     getWindResistance="windResistance", getAlcoholPower="alcoholPower", getFatigueChange="fatigueChange",
     getReduceInfectionPower="reduceInfectionPower", getBandagePower="bandagePower",
-    getMechanicType="mechanicType",
+    getMechanicType="mechanicType", getCondition="condition",
 }
 for methodName, propertyName in pairs(numberMethods) do
     methods[methodName] = function(self) return property(self, propertyName, 0) end
 end
 
 local boolMethods = {
-    isTwoHandWeapon="twoHandWeapon", isSpice="spice", isPoison="poison", canAge="canAge",
+    isSpice="spice", isPoison="poison", canAge="canAge",
     canBeWrite="canBeWrite", isCantEat="cantEat", isCookable="cookable", isDrainable="drainable",
     CanStoreWater="canStoreWater", isCanStoreWater="canStoreWater", isCannedFood="cannedFood",
     getCannedFood="cannedFood", isPackaged="packaged", getPackaged="packaged",
@@ -120,6 +193,12 @@ local boolMethods = {
 }
 for methodName, propertyName in pairs(boolMethods) do
     methods[methodName] = function(self) return property(self, propertyName, false) end
+end
+-- The script format uses `TwoHandWeapon`, while the runtime-facing bridge
+-- historically looked only for a lower-case fixture key. Accept both forms
+-- so rifle/shotgun evidence follows the PZ Item/InventoryItem contract.
+function methods.isTwoHandWeapon(self)
+    return property(self, "TwoHandWeapon", property(self, "twoHandWeapon", false))
 end
 function methods.getWeaponCategories(self) return listProperty(self, "weaponCategories") end
 function methods.getModID(self) return property(self, "modId", "") end
@@ -242,7 +321,6 @@ getGameTime = function()
 end
 SandboxVars = { MarketSense = sandboxOptions }
 
-DynamicTrading = { Log = function() end }
 local api = require "MarketSense/MS_PublicAPI"
 
 local function jsonEscape(value)
@@ -261,6 +339,15 @@ local function jsonNumber(value)
         return "null"
     end
     return tostring(number)
+end
+local function jsonField(value)
+    -- Keep the flat row schema's historical empty-string values for nil and
+    -- string fields, but preserve booleans as JSON booleans.  This matters for
+    -- runtime evidence such as isActualLiquid and marketEligible: consumers
+    -- should not have to guess whether "true" means true or text.
+    if type(value) == "number" then return jsonNumber(value) end
+    if type(value) == "boolean" then return value and "true" or "false" end
+    return jsonString(value)
 end
 local function jsonValue(value, depth, seen)
     if value == nil then return "null" end
@@ -405,14 +492,17 @@ end
 
 local function rowJson(row)
     local fields = {}
-    local ordered = { "fullType", "category", "primary", "price", "basePrice", "rawScore", "confidence", "source",
+    local ordered = { "fullType", "category", "primary", "mechanicalClass", "mechanicalFamily", "marketRole",
+        "price", "basePrice", "rawScore", "confidence", "source",
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh", "daysRotten",
         "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity", "workshopMod", "workshopName",
         "workshopId", "workshopVersion", "scriptPath", "description", "subcategory", "leaf",
-        "primaryPrefix", "categoryPath", "detector", "resolver", "marketEligible", "availabilityStatus" }
+        "primaryPrefix", "categoryPath", "detector", "resolver", "marketEligible", "availabilityStatus",
+        "fluidType", "fluidTypeString", "fluidAmount", "fluidCapacity", "fluidPrimaryAmount",
+        "fluidFilledRatio", "isActualLiquid", "fluidIsMixture" }
     for _, key in ipairs(ordered) do
         local value = row[key]
-        fields[#fields + 1] = jsonString(key) .. ":" .. (type(value) == "number" and jsonNumber(value) or jsonString(value))
+        fields[#fields + 1] = jsonString(key) .. ":" .. jsonField(value)
     end
     fields[#fields + 1] = jsonString("tags") .. ":" .. jsonArray(row.tags)
     fields[#fields + 1] = jsonString("expandedTags") .. ":" .. jsonArray(row.expandedTags)
@@ -423,6 +513,7 @@ local function rowJson(row)
     fields[#fields + 1] = jsonString("detection") .. ":" .. jsonValue(row.detection)
     fields[#fields + 1] = jsonString("context") .. ":" .. jsonValue(row.context)
     fields[#fields + 1] = jsonString("priceAudit") .. ":" .. jsonValue(row.priceAudit)
+    fields[#fields + 1] = jsonString("priceHeuristic") .. ":" .. jsonValue(row.priceHeuristic)
     fields[#fields + 1] = jsonString("evaluator") .. ":" .. jsonValue(row.evaluator)
     fields[#fields + 1] = jsonString("availability") .. ":" .. jsonValue(row.availability)
     if row.error then fields[#fields + 1] = jsonString("error") .. ":" .. jsonString(row.error) end
@@ -459,6 +550,11 @@ for _, spec in ipairs(specs) do
             max = baseMax,
         }
         row.category, row.primary, row.price = details.category, details.primary, details.price
+        local weaponDetails = (detection.final and detection.final.details) or {}
+        local weaponEvidence = weaponDetails.weaponEvidence or {}
+        row.mechanicalClass = weaponDetails.mechanicalClass or weaponEvidence.mechanicalClass
+        row.mechanicalFamily = weaponDetails.mechanicalFamily or weaponEvidence.mechanicalFamily
+        row.marketRole = weaponDetails.marketRole or weaponEvidence.marketRole
         row.basePrice = basePrice
         row.rawScore, row.confidence, row.source = details.rawScore, details.confidence, details.source
         row.moduleName, row.typeName = details.moduleName, details.typeName
@@ -467,6 +563,10 @@ for _, spec in ipairs(specs) do
         row.calories, row.daysFresh, row.daysRotten = context.calories, context.daysFresh, context.daysRotten
         row.minDamage, row.maxDamage, row.maxRange = context.minDamage, context.maxDamage, context.maxRange
         row.conditionMax, row.capacity = context.conditionMax, context.capacity
+        row.fluidType, row.fluidTypeString = context.fluidType, context.fluidTypeString
+        row.fluidAmount, row.fluidCapacity = context.fluidAmount, context.fluidCapacity
+        row.fluidPrimaryAmount, row.fluidFilledRatio = context.fluidPrimaryAmount, context.fluidFilledRatio
+        row.isActualLiquid, row.fluidIsMixture = context.isActualLiquid, context.fluidIsMixture
         row.description = context.description
         row.availability = MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.getAvailability
             and MarketSense.ItemsRegistry.getAvailability(spec.fullType) or nil
@@ -483,8 +583,9 @@ for _, spec in ipairs(specs) do
         row.detection = detection
         row.context = contextSnapshot(context)
         row.priceAudit = details.balanceAudit
+        row.priceHeuristic = details.priceHeuristic
         row.evaluator = {
-            api = "DynamicTrading.GetPriceDetails",
+            api = "MarketSense.GetPriceDetails",
             withAudit = true,
             contextBuilder = "MarketSense.PropertyReader.buildContext",
             classifier = "MarketSense.Classifier.classify + MarketSense.AutoTag.generate",

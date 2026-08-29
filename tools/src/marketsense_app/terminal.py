@@ -89,6 +89,47 @@ def print_terminal(
         print("  WARNING: no item definitions matched the selected Workshop roots/filters.")
     print()
 
+    melee_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") == "weapon_melee_v1"
+    ]
+    if melee_rows:
+        print("MELEE PRICE HEURISTIC SAMPLE")
+        print("  item | mechanical class | condition | subtype x | state x | price")
+        for row in sorted(melee_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            condition = heuristic.get("conditionRatio")
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{row.get('mechanicalClass', '-'):<18} | "
+                f"{format_number(condition) if condition is not None else '-':>9} | "
+                f"{format_number(heuristic.get('subtypeMultiplier')):>8} | "
+                f"{format_number(heuristic.get('conditionMultiplier')):>7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(melee_rows) > top:
+            print(f"  ... {len(melee_rows) - top:,} more melee rows are in JSON/CSV output")
+        print()
+
+    liquid_rows = [row for row in rows if row.get("category") == "Liquid"]
+    if liquid_rows:
+        print("LIQUID CONTENT PRICE SAMPLE")
+        print("  item | fluid | litres | $/litre | content value | final price | source")
+        for row in sorted(liquid_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('fluidType') or row.get('fluidType') or '-'):<16} | "
+                f"{format_number(heuristic.get('volume')):>6} | "
+                f"{format_number(heuristic.get('pricePerLiter')):>8} | "
+                f"{format_number(heuristic.get('contentValue')):>13} | "
+                f"{format_number(row.get('price')):>11} | "
+                f"{heuristic.get('pricingSource', '-')}"
+            )
+        if len(liquid_rows) > top:
+            print(f"  ... {len(liquid_rows) - top:,} more liquid rows are in JSON/CSV output")
+        print()
+
     sandbox = summary.get("sandbox") or {}
     requested_sandbox = sandbox.get("overrides") or {}
     effective_sandbox = sandbox.get("requested") or {}
@@ -115,7 +156,31 @@ def print_terminal(
         if total_chunks > chunk_number:
             print(f"  ... use --low-confidence-chunk {chunk_number + 1} for the next chunk")
     else:
-        print("  no overrides; using the mod's declared/default sandbox values")
+        print(
+            "  no local overrides; using live defaults plus Python JSON "
+            "recommendations where available"
+        )
+    definition_audit = sandbox.get("definitionAudit") or {}
+    if definition_audit:
+        audit_status = str(definition_audit.get("status") or "unknown").upper()
+        print(
+            f"  definition audit={audit_status} | "
+            f"live={definition_audit.get('declaredCount', 0):,} | "
+            f"Python recommendations={definition_audit.get('recommendedCount', 0):,} | "
+            f"Python-only gaps={definition_audit.get('recommendationGapCount', 0):,} | "
+            f"stale generated={definition_audit.get('staleGeneratedCount', 0):,}"
+        )
+        audit_warnings = definition_audit.get("warnings") or []
+        for warning in audit_warnings[:chunk_size]:
+            print(
+                f"    warning: {warning.get('kind', 'unknown')} "
+                f"{warning.get('key', '')} — {warning.get('message', '')}"
+            )
+        if len(audit_warnings) > chunk_size:
+            print(
+                f"    ... {len(audit_warnings) - chunk_size:,} more audit warnings "
+                "are in the saved JSON result"
+            )
     print()
 
     print("WORKSHOP MOD COVERAGE")

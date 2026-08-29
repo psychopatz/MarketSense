@@ -59,6 +59,7 @@ def normalize_preferences(payload: dict[str, Any]) -> dict[str, Any]:
         "format": PREFERENCES_FORMAT_VERSION,
         "workshopRoots": [value.strip() for value in roots if isinstance(value, str) and value.strip()],
         "gameRoot": _safe_string(payload.get("gameRoot")),
+        "sandboxConfig": _safe_string(payload.get("sandboxConfig")),
         "modFilters": _safe_string(payload.get("modFilters")),
         "gameVersion": _safe_string(payload.get("gameVersion")),
         "maxItems": _safe_nonnegative_int(payload.get("maxItems") or 0),

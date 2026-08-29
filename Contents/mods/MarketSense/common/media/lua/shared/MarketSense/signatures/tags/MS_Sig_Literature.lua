@@ -1,19 +1,15 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_TagEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.Signatures = MarketSense.Signatures or {}
 
 local Signature = {}
 local TagMapper = MarketSense.TagMapper
+local TagEvidence = MarketSense.TagEvidence
 
 local function hasTag(ctx, token)
-    if not ctx or not ctx.normalizedTags then
-        return false
-    end
-    -- PZ commonly stores vanilla tags with a Base: prefix. PropertyReader
-    -- normalizes that to "basetag", while signatures use the short token.
-    return ctx.normalizedTags[token] == true
-        or ctx.normalizedTags["base" .. token] == true
+    return TagEvidence.has(ctx, token)
 end
 local function itemTypeIs(ctx, t)
     return (ctx.itemTypeToken or "") == t
