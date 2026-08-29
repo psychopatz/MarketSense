@@ -43,7 +43,10 @@ local TOKEN_TO_ROOT = {
     ProtectiveGearNeck = "Clothing", ProtectiveGearUnderwear = "Clothing",
     ProtectiveGearBottom = "Clothing", ProtectiveGearOuterwear = "Clothing",
     -- Container
-    Container = "Container", ContainerWearable = "Container", ContainerWearableAmmo = "Container",
+    Container = "Container", ContainerBag = "Container", ContainerBagBackpack = "Container",
+    ContainerBagBandolier = "Container", ContainerBagDuffel = "Container",
+    ContainerBagFanny = "Container", ContainerBagSatchel = "Container",
+    ContainerWearable = "Container", ContainerWearableAmmo = "Container",
     ContainerAmmo = "Container", ContainerLiquid = "Container", ContainerBox = "Container",
     KeyRing = "Container", MementoOrContainer = "Container",
     -- Food root tokens
@@ -89,6 +92,8 @@ local TOKEN_TO_ROOT = {
     MaterialMaintenance = "Resource", MaterialButchering = "Resource",
     MaterialFireSource = "Resource", MaterialOrJunk = "Resource", MaterialBundled = "Resource",
     MaterialHardware = "Resource", MaterialWood = "Resource", MaterialChemical = "Resource",
+    MaterialConstruction = "Resource", MaterialGlass = "Resource", MaterialStone = "Resource",
+    MaterialPaper = "Resource",
     ResourceMetal = "Resource", ResourceFabric = "Resource", ResourceMaterial = "Resource",
     ResourceHardware = "Resource",
     -- Medical
@@ -185,6 +190,12 @@ local TOKEN_PARENTS = {
     ProtectiveGearNeck = { "ProtectiveGear" }, ProtectiveGearUnderwear = { "ProtectiveGear" },
     ProtectiveGearBottom = { "ProtectiveGear" }, ProtectiveGearOuterwear = { "ProtectiveGear" },
     -- Container
+    ContainerBag = { "Container" },
+    ContainerBagBackpack = { "ContainerBag", "Container" },
+    ContainerBagBandolier = { "ContainerBag", "Container" },
+    ContainerBagDuffel = { "ContainerBag", "Container" },
+    ContainerBagFanny = { "ContainerBag", "Container" },
+    ContainerBagSatchel = { "ContainerBag", "Container" },
     ContainerWearable = { "Container" },
     ContainerWearableAmmo = { "ContainerWearable", "Container" },
     ContainerAmmo = { "Container" }, ContainerLiquid = { "Container" },
@@ -255,6 +266,8 @@ local TOKEN_PARENTS = {
     MaterialFireSource = { "Material" }, MaterialOrJunk = { "Material" },
     MaterialBundled = { "Material" }, MaterialHardware = { "Material" },
     MaterialWood = { "Material" }, MaterialChemical = { "Material" },
+    MaterialConstruction = { "Material" }, MaterialGlass = { "Material" },
+    MaterialStone = { "Material" }, MaterialPaper = { "Material" },
     ResourceFuel = { "Resource" }, ResourceParts = { "Resource" },
     ResourceMetal = { "Material" }, ResourceFabric = { "Material" },
     ResourceMaterial = { "Material" }, ResourceHardware = { "Material" },
@@ -412,6 +425,20 @@ function TagMapper.getDefinition(token)
             leaf          = "General",
             primaryPrefix = root .. ".General",
             path          = root .. "/General.txt",
+            parents       = TagMapper.getParents(text),
+        }
+    end
+
+    -- ContainerBag is a real branch token, not a leaf item subtype. Keep it
+    -- at Container/Bag so its leaf variants render as Container > Bag > X.
+    if text == "ContainerBag" then
+        return {
+            root          = "Container",
+            token         = text,
+            subcategory   = "Bag",
+            leaf          = "Bag",
+            primaryPrefix = "Container.Bag",
+            path          = "Container/Bag.txt",
             parents       = TagMapper.getParents(text),
         }
     end

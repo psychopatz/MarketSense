@@ -21,17 +21,36 @@ local function itemTypeIs(ctx, ...)
     for _, v in ipairs({...}) do if t == v then return true end end
     return false
 end
+
 local function hasTag(ctx, token)
-    return ctx.normalizedTags and ctx.normalizedTags[token] == true
+    if not ctx or not ctx.normalizedTags then
+        return false
+    end
+    -- Vanilla item scripts commonly expose tags as Base:<tag>. The
+    -- PropertyReader keeps the namespace in the normalized key, while the
+    -- signatures use the short gameplay token.
+    return ctx.normalizedTags[token] == true
+        or ctx.normalizedTags["base" .. token] == true
 end
+
 local function idContains(ctx, sub)
     return string.find(ctx.idLower or "", sub, 1, true) ~= nil
 end
+
+local function normalizeWeaponToken(value)
+    local token = string.lower(tostring(value or ""))
+    -- Accept both Java enum text (WeaponCategory.Spear) and item-script
+    -- category text (base:spear), then ignore separators.
+    token = string.gsub(token, "^.*[%.:]", "")
+    token = string.gsub(token, "^weaponcategory", "")
+    return string.gsub(token, "[^%w]", "")
+end
+
 local function weaponCatIs(ctx, ...)
     for _, wc in ipairs(ctx.weaponCategories or {}) do
-        local wcl = string.lower(tostring(wc or ""))
+        local wcl = normalizeWeaponToken(wc)
         for _, v in ipairs({...}) do
-            if wcl == string.lower(v) then return true end
+            if wcl == normalizeWeaponToken(v) then return true end
         end
     end
     return false
@@ -77,6 +96,16 @@ function Signature.match(ctx)
             return TagMapper.makeResult(cat, 0.90, { source = "weapon_melee_combo", orig = orig })
         end
         return TagMapper.makeResult(cat, 0.96, { source = "weapon_melee" })
+    end
+
+    -- Some Workshop weapons omit Categories but retain a strong spear signal.
+    -- Keep this below authoritative categories so a mod can use a custom
+    -- display category without losing the weapon's actual melee subtype.
+    if hasTag(ctx, "fishingspear") then
+        return TagMapper.makeResult("WeaponSpear", 0.88, { source = "weapon_melee_spear_tag" })
+    end
+    if idContains(ctx, "spear") then
+        return TagMapper.makeResult("WeaponSpear", 0.82, { source = "weapon_melee_spear_name" })
     end
 
     if (ctx.minDamage or 0) > 0 or (ctx.maxDamage or 0) > 0 then

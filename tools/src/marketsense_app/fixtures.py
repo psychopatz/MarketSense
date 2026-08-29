@@ -73,9 +73,64 @@ def mock_definitions() -> list[ItemDefinition]:
             "minDamage": 1, "maxDamage": 2, "maxRange": 1, "conditionMax": 10,
             "actualWeight": 1.5, "description": "a heavy hand axe", "canSpawnAsLoot": True,
         }),
+        make("Spear", {
+            "itemType": "base:weapon", "displayCategory": "WeaponCrafted",
+            "weaponCategories": ["base:improvised", "base:spear"],
+            "tags": ["base:fishingspear"], "minDamage": 1, "maxDamage": 1.6,
+            "maxRange": 1.5, "conditionMax": 8, "actualWeight": 1.2,
+            "description": "a crafted fishing spear", "canSpawnAsLoot": True,
+        }),
+        make("SpearTagFallback", {
+            "itemType": "base:weapon", "displayCategory": "Weapon",
+            "tags": ["base:fishingspear"], "minDamage": 1, "maxDamage": 1.4,
+            "maxRange": 1.5, "conditionMax": 8, "actualWeight": 1.1,
+            "description": "a Workshop spear without a Categories field",
+            "canSpawnAsLoot": True,
+        }),
         make("Bag", {
-            "itemType": "Container", "capacity": 20, "weightReduction": 80,
+            "itemType": "Container", "displayCategory": "Bag",
+            "capacity": 20, "weightReduction": 80,
             "actualWeight": 1, "description": "a canvas carrying bag", "canSpawnAsLoot": True,
+        }),
+        make("Backpack", {
+            "itemType": "Container", "displayCategory": "Bag",
+            "canBeEquipped": "base:back", "capacity": 20, "weightReduction": 80,
+            "actualWeight": 1, "description": "a canvas backpack", "canSpawnAsLoot": True,
+        }),
+        make("Satchel", {
+            "itemType": "Container", "displayCategory": "Bag",
+            "bodyLocation": "base:satchel", "canBeEquipped": "base:satchel",
+            "capacity": 12, "weightReduction": 65, "actualWeight": 0.8,
+            "description": "a worn satchel", "canSpawnAsLoot": True,
+        }),
+        make("FannyPackFront", {
+            "itemType": "Container", "displayCategory": "Bag",
+            "bodyLocation": "base:fannypackfront", "canBeEquipped": "base:fannypackfront",
+            "capacity": 2, "weightReduction": 85, "actualWeight": 0.2,
+            "description": "a front fanny pack", "canSpawnAsLoot": True,
+        }),
+        make("FannyPackBack", {
+            "itemType": "Container", "displayCategory": "Bag",
+            "bodyLocation": "base:fannypackback", "canBeEquipped": "base:fannypackback",
+            "capacity": 2, "weightReduction": 85, "actualWeight": 0.2,
+            "description": "a back fanny pack", "canSpawnAsLoot": True,
+        }),
+        make("Bandolier", {
+            "itemType": "Container", "displayCategory": "Bag",
+            "bodyLocation": "base:webbing", "canBeEquipped": "base:webbing",
+            "capacity": 6, "weightReduction": 80, "actualWeight": 0.4,
+            "description": "a webbing bandolier", "canSpawnAsLoot": True,
+        }),
+        make("Duffel", {
+            "itemType": "Container", "displayCategory": "Bag",
+            "canBeEquipped": "base:back", "worldStaticModel": "DuffelBag_Ground",
+            "capacity": 25, "weightReduction": 65, "actualWeight": 1.2,
+            "description": "a duffel bag", "canSpawnAsLoot": True,
+        }),
+        make("LooseBag", {
+            "itemType": "Container", "displayCategory": "Container",
+            "capacity": 10, "actualWeight": 0.3,
+            "description": "a loose laundry bag that is not wearable", "canSpawnAsLoot": True,
         }),
         make("Television", {
             "itemType": "base:radio", "displayCategory": "Communications",
@@ -144,6 +199,100 @@ def mock_definitions() -> list[ItemDefinition]:
             "tags": ["base:leatherfurtannedsmall"], "icon": "Leather_Brown_Small",
             "worldObjectSprite": "rugs_animals_88", "description": "a tanned hide",
             "canSpawnAsLoot": True,
+        }),
+        make("Wallpaper", {
+            "itemType": "base:drainable", "displayCategory": "Material",
+            "tags": ["base:wallpaper"], "useDelta": 0.1,
+            "worldStaticModel": "Wallpaper_GreenDiamond",
+            "description": "a roll of wallpaper", "canSpawnAsLoot": True,
+        }),
+        make("ConcretePowder", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "worldStaticModel": "BagofConcretePowder",
+            "description": "a bag of concrete powder", "canSpawnAsLoot": True,
+        }),
+        make("ClayBrick", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "worldStaticModel": "ClayBrick",
+            "description": "a clay brick", "canSpawnAsLoot": True,
+        }),
+        make("PotteryClayPot", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "worldStaticModel": "ClayPot",
+            "description": "an unfired clay pot", "canSpawnAsLoot": True,
+        }),
+        make("MetalOre", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:hasmetal", "base:ironore", "base:ironsource"],
+            "worldStaticModel": "IronOre", "description": "iron ore",
+            "canSpawnAsLoot": True,
+        }),
+        make("HardwareNails", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:hasmetal"], "worldStaticModel": "Nails",
+            "description": "a box of nails", "canSpawnAsLoot": True,
+        }),
+        make("TailoringRope", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:rope"], "worldStaticModel": "Rope_Looped",
+            "description": "a coil of rope", "canSpawnAsLoot": True,
+        }),
+        make("FirewoodBundle", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:isfirefuel"], "doubleClickRecipe": "UnbundleFirewood",
+            "worldStaticModel": "FirewoodBundle", "description": "a bundle of firewood",
+            "canSpawnAsLoot": True,
+        }),
+        make("GlassPanel", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:glass"], "worldStaticModel": "GlassPanel",
+            "description": "a pane of glass", "canSpawnAsLoot": True,
+        }),
+        make("StoneMaterial", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:limestone"], "worldStaticModel": "Limestone",
+            "description": "a piece of limestone", "canSpawnAsLoot": True,
+        }),
+        make("Gunpowder", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "worldStaticModel": "GunpowderJar", "description": "gunpowder",
+            "canSpawnAsLoot": True,
+        }),
+        make("PackFrame", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:hasmetal"], "worldStaticModel": "CraftedFrame_Lrg2_Grnd",
+            "description": "a crafted pack frame", "canSpawnAsLoot": True,
+        }),
+        make("WoodMaterial", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "tags": ["base:wood"], "worldStaticModel": "WoodChunk",
+            "description": "a piece of wood", "canSpawnAsLoot": True,
+        }),
+        make("UnknownBundle", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "worldStaticModel": "UnknownBundle", "description": "a bundled material",
+            "canSpawnAsLoot": True,
+        }),
+        make("GenericMaterial", {
+            "itemType": "base:normal", "displayCategory": "Material",
+            "worldStaticModel": "UnidentifiedMaterial", "description": "an unusual material",
+            "canSpawnAsLoot": True,
+        }),
+        make("ToiletPaper", {
+            "itemType": "base:drainable", "displayCategory": "Junk",
+            "icon": "ToiletPaper", "worldStaticModel": "ToiletPaper",
+            "description": "Tooltip_tissue_tooltip", "canSpawnAsLoot": True,
+        }),
+        make("NoveltySkullGlasses", {
+            "itemType": "base:clothing", "displayCategory": "Memento",
+            "bodyLocation": "base:eyes", "tags": ["base:ismemento"],
+            "icon": "Glasses_Novelty_HoloSkulls",
+            "description": "novelty skull glasses", "canSpawnAsLoot": True,
+        }),
+        make("AnimalHead", {
+            "itemType": "base:normal", "displayCategory": "AnimalPart",
+            "tags": ["base:animalhead"], "worldStaticModel": "Cow_Head_Black",
+            "description": "an animal head", "canSpawnAsLoot": True,
         }),
         make("MoveableBrokenGlass", {
             "itemType": "base:moveable", "displayCategory": "Junk",
@@ -342,8 +491,25 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.NarcoticsSeedPacket", "MarketSenseFixture.Bandage",
         "Base.Flier_Nolans",
         "MarketSenseFixture.Axe", "MarketSenseFixture.Bag",
+        "MarketSenseFixture.Spear",
+        "MarketSenseFixture.SpearTagFallback",
+        "MarketSenseFixture.Backpack", "MarketSenseFixture.Satchel",
+        "MarketSenseFixture.FannyPackFront", "MarketSenseFixture.FannyPackBack",
+        "MarketSenseFixture.Bandolier", "MarketSenseFixture.Duffel",
+        "MarketSenseFixture.LooseBag",
         "MarketSenseFixture.Television", "MarketSenseFixture.MoveableSink",
         "MarketSenseFixture.Radio",
+        "MarketSenseFixture.Wallpaper", "MarketSenseFixture.ConcretePowder",
+        "MarketSenseFixture.ClayBrick", "MarketSenseFixture.PotteryClayPot",
+        "MarketSenseFixture.MetalOre", "MarketSenseFixture.HardwareNails",
+        "MarketSenseFixture.TailoringRope", "MarketSenseFixture.FirewoodBundle",
+        "MarketSenseFixture.GlassPanel", "MarketSenseFixture.StoneMaterial",
+        "MarketSenseFixture.Gunpowder", "MarketSenseFixture.PackFrame",
+        "MarketSenseFixture.WoodMaterial", "MarketSenseFixture.UnknownBundle",
+        "MarketSenseFixture.GenericMaterial",
+        "MarketSenseFixture.ToiletPaper",
+        "MarketSenseFixture.NoveltySkullGlasses",
+        "MarketSenseFixture.AnimalHead",
         "MarketSenseFixture.SleepingBag", "MarketSenseFixture.Tent",
         "MarketSenseFixture.Mattress", "MarketSenseFixture.GymnMat",
         "MarketSenseFixture.MoveableLamp", "MarketSenseFixture.InstalledLamp",
@@ -377,9 +543,36 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "Base.Flier_Nolans": "Literature",
         "MarketSenseFixture.Bandage": "Medical",
         "MarketSenseFixture.Axe": "Weapon",
+        "MarketSenseFixture.Spear": "Weapon",
+        "MarketSenseFixture.SpearTagFallback": "Weapon",
         "MarketSenseFixture.Bag": "Container",
+        "MarketSenseFixture.Backpack": "Container",
+        "MarketSenseFixture.Satchel": "Container",
+        "MarketSenseFixture.FannyPackFront": "Container",
+        "MarketSenseFixture.FannyPackBack": "Container",
+        "MarketSenseFixture.Bandolier": "Container",
+        "MarketSenseFixture.Duffel": "Container",
+        "MarketSenseFixture.LooseBag": "Container",
         "MarketSenseFixture.Television": "Electronics",
         "MarketSenseFixture.Radio": "Electronics",
+        "MarketSenseFixture.Wallpaper": "Resource",
+        "MarketSenseFixture.ConcretePowder": "Resource",
+        "MarketSenseFixture.ClayBrick": "Resource",
+        "MarketSenseFixture.PotteryClayPot": "Resource",
+        "MarketSenseFixture.MetalOre": "Resource",
+        "MarketSenseFixture.HardwareNails": "Resource",
+        "MarketSenseFixture.TailoringRope": "Resource",
+        "MarketSenseFixture.FirewoodBundle": "Resource",
+        "MarketSenseFixture.GlassPanel": "Resource",
+        "MarketSenseFixture.StoneMaterial": "Resource",
+        "MarketSenseFixture.Gunpowder": "Resource",
+        "MarketSenseFixture.PackFrame": "Resource",
+        "MarketSenseFixture.WoodMaterial": "Resource",
+        "MarketSenseFixture.UnknownBundle": "Resource",
+        "MarketSenseFixture.GenericMaterial": "Resource",
+        "MarketSenseFixture.ToiletPaper": "Resource",
+        "MarketSenseFixture.NoveltySkullGlasses": "Misc",
+        "MarketSenseFixture.AnimalHead": "Resource",
         "MarketSenseFixture.SleepingBag": "Building",
         "MarketSenseFixture.Tent": "Building",
         "MarketSenseFixture.Mattress": "Building",
@@ -465,6 +658,34 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
     )
 
     expected_primary = {
+        "MarketSenseFixture.Bag": "ContainerBag",
+        "MarketSenseFixture.Spear": "WeaponSpear",
+        "MarketSenseFixture.SpearTagFallback": "WeaponSpear",
+        "MarketSenseFixture.Backpack": "ContainerBagBackpack",
+        "MarketSenseFixture.Satchel": "ContainerBagSatchel",
+        "MarketSenseFixture.FannyPackFront": "ContainerBagFanny",
+        "MarketSenseFixture.FannyPackBack": "ContainerBagFanny",
+        "MarketSenseFixture.Bandolier": "ContainerBagBandolier",
+        "MarketSenseFixture.Duffel": "ContainerBagDuffel",
+        "MarketSenseFixture.Wallpaper": "MaterialConstruction",
+        "MarketSenseFixture.ConcretePowder": "MaterialConstruction",
+        "MarketSenseFixture.ClayBrick": "MaterialConstruction",
+        "MarketSenseFixture.PotteryClayPot": "MaterialPottery",
+        "MarketSenseFixture.MetalOre": "MaterialMetalworking",
+        "MarketSenseFixture.HardwareNails": "MaterialHardware",
+        "MarketSenseFixture.TailoringRope": "MaterialTailoring",
+        "MarketSenseFixture.FirewoodBundle": "MaterialFireSource",
+        "MarketSenseFixture.GlassPanel": "MaterialGlass",
+        "MarketSenseFixture.StoneMaterial": "MaterialStone",
+        "MarketSenseFixture.Gunpowder": "MaterialChemical",
+        "MarketSenseFixture.PackFrame": "MaterialCarpentry",
+        "MarketSenseFixture.WoodMaterial": "MaterialWood",
+        "MarketSenseFixture.UnknownBundle": "MaterialBundled",
+        "MarketSenseFixture.GenericMaterial": "Material",
+        "MarketSenseFixture.ToiletPaper": "MaterialPaper",
+        "MarketSenseFixture.NoveltySkullGlasses": "Memento",
+        "MarketSenseFixture.AnimalHead": "MaterialButchering",
+        "MarketSenseFixture.LooseBag": "Container",
         "MarketSenseFixture.Television": "ElectronicsTelevision",
         "MarketSenseFixture.Radio": "ElectronicsRadio",
         "MarketSenseFixture.SleepingBag": "BuildingSurvivalSleepingBag",
@@ -510,6 +731,34 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         ),
     )
     expected_paths = {
+        "MarketSenseFixture.Bag": "Container > Bag > Bag",
+        "MarketSenseFixture.Spear": "Weapon > Melee > Spear",
+        "MarketSenseFixture.SpearTagFallback": "Weapon > Melee > Spear",
+        "MarketSenseFixture.Backpack": "Container > Bag > Backpack",
+        "MarketSenseFixture.Satchel": "Container > Bag > Satchel",
+        "MarketSenseFixture.FannyPackFront": "Container > Bag > Fanny",
+        "MarketSenseFixture.FannyPackBack": "Container > Bag > Fanny",
+        "MarketSenseFixture.Bandolier": "Container > Bag > Bandolier",
+        "MarketSenseFixture.Duffel": "Container > Bag > Duffel",
+        "MarketSenseFixture.Wallpaper": "Resource > Material > Construction",
+        "MarketSenseFixture.ConcretePowder": "Resource > Material > Construction",
+        "MarketSenseFixture.ClayBrick": "Resource > Material > Construction",
+        "MarketSenseFixture.PotteryClayPot": "Resource > Material > Pottery",
+        "MarketSenseFixture.MetalOre": "Resource > Material > Metalworking",
+        "MarketSenseFixture.HardwareNails": "Resource > Material > Hardware",
+        "MarketSenseFixture.TailoringRope": "Resource > Material > Tailoring",
+        "MarketSenseFixture.FirewoodBundle": "Resource > Material > FireSource",
+        "MarketSenseFixture.GlassPanel": "Resource > Material > Glass",
+        "MarketSenseFixture.StoneMaterial": "Resource > Material > Stone",
+        "MarketSenseFixture.Gunpowder": "Resource > Material > Chemical",
+        "MarketSenseFixture.PackFrame": "Resource > Material > Carpentry",
+        "MarketSenseFixture.WoodMaterial": "Resource > Material > Wood",
+        "MarketSenseFixture.UnknownBundle": "Resource > Material > Bundled",
+        "MarketSenseFixture.GenericMaterial": "Resource > Material > Material",
+        "MarketSenseFixture.ToiletPaper": "Resource > Material > Paper",
+        "MarketSenseFixture.NoveltySkullGlasses": "Misc > Memento > Memento",
+        "MarketSenseFixture.AnimalHead": "Resource > Material > Butchering",
+        "MarketSenseFixture.LooseBag": "Container > General > General",
         "MarketSenseFixture.SleepingBag": "Building > Survival > SleepingBag",
         "MarketSenseFixture.Tent": "Building > Survival > Tent",
         "MarketSenseFixture.MoveableLamp": "Building > Fixture > Lighting",
@@ -539,6 +788,79 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         ", ".join(
             f"{item.rsplit('.', 1)[-1]}={by_type.get(item, {}).get('categoryPath', '?')}"
             for item in sorted(expected_paths)
+        ),
+    )
+
+    def classifier_source(item: str) -> str:
+        detection = by_type.get(item, {}).get("detection") or {}
+        classifier = detection.get("classifier") or {}
+        details = classifier.get("details") or {}
+        return str(details.get("source") or "")
+
+    spear = by_type.get("MarketSenseFixture.Spear", {})
+    spear_fallback = by_type.get("MarketSenseFixture.SpearTagFallback", {})
+    check(
+        "melee spear evidence is authoritative before fallbacks",
+        (
+            spear.get("primary") == "WeaponSpear"
+            and classifier_source("MarketSenseFixture.Spear") == "weapon_melee"
+            and (spear.get("context") or {}).get("weaponCategories")
+            == ["base:improvised", "base:spear"]
+            and spear_fallback.get("primary") == "WeaponSpear"
+            and classifier_source("MarketSenseFixture.SpearTagFallback")
+            == "weapon_melee_spear_tag"
+        ),
+        f"category={spear.get('primary', '?')} source={classifier_source('MarketSenseFixture.Spear')} "
+        f"fallback={spear_fallback.get('primary', '?')} source="
+        f"{classifier_source('MarketSenseFixture.SpearTagFallback')}",
+    )
+
+    wallpaper = by_type.get("MarketSenseFixture.Wallpaper", {})
+    paper = by_type.get("MarketSenseFixture.ToiletPaper", {})
+    paper_detection = paper.get("detection") or {}
+    paper_details = ((paper_detection.get("final") or {}).get("details") or {})
+    check(
+        "resource labels retain evidence provenance",
+        (
+            classifier_source("MarketSenseFixture.Wallpaper") == "material_construction_evidence"
+            and classifier_source("MarketSenseFixture.MetalOre") == "material_metalworking_evidence"
+            and classifier_source("MarketSenseFixture.HardwareNails") == "material_hardware_evidence"
+            and classifier_source("MarketSenseFixture.GlassPanel") == "material_glass_evidence"
+            and paper_details.get("labelCorrectionReason") == "label_paper_goods"
+            and wallpaper.get("categoryPath") == "Resource > Material > Construction"
+        ),
+        f"wallpaper={classifier_source('MarketSenseFixture.Wallpaper')} "
+        f"metal={classifier_source('MarketSenseFixture.MetalOre')} "
+        f"paper={paper_details.get('labelCorrectionReason', '?')}",
+    )
+    skull_glasses = by_type.get("MarketSenseFixture.NoveltySkullGlasses", {})
+    check(
+        "animal text does not reroute wearable mementos",
+        skull_glasses.get("primary") == "Memento"
+        and skull_glasses.get("category") == "Misc",
+        f"category={skull_glasses.get('category', '?')} primary={skull_glasses.get('primary', '?')}",
+    )
+
+    bag_signal_checks = {
+        "MarketSenseFixture.Backpack": "container_bag_body_back",
+        "MarketSenseFixture.Satchel": "container_bag_body_satchel",
+        "MarketSenseFixture.FannyPackFront": "container_bag_body_fanny",
+        "MarketSenseFixture.FannyPackBack": "container_bag_body_fanny",
+        "MarketSenseFixture.Bandolier": "container_bag_body_webbing",
+        "MarketSenseFixture.Duffel": "container_bag_duffel_evidence",
+    }
+    bag_signal_ok = all(
+        classifier_source(item) == source
+        and "ContainerBag" in (by_type.get(item, {}).get("expandedTags") or [])
+        and "Container" in (by_type.get(item, {}).get("expandedTags") or [])
+        for item, source in bag_signal_checks.items()
+    )
+    check(
+        "bag tags retain game evidence and parents",
+        bag_signal_ok,
+        ", ".join(
+            f"{item.rsplit('.', 1)[-1]}={classifier_source(item)}"
+            for item in sorted(bag_signal_checks)
         ),
     )
 

@@ -25,6 +25,7 @@ from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
 from marketsense_app.reporting import write_heuristic_gap_report, write_low_confidence_report
 from marketsense_app.preferences import load_preferences, normalize_preferences, save_preferences
+from marketsense_app.script_parser import parse_script
 from marketsense_app.sandbox import (
     effective_sandbox_settings,
     load_sandbox_option_specs,
@@ -66,6 +67,24 @@ def main() -> int:
         (first / "common.txt").write_text("module Test { item Common { Type = Normal, } }", encoding="utf-8")
         paths, selected = item_script_paths(versioned, "42.20")
         assert selected == "common+42.20" and len(paths) == 2
+
+        parser_root = root / "parser" / "media" / "scripts"
+        parser_root.mkdir(parents=True)
+        parser_script = parser_root / "weapons.txt"
+        parser_script.write_text(
+            """module Base {
+    item SpearCrafted {
+        Type = Weapon,
+        Categories = base:improvised;base:spear,
+        SubCategory = Spear,
+    }
+}
+""",
+            encoding="utf-8",
+        )
+        parser_mod = WorkshopMod(parser_root.parent.parent, "base", "Base", "Base", "base")
+        parsed_weapon = parse_script(parser_script, parser_mod)
+        assert parsed_weapon[0].props["weaponCategories"] == "base:improvised;base:spear"
 
         workshop = root / "workshop"
         narcotics = workshop / "123" / "mods" / "Narcotics"

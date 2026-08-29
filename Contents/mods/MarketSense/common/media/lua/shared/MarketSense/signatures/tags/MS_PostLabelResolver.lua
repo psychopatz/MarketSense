@@ -107,6 +107,31 @@ local function isGenericFoodResult(result)
         or primary == "FoodNoExplicit"
 end
 
+local function canUseAnimalRemainsLabel(ctx, result)
+    local displayCategory = ctx.displayCategoryToken or ""
+    local itemType = ctx.itemTypeToken or ""
+    local category = result and result.category or ""
+
+    -- Animal-part tags/display categories are strong engine evidence.  Keep
+    -- them available even when the root classifier is broad.
+    if displayCategory == "animalpart"
+        or hasTagAlias(ctx, "animalhead")
+        or hasTagAlias(ctx, "animalbrain")
+        or hasTagAlias(ctx, "feather") then
+        return itemType ~= "clothing" and itemType ~= "moveable"
+    end
+
+    -- Names such as "skull", "bone" and "head" are also common in wearable,
+    -- decorative, moveable and weapon definitions.  Those are not animal
+    -- material evidence and must not be rerouted by a loose text match.
+    if itemType == "clothing" or itemType == "moveable" or itemType == "weapon"
+        or itemType == "weaponpart" or (ctx.bodyLocationToken or "") ~= ""
+        or hasTagAlias(ctx, "ismemento") then
+        return false
+    end
+    return category == "Misc" or category == "Resource"
+end
+
 local function packagingSignal(ctx, text)
     local allText = text or buildText(ctx)
     return ctx.isCannedFood == true
@@ -262,9 +287,10 @@ function Resolver.correct(ctx, result)
     end
 
     hits = {}
-    if hasTagAlias(ctx, "animalhead") or hasTagAlias(ctx, "animalbrain") or hasTagAlias(ctx, "feather")
-        or (ctx.displayCategoryToken or "") == "animalpart"
-        or containsAny(text, { "skull", " head", "_head", "bone", "tusk", "brain", "feather" }, hits) then
+    if canUseAnimalRemainsLabel(ctx, result)
+        and (hasTagAlias(ctx, "animalhead") or hasTagAlias(ctx, "animalbrain") or hasTagAlias(ctx, "feather")
+            or (ctx.displayCategoryToken or "") == "animalpart"
+            or containsAny(text, { "skull", " head", "_head", "bone", "tusk", "brain", "feather" }, hits)) then
         addCandidate(candidates, "MaterialButchering", 118, 0.99, "reroute_root", "label_animal_remains", hits)
     end
 
@@ -289,7 +315,7 @@ function Resolver.correct(ctx, result)
     if containsAny(text, {
         "toiletpaper", "toilet paper", "papertowel", "paper towel", " tissue", "tissue ",
     }, hits) then
-        addCandidate(candidates, "Material", 112, 0.97, "reroute_root", "label_paper_junk", hits)
+        addCandidate(candidates, "MaterialPaper", 112, 0.97, "reroute_root", "label_paper_goods", hits)
     end
 
     hits = {}

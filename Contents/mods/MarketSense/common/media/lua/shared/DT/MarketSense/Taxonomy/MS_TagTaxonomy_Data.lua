@@ -4,7 +4,7 @@
 return {
     generatorVersion = 2,
     schemaVersion = 4,
-    signatureVersion = "market-sense-v12-world-object-capabilities",
+    signatureVersion = "market-sense-v15-resource-material-hierarchy",
     pricingHeuristicVersion = 3,
     categoryOrder = {
         ["Food"]        = 1,
@@ -35,7 +35,7 @@ return {
         "Building","BuildingFixture","BuildingFixtureAppliance","BuildingFixtureLighting","BuildingFixturePlumbing","BuildingFurniture","BuildingFurnitureBed","BuildingFurnitureChair","BuildingFurnitureCounter","BuildingFurnitureDecor","BuildingFurnitureStorage","BuildingFurnitureTable","BuildingFurnitureLaundry","BuildingGarden","BuildingMoveable","BuildingSurvival","BuildingSurvivalSleepingBag","BuildingSurvivalTent","BuildingSurvivalTrap","BuildingVehicle",
         "BuildingRecreation","BuildingRecreationFitness","BuildingRecreationDrum","BuildingMedical","BuildingMedicalGurney","BuildingMedicalBloodbag","BuildingCrafting","BuildingCraftingForge","BuildingCraftingMasonry","BuildingLogistics","BuildingLogisticsPallet","BuildingInfrastructure","BuildingInfrastructureTraffic","BuildingFuneral","BuildingFuneralCoffin","BuildingAgriculture","BuildingAgricultureHay","BuildingAgricultureLivestock","BuildingAgricultureScarecrow","BuildingGardenDecor","BuildingDisplay","BuildingDisplaySkeleton","BuildingWallDecor","BuildingWallDecorMap","BuildingWallDecorCertificate","BuildingWallDecorNoticeboard",
         "ClothingBottom","ClothingFootwear","ClothingFullBody","ClothingHands","ClothingHead","ClothingOuterwear","ClothingSocks","ClothingTop","ClothingUnderwear",
-        "Container","ContainerAmmo","ContainerBox","ContainerLiquid","ContainerWearable","ContainerWearableAmmo",
+        "Container","ContainerBag","ContainerBagBackpack","ContainerBagBandolier","ContainerBagDuffel","ContainerBagFanny","ContainerBagSatchel","ContainerAmmo","ContainerBox","ContainerLiquid","ContainerWearable","ContainerWearableAmmo",
         "Cooking","CookingCup","CookingCutlery","CookingOrTool","CookingPan","CookingUtensil",
         "ElectronicsBattery","ElectronicsCommunicator","ElectronicsFlashlight","ElectronicsGenerator","ElectronicsLight","ElectronicsRadio","ElectronicsTelevision","ElectronicsTransmitter","ElectronicsAppliance","ElectronicsLaundry","ElectronicsClock",
         "Electronics",
@@ -52,7 +52,7 @@ return {
         "KeyRing",
         "LiteratureAdult","LiteratureBrochure","LiteratureComic","LiteratureConsumable","LiteratureFancyBook","LiteratureFlier","LiteratureHardcover","LiteratureMagazine","LiteratureNewspaper","LiteratureOrJunk","LiteraturePhoto","LiteraturePictureBook","LiteratureRecipe","LiteratureRpgManual","LiteratureSoftcover",
         "Literature","SkillBook",
-        "Material","MaterialBundled","MaterialButchering","MaterialCarpentry","MaterialChemical","MaterialFireSource","MaterialHardware","MaterialMaintenance","MaterialMetalworking","MaterialOrJunk","MaterialPottery","MaterialTailoring","MaterialWood",
+        "Material","MaterialBundled","MaterialButchering","MaterialCarpentry","MaterialChemical","MaterialConstruction","MaterialFireSource","MaterialGlass","MaterialHardware","MaterialMaintenance","MaterialMetalworking","MaterialOrJunk","MaterialPaper","MaterialPottery","MaterialStone","MaterialTailoring","MaterialWood",
         "Medical",
         "Memento","MementoPlushie","MementoOrContainer",
         "Misc","Junk",
