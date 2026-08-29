@@ -145,6 +145,57 @@ for _, spec in ipairs(specs) do
     items[#items + 1] = item
 end
 
+-- Offline mirror of the PZ sprite API used by MS_WorldObjectEvidence.  The
+-- Python side parses newtiledefinitions.tiles.txt into spriteProperties;
+-- Lua still performs the actual lookup and semantic analysis.
+local spriteByName = {}
+for _, spec in ipairs(specs) do
+    local props = spec.props or {}
+    local spriteName = tostring(props.worldObjectSprite or "")
+    local spriteProperties = props.spriteProperties
+    if spriteName ~= "" and type(spriteProperties) == "table" then
+        spriteByName[spriteName] = spriteProperties
+    end
+end
+
+local propertyContainerMethods = {}
+function propertyContainerMethods.get(self, key)
+    return self._props[key]
+end
+function propertyContainerMethods.has(self, key)
+    return self._props[key] ~= nil
+end
+function propertyContainerMethods.isTable(self)
+    return self._props.IsTable == true or tostring(self._props.IsTable or "") == "true"
+end
+function propertyContainerMethods.isTableTop(self)
+    return self._props.IsTableTop == true or tostring(self._props.IsTableTop or "") == "true"
+end
+function propertyContainerMethods.getSurface(self)
+    return tonumber(self._props.Surface) or 0
+end
+function propertyContainerMethods.getItemHeight(self)
+    return tonumber(self._props.ItemHeight) or 0
+end
+
+local spriteMethods = {}
+function spriteMethods.getProperties(self)
+    return self._properties
+end
+
+getSprite = function(spriteName)
+    local properties = spriteByName[tostring(spriteName or "")]
+    if type(properties) ~= "table" then return nil end
+    local container = setmetatable(
+        { _props = properties },
+        { __index = propertyContainerMethods }
+    )
+    return setmetatable(
+        { _properties = container },
+        { __index = spriteMethods }
+    )
+end
+
 local scriptManager = {}
 function scriptManager:FindItem(fullType) return byFullType[fullType] end
 function scriptManager:getItem(fullType) return byFullType[fullType] end

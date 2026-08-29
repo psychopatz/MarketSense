@@ -44,6 +44,15 @@ local function isSeedPacket(ctx)
             and containsAny(itemId, { "bagseed", "seedpacket" }))
 end
 
+local function isSeed(ctx)
+    local displayCategory = ctx.displayCategoryToken or ""
+    local itemId = ctx.idLower or ""
+    return hasTag(ctx, "isseed")
+        or hasTag(ctx, "seed")
+        or (displayCategory == "gardening" and contains(itemId, "seed")
+            and not containsAny(itemId, { "seedbag", "seedpacket" }))
+end
+
 local function isSpecificSeedPacket(ctx)
     local itemId = ctx.idLower or ""
     local displayName = ctx.displayNameLower or ""
@@ -61,10 +70,21 @@ function Signature.match(ctx)
     if hasTag(ctx, "iscompostable") or hasTag(ctx, "compostable") then
         return TagMapper.makeResult("GardeningCompostable", 0.90, { source = "gardening_compostable" })
     end
+    if hasTag(ctx, "compost") or containsAny(ctx.idLower or "", { "compost", "compostable" }) then
+        return TagMapper.makeResult("GardeningCompost", 0.92, { source = "gardening_compost" })
+    end
+    if hasTag(ctx, "fertilizer") or containsAny(ctx.idLower or "", { "fertilizer", "fertiliser" })
+        or contains(ctx.tooltipLower, "fertilizer") then
+        return TagMapper.makeResult("GardeningFertilizer", 0.92, { source = "gardening_fertilizer" })
+    end
+    if containsAny(ctx.idLower or "", { "slugrepellent", "pestcontrol", "insecticide", "molluscide" })
+        or containsAny(ctx.displayNameLower or "", { "slug repellent", "pest control", "insecticide" }) then
+        return TagMapper.makeResult("GardeningPestControl", 0.91, { source = "gardening_pest_control" })
+    end
     if isSpecificSeedPacket(ctx) then
         return TagMapper.makeResult("GardeningSeedPacket", 0.92, { source = "gardening_seedpacket" })
     end
-    if hasTag(ctx, "seed") or (ctx.lootTypeLower or ""):find("seed")
+    if isSeed(ctx) or (ctx.lootTypeLower or ""):find("seed")
         or ((ctx.displayCategoryToken or "") == "drugs"
             and contains(ctx.idLower or "", "seed")) then
         return TagMapper.makeResult("GardeningSeed", 0.90, { source = "gardening_seed" })

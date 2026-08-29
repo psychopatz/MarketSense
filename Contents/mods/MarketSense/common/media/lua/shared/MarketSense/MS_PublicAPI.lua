@@ -13,6 +13,20 @@ local Stock        = MarketSense.Stock
 local TagUtils     = MarketSense.TagUtils
 local RuntimeRules = MarketSense.RuntimeRules
 
+-- Stable semantic interface for future consumers.  This returns the
+-- world-object analysis without exposing or changing PZ's native item
+-- category fields.
+function MarketSense.GetItemCapabilities(fullType)
+    local ctx = PropReader.buildContext(fullType)
+    return {
+        fullType = ctx.fullType,
+        worldObjectEvidence = ctx.worldObjectEvidence,
+        capabilities = ctx.capabilities,
+        requirements = ctx.capabilityRequirements,
+        evidence = ctx.capabilityEvidence,
+    }
+end
+
 local function log(msg)
     if DynamicTrading.Log then DynamicTrading.Log(msg) end
 end

@@ -10,13 +10,15 @@ from .script_parser import mod_from_root, parse_script
 from .workshop_paths import candidate_mod_roots, item_script_paths
 
 
-def discover_items(
-    roots: Iterable[Path], filters: list[str], game_version: str | None,
-) -> tuple[list[WorkshopMod], dict[str, ItemDefinition], int, int]:
+def discover_mods(roots: Iterable[Path]) -> list[WorkshopMod]:
+    """Discover Workshop metadata without parsing item scripts.
+
+    The GUI uses this cheap pass to populate its mod selector before a scan.
+    Keep the same root and identity de-duplication rules as ``discover_items``
+    so a selected label corresponds to the same mod the evaluator would scan.
+    """
+
     mods: list[WorkshopMod] = []
-    definitions: dict[str, ItemDefinition] = {}
-    source_files = 0
-    definition_count = 0
     seen_mod_roots: set[Path] = set()
     seen_mod_keys: set[tuple[str, str]] = set()
     for root in roots:
@@ -30,22 +32,34 @@ def discover_items(
             if mod_key in seen_mod_keys:
                 continue
             seen_mod_keys.add(mod_key)
-            searchable = " ".join((mod.mod_id, mod.name, mod.workshop_id, mod.root.name)).casefold()
-            if filters and not any(term.casefold() in searchable for term in filters):
-                continue
             mods.append(mod)
-            script_paths, selected_version = item_script_paths(mod_root, game_version)
-            mod.script_version = selected_version
-            source_files += len(script_paths)
-            for script_path in script_paths:
-                parsed = parse_script(script_path, mod)
-                definition_count += len(parsed)
-                for definition in parsed:
-                    previous = definitions.get(definition.full_type)
-                    if previous is not None:
-                        definition.sources = list(previous.sources or [previous.script_path])
-                        definition.sources.append(definition.script_path)
-                    definitions[definition.full_type] = definition
+    return mods
+
+
+def discover_items(
+    roots: Iterable[Path], filters: list[str], game_version: str | None,
+) -> tuple[list[WorkshopMod], dict[str, ItemDefinition], int, int]:
+    mods: list[WorkshopMod] = []
+    definitions: dict[str, ItemDefinition] = {}
+    source_files = 0
+    definition_count = 0
+    for mod in discover_mods(roots):
+        searchable = " ".join((mod.mod_id, mod.name, mod.workshop_id, mod.root.name)).casefold()
+        if filters and not any(term.casefold() in searchable for term in filters):
+            continue
+        mods.append(mod)
+        script_paths, selected_version = item_script_paths(mod.root, game_version)
+        mod.script_version = selected_version
+        source_files += len(script_paths)
+        for script_path in script_paths:
+            parsed = parse_script(script_path, mod)
+            definition_count += len(parsed)
+            for definition in parsed:
+                previous = definitions.get(definition.full_type)
+                if previous is not None:
+                    definition.sources = list(previous.sources or [previous.script_path])
+                    definition.sources.append(definition.script_path)
+                definitions[definition.full_type] = definition
     return mods, definitions, source_files, definition_count
 
 

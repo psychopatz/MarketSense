@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from .bridge import run_lua_result
 from .cache import ResultCache, cache_key
@@ -14,8 +16,11 @@ from .availability import (
     normalize_availability_filter,
 )
 from .models import ItemDefinition
+from .heuristics import heuristic_coverage
 from .reporting import build_summary
+from .review import low_confidence_rows, review_row
 from .sandbox import effective_sandbox_settings, load_sandbox_option_specs
+from .tile_parser import build_tile_property_index
 from .workshop import discover_base_items, discover_items, merge_definitions
 from .workshop_paths import game_scripts_root
 
@@ -34,6 +39,22 @@ class ScanOptions:
     confidence_threshold: float = 0.5
     sandbox_options: dict[str, int | float] = field(default_factory=dict)
     availability_filter: str = "obtainable"
+
+
+ProgressCallback = Callable[[str], None]
+
+
+def _progress(callback: ProgressCallback | None, message: str) -> None:
+    """Report a bounded phase message without making logging part of the scan."""
+
+    if callback is None:
+        return
+    try:
+        callback(message)
+    except Exception:
+        # A diagnostic sink must never change evaluator behavior.  This also
+        # protects console/CLI callers that do not need progress reporting.
+        pass
 
 
 def merge_scan_definitions(
@@ -56,6 +77,7 @@ def merge_scan_definitions(
 def emulate_pz_acquisition_flags(
     definitions: list[ItemDefinition],
     static_records: dict[str, dict],
+    sprite_properties: dict[str, dict] | None = None,
 ) -> list[ItemDefinition]:
     """Project source evidence onto the PZ engine flags used by Lua.
 
@@ -66,6 +88,7 @@ def emulate_pz_acquisition_flags(
     Lua false positive is still visible in the report.
     """
     projected: list[ItemDefinition] = []
+    sprite_properties = sprite_properties or {}
     for definition in definitions:
         props = dict(definition.props)
         record = static_records.get(definition.full_type) or {}
@@ -76,6 +99,13 @@ def emulate_pz_acquisition_flags(
             props["isCraftRecipeProduct"] = True
         if "forage" in channels:
             props["canBeForaged"] = True
+        sprite_name = str(props.get("worldObjectSprite") or "")
+        if sprite_name and sprite_name in sprite_properties:
+            # This is the offline equivalent of getSprite(name):
+            # getProperties().  Keep the data under its own key so script
+            # properties and tile properties cannot accidentally overwrite
+            # one another.
+            props["spriteProperties"] = dict(sprite_properties[sprite_name])
         projected.append(ItemDefinition(
             full_type=definition.full_type,
             module=definition.module,
@@ -87,31 +117,106 @@ def emulate_pz_acquisition_flags(
     return projected
 
 
-def evaluate(lua: str, options: ScanOptions) -> tuple[dict, list[dict]]:
+def _cache_for_options(
+    lua: str, options: ScanOptions, roots: list[Path], scripts_root: Path | None,
+) -> ResultCache | None:
+    if not options.use_cache:
+        return None
+    return ResultCache(
+        options.cache_dir,
+        cache_key(lua, options, roots, scripts_root),
+    )
+
+
+def _load_cached_result(cache: ResultCache) -> tuple[dict, list[dict]] | None:
+    cached = cache.load()
+    if not cached or not isinstance(cached.get("summary"), dict):
+        return None
+    items = cached.get("items")
+    if not isinstance(items, list) or not all(isinstance(row, dict) for row in items):
+        return None
+    summary = dict(cached["summary"])
+    # Rebuild lightweight presentation data from cached rows so adding a GUI,
+    # review, or heuristic report does not require another Lua evaluation.
+    valid = [
+        row for row in items
+        if not row.get("error") and isinstance(row.get("price"), (int, float))
+    ]
+    threshold = float(summary.get("confidence_threshold", 0.5) or 0.5)
+    statuses = Counter(review_row(row)[0] for row in items)
+    summary["review_statuses"] = dict(statuses)
+    summary["review_count"] = sum(
+        count for status, count in statuses.items() if status != "OK"
+    )
+    summary["low_confidence_count"] = len(low_confidence_rows(items, threshold))
+    summary["heuristic_coverage"] = heuristic_coverage(valid)
+    summary["cache"] = {"status": "hit", "path": str(cache.path)}
+    return summary, items
+
+
+def load_cached_result(
+    lua: str, options: ScanOptions, progress: ProgressCallback | None = None,
+) -> tuple[dict, list[dict]] | None:
+    """Load an exact cache match without scanning Workshop or invoking Lua.
+
+    This is used by the GUI at startup.  A cache miss deliberately returns
+    ``None`` rather than falling through to ``evaluate``; the user must click
+    Scan Workshop to create a new result.
+    """
+
+    roots = [root.expanduser().resolve() for root in options.workshop_roots if root.is_dir()]
+    if not roots or options.refresh_cache:
+        _progress(progress, "cache: no exact lookup (missing roots or refresh requested)")
+        return None
+    _progress(progress, "cache: checking exact master-scan key")
+    scripts_root = None if options.no_base_game else game_scripts_root(options.game_root)
+    result_cache = _cache_for_options(lua, options, roots, scripts_root)
+    cached = _load_cached_result(result_cache) if result_cache else None
+    if cached:
+        _progress(progress, f"cache: hit ({len(cached[1]):,} master rows)")
+    else:
+        _progress(progress, "cache: miss")
+    return cached
+
+
+def evaluate(
+    lua: str,
+    options: ScanOptions,
+    progress: ProgressCallback | None = None,
+) -> tuple[dict, list[dict]]:
+    _progress(progress, "scan: validating Workshop roots")
     roots = [root.expanduser().resolve() for root in options.workshop_roots if root.is_dir()]
     if not roots:
         raise RuntimeError("No Workshop roots found. Use --workshop-root PATH.")
 
     scripts_root = None if options.no_base_game else game_scripts_root(options.game_root)
-    result_cache = None
-    if options.use_cache:
-        result_cache = ResultCache(
-            options.cache_dir,
-            cache_key(lua, options, roots, scripts_root),
-        )
-        if not options.refresh_cache:
-            cached = result_cache.load()
-            if cached and isinstance(cached.get("summary"), dict) and isinstance(cached.get("items"), list):
-                summary = dict(cached["summary"])
-                summary["cache"] = {"status": "hit", "path": str(result_cache.path)}
-                return summary, cached["items"]
+    _progress(progress, "cache: checking exact master-scan key")
+    result_cache = _cache_for_options(lua, options, roots, scripts_root)
+    if result_cache and not options.refresh_cache:
+        cached_result = _load_cached_result(result_cache)
+        if cached_result:
+            _progress(progress, f"cache: hit ({len(cached_result[1]):,} master rows)")
+            return cached_result
+    _progress(progress, "cache: miss; evaluating source and Lua")
 
+    _progress(progress, "workshop: discovering mod metadata and item scripts")
     mods, definitions_by_type, source_files, definition_count = discover_items(
         roots, list(options.filters), options.game_version
     )
+    _progress(progress, (
+        f"workshop: found {len(mods):,} mods, {len(definitions_by_type):,} unique "
+        f"definitions across {source_files:,} script files"
+    ))
+    _progress(progress, "base: discovering installed vanilla item scripts")
     base_definitions, base_source_files, base_definition_count = discover_base_items(scripts_root)
+    _progress(progress, (
+        f"base: found {len(base_definitions):,} definitions across "
+        f"{base_source_files:,} script files"
+    ))
     merged_definitions = merge_scan_definitions(base_definitions, definitions_by_type)
     all_ordered = [merged_definitions[key] for key in sorted(merged_definitions)]
+    _progress(progress, f"universe: merged {len(all_ordered):,} item definitions")
+    _progress(progress, "availability: building acquisition evidence index")
     availability_index = build_acquisition_index(
         all_ordered,
         scripts_root,
@@ -119,6 +224,10 @@ def evaluate(lua: str, options: ScanOptions) -> tuple[dict, list[dict]]:
         options.game_version,
     )
     availability_records = availability_index.records(all_ordered)
+    _progress(progress, (
+        f"availability: indexed {len(availability_records):,} rows from "
+        f"{availability_index.scanned_files:,} source files"
+    ))
     selected_filter = normalize_availability_filter(options.availability_filter)
     # The Lua mod is authoritative for market eligibility.  Evaluate the
     # complete discovered universe first so the harness can compare the live
@@ -128,8 +237,17 @@ def evaluate(lua: str, options: ScanOptions) -> tuple[dict, list[dict]]:
     duplicate_count = max(0, definition_count - len(definitions_by_type))
     sandbox_specs = load_sandbox_option_specs(options.game_version)
     effective_sandbox = effective_sandbox_settings(options.sandbox_options, sandbox_specs)
-    bridge_definitions = emulate_pz_acquisition_flags(ordered, availability_records)
+    tile_properties, tile_source_files = build_tile_property_index(
+        scripts_root,
+        (mod.root for mod in mods),
+        options.game_version,
+    )
+    bridge_definitions = emulate_pz_acquisition_flags(
+        ordered, availability_records, tile_properties
+    )
+    _progress(progress, f"lua: evaluating {len(bridge_definitions):,} definitions")
     bridge_result = run_lua_result(lua, bridge_definitions, effective_sandbox)
+    _progress(progress, f"lua: returned {len(bridge_result.rows):,} rows")
     all_rows: list[dict] = []
     lua_availability_records: dict[str, dict] = {}
     availability_mismatches: list[dict] = []
@@ -185,6 +303,10 @@ def evaluate(lua: str, options: ScanOptions) -> tuple[dict, list[dict]]:
         if availability_matches(row.get("availability") or {}, selected_filter)
     ]
     rows = runtime_eligible
+    _progress(progress, (
+        f"availability: {len(runtime_eligible):,} eligible / {len(all_rows):,} "
+        f"runtime rows for scan-time filter {selected_filter}"
+    ))
     max_items_omitted = 0
     if options.max_items > 0:
         rows = rows[:options.max_items]
@@ -208,6 +330,8 @@ def evaluate(lua: str, options: ScanOptions) -> tuple[dict, list[dict]]:
         max_items_omitted=max_items_omitted,
         availability_source_files=availability_index.scanned_files,
         availability_source_roots=availability_index.source_roots,
+        tile_definition_files=len(tile_source_files),
+        tile_sprite_properties=len(tile_properties),
     )
     summary["availability_verification"] = {
         "authority": "MarketSense.ItemAvailability (Lua runtime)",
@@ -216,6 +340,11 @@ def evaluate(lua: str, options: ScanOptions) -> tuple[dict, list[dict]]:
         "matches": len(all_rows) - len(availability_mismatches),
         "mismatch_count": len(availability_mismatches),
         "mismatches": availability_mismatches[:100],
+    }
+    summary["world_object_evidence"] = {
+        "tile_definition_files": tile_source_files,
+        "tile_sprite_properties": len(tile_properties),
+        "bridge": "PZ getSprite(name):getProperties() shape",
     }
     summary["static_availability_counts"] = {
         status: sum(
@@ -233,8 +362,12 @@ def evaluate(lua: str, options: ScanOptions) -> tuple[dict, list[dict]]:
     if result_cache is not None:
         cache_status = "miss" if not options.refresh_cache else "refreshed"
         try:
+            _progress(progress, f"cache: saving {len(rows):,} master rows")
             result_cache.save(summary, rows)
+            _progress(progress, "cache: save complete")
         except OSError:
             cache_status = "unavailable"
+            _progress(progress, "cache: save failed (continuing with in-memory result)")
         summary["cache"] = {"status": cache_status, "path": str(result_cache.path)}
+    _progress(progress, "scan: evaluation complete")
     return summary, rows

@@ -1,9 +1,11 @@
 require "MarketSense/signatures/tags/MS_TagMapper"
+require "MarketSense/MS_ItemSignals"
 
 MarketSense = MarketSense or {}
 MarketSense.RootArbiter = MarketSense.RootArbiter or {}
 
 local RootArbiter = MarketSense.RootArbiter
+local Signals = MarketSense.ItemSignals
 
 local function hasTag(ctx, token)
     return ctx and ctx.normalizedTags and ctx.normalizedTags[token] == true
@@ -61,6 +63,10 @@ local function materialRoot(ctx)
     local displayCategory = ctx.displayCategoryToken or ""
     local fluidCategory = ctx.fluidCategoryLower or ""
     local replaceOnDeplete = ctx.replaceOnDepleteLower or ""
+
+    if displayCategory == "material" then
+        return resolved("Resource", "root_material_display")
+    end
 
     if hasTagAlias(ctx, "paint") or displayCategory == "paint"
         or contains(replaceOnDeplete, "paintbucketempty") then
@@ -121,11 +127,22 @@ local function foodRoot(ctx)
     return nil
 end
 
+local function electronicsRoot(ctx)
+    if Signals and type(Signals.electronicsToken) == "function"
+        and Signals.electronicsToken(ctx) then
+        return resolved("Electronics", "root_electronics")
+    end
+    return nil
+end
+
 local function literatureRoot(ctx)
     local displayCategory = ctx.displayCategoryToken or ""
     if displayCategory == "literature"
+        or displayCategory == "skillbook"
+        or displayCategory == "cartography"
         or displayCategory == "reciperesource"
         or itemTypeIs(ctx, "literature")
+        or itemTypeIs(ctx, "map")
         or ctx.isLiteratureInstance == true
         or (ctx.lootTypeLower or "") == "reciperesource"
         or (ctx.skillTrainedLower or "") ~= ""
@@ -149,7 +166,8 @@ local function weaponRoot(ctx)
         or (ctx.weaponCategories and #ctx.weaponCategories > 0)
         or (ctx.lootTypeLower or "") == "weapon"
         or (ctx.displayCategoryToken or "") == "explosives"
-        or itemTypeIs(ctx, "weapon", "handweapon") then
+        or (ctx.displayCategoryToken or "") == "weaponpart"
+        or itemTypeIs(ctx, "weapon", "handweapon", "weaponpart") then
         return resolved("Weapon", "root_weapon")
     end
     return nil
@@ -168,7 +186,8 @@ local function toolRoot(ctx)
 end
 
 local function containerRoot(ctx)
-    if itemTypeIs(ctx, "container")
+    if (ctx.displayCategoryToken or "") == "watercontainer"
+        or itemTypeIs(ctx, "container")
         or (tonumber(ctx.capacity) or 0) > 0
         or (ctx.canStoreWater == true and ctx.isFluidContainer ~= true) then
         return resolved("Container", "root_container")
@@ -194,6 +213,11 @@ local function buildingRoot(ctx)
         or seedEvidence then
         return resolved("Building", "root_building")
     end
+
+    if Signals and type(Signals.buildingToken) == "function"
+        and Signals.buildingToken(ctx) then
+        return resolved("Building", "root_building")
+    end
     return nil
 end
 
@@ -215,13 +239,14 @@ function RootArbiter.resolve(ctx)
         ammoRoot,
         medicalRoot,
         foodRoot,
+        mementoRoot,
+        containerRoot,
+        electronicsRoot,
         buildingRoot,
         literatureRoot,
         apparelRoot,
         weaponRoot,
         toolRoot,
-        containerRoot,
-        mementoRoot,
     }
 
     for _, stage in ipairs(stages) do

@@ -33,9 +33,12 @@ end
 function Signature.match(ctx)
     local learnsRecipe = ctx.learnedRecipes and #ctx.learnedRecipes > 0
     local trainsSkill = teachesSkillXp(ctx)
+    local displayCategory = ctx.displayCategoryToken or ""
+    local isMap = (ctx.itemTypeToken or "") == "map" or displayCategory == "cartography"
+    local isSkillBook = displayCategory == "skillbook"
 
     if not itemTypeIs(ctx, "literature") and not hasTag(ctx, "hollowbook")
-        and not learnsRecipe and not trainsSkill then
+        and not learnsRecipe and not trainsSkill and not isMap and not isSkillBook then
         return { matched = false, confidence = 0 }
     end
     if displayIs(ctx, "gardening") or displayIs(ctx, "memento") then
@@ -50,6 +53,12 @@ function Signature.match(ctx)
     end
     if trainsSkill then
         return TagMapper.makeResult("SkillBook", 0.95, { source = "lit_skillbook", skill = ctx.skillTrainedLower })
+    end
+    if isSkillBook then
+        return TagMapper.makeResult("SkillBook", 0.93, { source = "lit_skillbook_display" })
+    end
+    if isMap then
+        return TagMapper.makeResult("LiteratureMap", 0.92, { source = "lit_map" })
     end
     if hasTag(ctx, "uninteresting") then
         return TagMapper.makeResult("LiteratureOrJunk", 0.85, { source = "lit_uninteresting" })

@@ -25,7 +25,11 @@ local function contains(text, token)
 end
 
 function Signature.match(ctx)
-    if not itemTypeIs(ctx, "container") then return { matched = false, confidence = 0 } end
+    local waterContainer = (ctx.displayCategoryToken or "") == "watercontainer"
+        or ctx.canStoreWater == true
+    if not itemTypeIs(ctx, "container") and not waterContainer then
+        return { matched = false, confidence = 0 }
+    end
     if hasTag(ctx, "hollowbook") then return { matched = false, confidence = 0 } end
 
     if hasTag(ctx, "keyring") then
@@ -44,6 +48,8 @@ function Signature.match(ctx)
         return TagMapper.makeResult("MementoOrContainer", 0.85, { source = "container_memento" })
     elseif hasTag(ctx, "ammocase") then
         return TagMapper.makeResult("ContainerAmmo", 0.93, { source = "container_ammo" })
+    elseif waterContainer then
+        return TagMapper.makeResult("ContainerLiquid", 0.91, { source = "container_water" })
     elseif ctx.isFluidContainer then
         if (ctx.fluidTypeStringLower or "") ~= ""
             or (ctx.fluidTypeLower or "") ~= ""

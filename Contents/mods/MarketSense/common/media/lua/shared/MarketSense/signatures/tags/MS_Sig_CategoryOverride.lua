@@ -22,6 +22,7 @@ local DISPLAY_CATEGORY_MAP = {
     material = "Material",
     medical = "Medical",
     memento = "Memento",
+    junk = "Junk",
     paint = "MaterialChemical",
     smoking = "Smoking",
     tool = "Tool",

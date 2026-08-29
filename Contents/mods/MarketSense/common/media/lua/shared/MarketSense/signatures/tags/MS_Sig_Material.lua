@@ -53,12 +53,12 @@ function Signature.match(ctx)
         return TagMapper.makeResult("ResourceFuel", 0.96, { source = "material_fluid_category" })
     end
 
-    if (ctx.lootTypeLower or "") ~= "material" then
+    if (ctx.lootTypeLower or "") ~= "material" and displayCategory ~= "material" then
         return { matched = false, confidence = 0 }
     end
 
     for token, cat in pairs(MAT_TAG_MAP) do
-        if hasTag(ctx, token) then
+        if hasTagAlias(ctx, token) then
             return TagMapper.makeResult(cat, 0.90, { source = "material_tag", tag = token })
         end
     end
@@ -68,7 +68,7 @@ function Signature.match(ctx)
     local model = ctx.worldStaticModelLower or ""
     local sprite = ctx.worldObjectSpriteLower or ""
     if name:find("ingot") or sprite:find("crafting_ore_") or
-        (hasTag(ctx, "hasmetal") and (name:find("bar") or name:find("sheet") or name:find("scrap") or name:find("fragment"))) then
+        (hasTagAlias(ctx, "hasmetal") and (name:find("bar") or name:find("sheet") or name:find("scrap") or name:find("fragment"))) then
         return TagMapper.makeResult("MaterialMetalworking", 0.85, { source = "material_name" })
     end
     if model:find("rolledhide") or model:find("fabricroll") then
@@ -76,6 +76,13 @@ function Signature.match(ctx)
     end
     if model:find("unfired") or model:find("clay") then
         return TagMapper.makeResult("Material", 0.85, { source = "material_pottery" })
+    end
+    if name:find("leatherfurtanned") or hasTagAlias(ctx, "leatherfurtannedsmall")
+        or hasTagAlias(ctx, "leatherfurtannedmedium") or hasTagAlias(ctx, "leatherfurtannedlarge") then
+        return TagMapper.makeResult("MaterialTailoring", 0.86, { source = "material_tanned_hide" })
+    end
+    if name:find("hide") or name:find("leather") then
+        return TagMapper.makeResult("MaterialButchering", 0.82, { source = "material_hide_name" })
     end
 
     return TagMapper.makeResult("Material", 0.78, { source = "material_generic" })

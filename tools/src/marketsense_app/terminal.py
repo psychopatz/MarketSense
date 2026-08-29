@@ -6,6 +6,12 @@ from collections import Counter
 import math
 from typing import Any
 
+from .heuristics import (
+    compact_heuristic_gap,
+    heuristic_coverage,
+    heuristic_gap_rows,
+    heuristic_kind_label,
+)
 from .reporting import bar, format_number
 from .review import low_confidence_rows, review_row
 
@@ -14,6 +20,7 @@ def print_terminal(
     summary: dict[str, Any], rows: list[dict[str, Any]], top: int, chart: str,
     confidence_threshold: float = 0.5, chunk_size: int = 25,
     low_confidence_chunk: int = 1, availability_chunk: int = 1,
+    heuristic_gap_chunk: int = 1,
 ) -> None:
     prices = summary["prices"]
     print("MarketSense offline PZ harness")
@@ -151,6 +158,64 @@ def print_terminal(
         elif len(low_confidence) > chunk_size:
             print("  ... all remaining rows are in the saved low-confidence export")
         print()
+
+    heuristic_candidates = heuristic_gap_rows(rows)
+    heuristic_stats = summary.get("heuristic_coverage") or heuristic_coverage(rows)
+    print("HEURISTIC COVERAGE")
+    print(
+        "  generic/default bucket candidates: "
+        f"{heuristic_stats.get('candidate_count', len(heuristic_candidates)):,}"
+        " (triage only; not confirmed false positives)"
+    )
+    bucket_counts = heuristic_stats.get("bucket_counts") or {}
+    if bucket_counts:
+        print("  buckets: " + ", ".join(
+            f"{bucket}={count:,}" for bucket, count in bucket_counts.items()
+        ))
+    kind_counts = heuristic_stats.get("kind_counts") or {}
+    if kind_counts:
+        print("  kinds: " + ", ".join(
+            f"{heuristic_kind_label(kind)}={count:,}" for kind, count in kind_counts.items()
+        ))
+    gap_mod_counts = heuristic_stats.get("mod_counts") or {}
+    if gap_mod_counts:
+        ranked_gap_mods = list(gap_mod_counts.items())
+        shown_gap_mods = ranked_gap_mods[:max(1, top)]
+        suffix = (
+            f" (+{len(ranked_gap_mods) - len(shown_gap_mods)} more)"
+            if len(ranked_gap_mods) > len(shown_gap_mods) else ""
+        )
+        print("  mods: " + ", ".join(
+            f"{mod}={count:,}" for mod, count in shown_gap_mods
+        ) + suffix)
+    if heuristic_candidates:
+        total_chunks = max(1, math.ceil(len(heuristic_candidates) / chunk_size))
+        chunk_number = min(heuristic_gap_chunk, total_chunks)
+        start = (chunk_number - 1) * chunk_size
+        selected = heuristic_candidates[start:start + chunk_size]
+        print(
+            f"  candidate chunk {chunk_number}/{total_chunks} "
+            f"(rows {start + 1}-{start + len(selected)} of {len(heuristic_candidates)})"
+        )
+        print("  kind       | bucket             | confidence | item | mod")
+        for row in selected:
+            gap = compact_heuristic_gap(row) or {}
+            print(
+                f"  {heuristic_kind_label(gap.get('kind')):<10} | "
+                f"{str(gap.get('bucket') or '-'):<18} | "
+                f"{float(row.get('confidence') or 0):>10.2f} | "
+                f"{row.get('fullType', '-')} | {row.get('workshopMod', '-')}"
+            )
+        if total_chunks > chunk_number:
+            print(
+                f"  ... use --heuristic-gap-chunk {chunk_number + 1} "
+                f"for the next {chunk_size} rows; use --heuristic-gap-out for all rows"
+            )
+        elif len(heuristic_candidates) > chunk_size:
+            print("  ... all remaining rows are in the saved heuristic-gap export")
+    else:
+        print("  no generic/default bucket candidates")
+    print()
 
     availability_findings = [
         row for row in rows

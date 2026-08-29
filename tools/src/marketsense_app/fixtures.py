@@ -77,6 +77,250 @@ def mock_definitions() -> list[ItemDefinition]:
             "itemType": "Container", "capacity": 20, "weightReduction": 80,
             "actualWeight": 1, "description": "a canvas carrying bag", "canSpawnAsLoot": True,
         }),
+        make("Television", {
+            "itemType": "base:radio", "displayCategory": "Communications",
+            "icon": "Television", "worldObjectSprite": "appliances_television_01_4",
+            "description": "a television", "canSpawnAsLoot": True,
+        }),
+        make("Radio", {
+            "itemType": "base:radio", "displayCategory": "Communications",
+            "icon": "Radio", "description": "a portable radio", "canSpawnAsLoot": True,
+        }),
+        make("SleepingBag", {
+            "itemType": "base:moveable", "displayCategory": "Camping",
+            "tags": ["base:tentbed", "base:isfirefuel"],
+            "icon": "Sleepingbag3_Open", "worldObjectSprite": "camping_02_8",
+            "description": "Tooltip_item_NeedsPackedSleepingBag", "canSpawnAsLoot": True,
+        }),
+        make("Mattress", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "tags": ["base:tentbed"], "icon": "Mattress",
+            "worldObjectSprite": "carpentry_02_76", "description": "Tooltip_item_Mattress",
+            "canSpawnAsLoot": True,
+        }),
+        make("GymnMat", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "tags": ["base:tentbed"], "icon": "default",
+            "worldObjectSprite": "recreational_sports_01_35", "description": "Tooltip_item_Mattress",
+            "canSpawnAsLoot": True,
+        }),
+        make("Tent", {
+            "itemType": "base:moveable", "displayCategory": "Camping",
+            "tags": ["base:isfirefuel", "base:isfiretinder"],
+            "icon": "Tent1_Open", "worldObjectSprite": "camping_04_32",
+            "description": "Tooltip_item_NeedsPackedTent", "canSpawnAsLoot": True,
+        }),
+        make("MoveableLamp", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "icon": "default", "worldObjectSprite": "lighting_indoor_01_8",
+            "spriteProperties": {
+                "CustomName": "Lamp", "GroupName": "Striped", "IsTableTop": True,
+                "Material": "Electric", "Surface": 34,
+            },
+            "description": "a moveable table lamp", "canSpawnAsLoot": True,
+        }),
+        make("InstalledLamp", {
+            "itemType": "base:moveable", "displayCategory": "Lighting",
+            "icon": "ui_lighting_indoor_01_56", "worldObjectSprite": "lighting_indoor_01_56",
+            "spriteProperties": {
+                "CustomName": "Lamp", "GroupName": "Indoor", "IsTableTop": True,
+                "Material": "Electric", "Surface": 34,
+            },
+            "description": "a floor lamp", "canSpawnAsLoot": True,
+        }),
+        make("Flashlight", {
+            "itemType": "base:drainable", "displayCategory": "LightSource",
+            "tags": ["base:flashlight", "base:flashlightpillar"],
+            "icon": "FlashlightAngled_Black", "description": "a battery-powered flashlight",
+            "canSpawnAsLoot": True,
+        }),
+        make("GunLight", {
+            "itemType": "base:weaponpart", "displayCategory": "WeaponPart",
+            "tags": ["base:flashlight", "base:usesbattery"], "icon": "Flashlight2",
+            "partType": "Canon", "mountOn": "Base.Pistol", "canSpawnAsLoot": True,
+        }),
+        make("MoveableTannedHide", {
+            "itemType": "base:moveable", "displayCategory": "Material",
+            "tags": ["base:leatherfurtannedsmall"], "icon": "Leather_Brown_Small",
+            "worldObjectSprite": "rugs_animals_88", "description": "a tanned hide",
+            "canSpawnAsLoot": True,
+        }),
+        make("MoveableBrokenGlass", {
+            "itemType": "base:moveable", "displayCategory": "Junk",
+            "tags": ["base:brokenglass"], "icon": "BrokenGlass",
+            "worldObjectSprite": "brokenglass_1_0", "description": "broken glass",
+            "canSpawnAsLoot": True,
+        }),
+        make("MoveableSink", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "fixtures_sinks_01_9", "description": "a kitchen sink",
+            "spriteProperties": {
+                "CustomName": "Sink", "GroupName": "Chrome", "IsTableTop": True,
+                "Material": "Plumbing", "Material2": "Pipes", "Material3": "Sink",
+                "waterPiped": True, "Surface": 34,
+            },
+            "canSpawnAsLoot": True,
+        }),
+        make("ComboWasherDryer", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "appliances_laundry_01_0",
+            "spriteProperties": {
+                "CustomName": "Combo Washer Dryer", "GroupName": "Blue",
+                "IsoType": "IsoCombinationWasherDryer", "Material3": "Electric",
+                "container": "clothingwasher", "ContainerCapacity": 20,
+                "Surface": 38, "IsTable": True,
+            },
+            "description": "a powered washer and dryer", "canSpawnAsLoot": True,
+        }),
+        make("LaundryBin", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "appliances_laundry_01_24",
+            "spriteProperties": {
+                "CustomName": "Bin", "GroupName": "Washing",
+                "Material": "Fabric", "Material2": "MetalBars",
+                "container": "clothingdryerbasic", "ContainerCapacity": 20,
+            },
+            "description": "a laundry bin", "canSpawnAsLoot": True,
+        }),
+        make("LightRoundTable", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "furniture_tables_high_01_7",
+            "spriteProperties": {
+                "CustomName": "Light Round Table", "GenericCraftingSurface": True,
+                "IsTable": True, "Material": "Wood", "Surface": 27,
+            },
+            "description": "a light round table", "canSpawnAsLoot": True,
+        }),
+        make("Counter", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "fixtures_counters_01_5",
+            "spriteProperties": {
+                "CustomName": "Counter", "GroupName": "Modern",
+                "container": "counter", "GenericCraftingSurface": True,
+                "IsTable": True, "Material": "Wood", "Surface": 35,
+            },
+            "description": "a kitchen counter", "canSpawnAsLoot": True,
+        }),
+        make("Drawers", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "furniture_storage_01_9",
+            "spriteProperties": {
+                "CustomName": "Drawers", "GroupName": "Fancy",
+                "container": "dresser", "ContainerCapacity": 20,
+                "IsTable": True, "Material": "Wood", "Surface": 34,
+            },
+            "description": "a chest of drawers", "canSpawnAsLoot": True,
+        }),
+        make("MilitaryCrate", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "location_military_generic_01_1",
+            "spriteProperties": {
+                "CustomName": "Crate", "GroupName": "Military",
+                "container": "militarycrate", "ContainerCapacity": 50,
+                "IsTable": True, "Material": "MetalPlates", "Surface": 32,
+            },
+            "description": "a military storage crate", "canSpawnAsLoot": True,
+        }),
+        make("Dishwasher", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "appliances_cooking_01_77",
+            "spriteProperties": {
+                "CustomName": "Dishwasher", "GroupName": "Metal",
+                "container": "dishwasher", "ContainerCapacity": 10,
+                "GenericCraftingSurface": True, "IsTable": True,
+                "Material": "Fridge", "Material2": "Electric",
+            },
+            "description": "an electric dishwasher", "canSpawnAsLoot": True,
+        }),
+        make("GardenSeed", {
+            "itemType": "base:normal", "displayCategory": "Gardening",
+            "tags": ["base:isseed"], "icon": "Seeds_Generic",
+            "worldStaticModel": "Seeds_Generic", "isCraftRecipeProduct": True,
+            "description": "a packet of loose vegetable seeds",
+            "canSpawnAsLoot": True, "canBeForaged": True,
+        }),
+        make("Compost", {
+            "itemType": "base:drainable", "displayCategory": "Gardening",
+            "tags": ["base:compost"], "tooltip": "Tooltip_Fertilizer",
+            "worldStaticModel": "CompostBag", "description": "compost",
+            "canSpawnAsLoot": True,
+        }),
+        make("Fertilizer", {
+            "itemType": "base:drainable", "displayCategory": "Gardening",
+            "tags": ["base:fertilizer"], "tooltip": "Tooltip_Fertilizer",
+            "worldStaticModel": "Fertilizer_Ground", "description": "fertilizer",
+            "canSpawnAsLoot": True,
+        }),
+        make("SlugRepellent", {
+            "itemType": "base:drainable", "displayCategory": "Gardening",
+            "worldStaticModel": "SlugRepellent", "description": "slug repellent",
+            "canSpawnAsLoot": True,
+        }),
+        make("FitnessContraption", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "recreational_sports_01_41",
+            "spriteProperties": {
+                "CustomName": "Contraption", "GroupName": "Fitness",
+                "IsMoveAble": True, "PickUpWeight": 200,
+            },
+            "description": "a fitness contraption", "canSpawnAsLoot": True,
+        }),
+        make("KickDrum", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "recreational_01_64",
+            "spriteProperties": {
+                "CustomName": "Drum", "GroupName": "Kick", "MaterialType": "Metal_Light",
+            },
+            "description": "a kick drum", "canSpawnAsLoot": True,
+        }),
+        make("WallClock", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "location_community_school_01_32",
+            "spriteProperties": {
+                "CustomName": "Clock", "GroupName": "Wall", "Material": "Electric",
+                "MoveType": "WallObject",
+            },
+            "description": "a wall clock", "canSpawnAsLoot": True,
+        }),
+        make("Gurney", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "location_community_medical_01_72",
+            "spriteProperties": {
+                "CustomName": "Bed", "GroupName": "Hospital", "BedType": "averageBed",
+            },
+            "description": "a hospital gurney", "canSpawnAsLoot": True,
+        }),
+        make("ConcreteMixer", {
+            "itemType": "base:moveable", "displayCategory": "Furniture",
+            "worldObjectSprite": "construction_01_6",
+            "spriteProperties": {
+                "CustomName": "Grinder", "GroupName": "Mortar",
+                "Material": "SmallMetalPlates", "Material2": "MetalBars",
+            },
+            "description": "a concrete mixer", "canSpawnAsLoot": True,
+        }),
+        make("SkillBook", {
+            "itemType": "base:normal", "displayCategory": "SkillBook",
+            "description": "a mechanics skill book", "canSpawnAsLoot": True,
+        }),
+        make("CartographyMap", {
+            "itemType": "base:map", "displayCategory": "Cartography",
+            "description": "a map of the town", "canSpawnAsLoot": True,
+        }),
+        make("WeaponPart", {
+            "itemType": "base:weaponpart", "displayCategory": "WeaponPart",
+            "description": "a weapon component", "canSpawnAsLoot": True,
+        }),
+        make("WaterContainer", {
+            "itemType": "base:normal", "displayCategory": "WaterContainer",
+            "canStoreWater": True, "capacity": 10, "description": "an empty bucket",
+            "canSpawnAsLoot": True,
+        }),
+        make("ProtectiveGorget", {
+            "itemType": "base:clothing", "displayCategory": "ProtectiveGear",
+            "bodyLocation": "Gorget", "description": "a protective neck guard",
+            "canSpawnAsLoot": True,
+        }),
         make("DebugDummy", {
             "displayCategory": "Hidden", "displayName": "DUMMY ITEM", "hidden": True,
             "canSpawnAsLoot": True,
@@ -98,6 +342,24 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.NarcoticsSeedPacket", "MarketSenseFixture.Bandage",
         "Base.Flier_Nolans",
         "MarketSenseFixture.Axe", "MarketSenseFixture.Bag",
+        "MarketSenseFixture.Television", "MarketSenseFixture.MoveableSink",
+        "MarketSenseFixture.Radio",
+        "MarketSenseFixture.SleepingBag", "MarketSenseFixture.Tent",
+        "MarketSenseFixture.Mattress", "MarketSenseFixture.GymnMat",
+        "MarketSenseFixture.MoveableLamp", "MarketSenseFixture.InstalledLamp",
+        "MarketSenseFixture.Flashlight", "MarketSenseFixture.GunLight",
+        "MarketSenseFixture.MoveableTannedHide", "MarketSenseFixture.MoveableBrokenGlass",
+        "MarketSenseFixture.SkillBook", "MarketSenseFixture.CartographyMap",
+        "MarketSenseFixture.WeaponPart", "MarketSenseFixture.WaterContainer",
+        "MarketSenseFixture.ProtectiveGorget",
+        "MarketSenseFixture.ComboWasherDryer", "MarketSenseFixture.LaundryBin",
+        "MarketSenseFixture.LightRoundTable", "MarketSenseFixture.Counter",
+        "MarketSenseFixture.Drawers", "MarketSenseFixture.MilitaryCrate",
+        "MarketSenseFixture.Dishwasher", "MarketSenseFixture.GardenSeed",
+        "MarketSenseFixture.Compost", "MarketSenseFixture.Fertilizer",
+        "MarketSenseFixture.SlugRepellent", "MarketSenseFixture.FitnessContraption",
+        "MarketSenseFixture.KickDrum", "MarketSenseFixture.WallClock",
+        "MarketSenseFixture.Gurney", "MarketSenseFixture.ConcreteMixer",
         "MarketSenseFixture.DebugDummy",
     }
     check(
@@ -116,6 +378,40 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.Bandage": "Medical",
         "MarketSenseFixture.Axe": "Weapon",
         "MarketSenseFixture.Bag": "Container",
+        "MarketSenseFixture.Television": "Electronics",
+        "MarketSenseFixture.Radio": "Electronics",
+        "MarketSenseFixture.SleepingBag": "Building",
+        "MarketSenseFixture.Tent": "Building",
+        "MarketSenseFixture.Mattress": "Building",
+        "MarketSenseFixture.GymnMat": "Building",
+        "MarketSenseFixture.MoveableLamp": "Building",
+        "MarketSenseFixture.InstalledLamp": "Building",
+        "MarketSenseFixture.Flashlight": "Electronics",
+        "MarketSenseFixture.GunLight": "Weapon",
+        "MarketSenseFixture.MoveableTannedHide": "Resource",
+        "MarketSenseFixture.MoveableBrokenGlass": "Misc",
+        "MarketSenseFixture.MoveableSink": "Building",
+        "MarketSenseFixture.SkillBook": "Literature",
+        "MarketSenseFixture.CartographyMap": "Literature",
+        "MarketSenseFixture.WeaponPart": "Weapon",
+        "MarketSenseFixture.WaterContainer": "Container",
+        "MarketSenseFixture.ProtectiveGorget": "Clothing",
+        "MarketSenseFixture.ComboWasherDryer": "Electronics",
+        "MarketSenseFixture.LaundryBin": "Building",
+        "MarketSenseFixture.LightRoundTable": "Building",
+        "MarketSenseFixture.Counter": "Building",
+        "MarketSenseFixture.Drawers": "Building",
+        "MarketSenseFixture.MilitaryCrate": "Building",
+        "MarketSenseFixture.Dishwasher": "Electronics",
+        "MarketSenseFixture.GardenSeed": "Building",
+        "MarketSenseFixture.Compost": "Building",
+        "MarketSenseFixture.Fertilizer": "Building",
+        "MarketSenseFixture.SlugRepellent": "Building",
+        "MarketSenseFixture.FitnessContraption": "Building",
+        "MarketSenseFixture.KickDrum": "Building",
+        "MarketSenseFixture.WallClock": "Electronics",
+        "MarketSenseFixture.Gurney": "Building",
+        "MarketSenseFixture.ConcreteMixer": "Building",
         "MarketSenseFixture.DebugDummy": "Misc",
     }
     category_ok = all(
@@ -166,6 +462,168 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         ),
         f"category={seed.get('category', '?')} primary={seed.get('primary', '?')} "
         f"root={seed_detection.get('root', '?')} recipes={seed_context.get('learnedRecipes', '?')}",
+    )
+
+    expected_primary = {
+        "MarketSenseFixture.Television": "ElectronicsTelevision",
+        "MarketSenseFixture.Radio": "ElectronicsRadio",
+        "MarketSenseFixture.SleepingBag": "BuildingSurvivalSleepingBag",
+        "MarketSenseFixture.Mattress": "BuildingFurnitureBed",
+        "MarketSenseFixture.GymnMat": "BuildingFurnitureBed",
+        "MarketSenseFixture.Tent": "BuildingSurvivalTent",
+        "MarketSenseFixture.MoveableLamp": "BuildingFixtureLighting",
+        "MarketSenseFixture.InstalledLamp": "BuildingFixtureLighting",
+        "MarketSenseFixture.Flashlight": "ElectronicsFlashlight",
+        "MarketSenseFixture.GunLight": "WeaponPart",
+        "MarketSenseFixture.MoveableTannedHide": "MaterialTailoring",
+        "MarketSenseFixture.MoveableBrokenGlass": "Junk",
+        "MarketSenseFixture.MoveableSink": "BuildingFixturePlumbing",
+        "MarketSenseFixture.SkillBook": "SkillBook",
+        "MarketSenseFixture.CartographyMap": "LiteratureMap",
+        "MarketSenseFixture.WeaponPart": "WeaponPart",
+        "MarketSenseFixture.WaterContainer": "ContainerLiquid",
+        "MarketSenseFixture.ProtectiveGorget": "ProtectiveGearNeck",
+        "MarketSenseFixture.ComboWasherDryer": "ElectronicsLaundry",
+        "MarketSenseFixture.LaundryBin": "BuildingFurnitureLaundry",
+        "MarketSenseFixture.LightRoundTable": "BuildingFurnitureTable",
+        "MarketSenseFixture.Counter": "BuildingFurnitureCounter",
+        "MarketSenseFixture.Drawers": "BuildingFurnitureStorage",
+        "MarketSenseFixture.MilitaryCrate": "BuildingFurnitureStorage",
+        "MarketSenseFixture.Dishwasher": "ElectronicsAppliance",
+        "MarketSenseFixture.GardenSeed": "GardeningSeed",
+        "MarketSenseFixture.Compost": "GardeningCompost",
+        "MarketSenseFixture.Fertilizer": "GardeningFertilizer",
+        "MarketSenseFixture.SlugRepellent": "GardeningPestControl",
+        "MarketSenseFixture.FitnessContraption": "BuildingRecreationFitness",
+        "MarketSenseFixture.KickDrum": "BuildingRecreationDrum",
+        "MarketSenseFixture.WallClock": "ElectronicsClock",
+        "MarketSenseFixture.Gurney": "BuildingMedicalGurney",
+        "MarketSenseFixture.ConcreteMixer": "BuildingCraftingMasonry",
+    }
+    check(
+        "audited root and leaf heuristics",
+        all(by_type.get(item, {}).get("primary") == primary
+            for item, primary in expected_primary.items()),
+        ", ".join(
+            f"{item.rsplit('.', 1)[-1]}={by_type.get(item, {}).get('primary', '?')}"
+            for item in sorted(expected_primary)
+        ),
+    )
+    expected_paths = {
+        "MarketSenseFixture.SleepingBag": "Building > Survival > SleepingBag",
+        "MarketSenseFixture.Tent": "Building > Survival > Tent",
+        "MarketSenseFixture.MoveableLamp": "Building > Fixture > Lighting",
+        "MarketSenseFixture.Flashlight": "Electronics > Light > Flashlight",
+        "MarketSenseFixture.MoveableTannedHide": "Resource > Material > Tailoring",
+        "MarketSenseFixture.ComboWasherDryer": "Electronics > Appliance > Laundry",
+        "MarketSenseFixture.LaundryBin": "Building > Furniture > Laundry",
+        "MarketSenseFixture.LightRoundTable": "Building > Furniture > Table",
+        "MarketSenseFixture.Counter": "Building > Furniture > Counter",
+        "MarketSenseFixture.Drawers": "Building > Furniture > Storage",
+        "MarketSenseFixture.MilitaryCrate": "Building > Furniture > Storage",
+        "MarketSenseFixture.Dishwasher": "Electronics > Appliance > Appliance",
+        "MarketSenseFixture.GardenSeed": "Building > Gardening > Seed",
+        "MarketSenseFixture.Compost": "Building > Gardening > Compost",
+        "MarketSenseFixture.Fertilizer": "Building > Gardening > Fertilizer",
+        "MarketSenseFixture.SlugRepellent": "Building > Gardening > PestControl",
+        "MarketSenseFixture.FitnessContraption": "Building > Recreation > Fitness",
+        "MarketSenseFixture.KickDrum": "Building > Recreation > Drum",
+        "MarketSenseFixture.WallClock": "Electronics > Appliance > Clock",
+        "MarketSenseFixture.Gurney": "Building > Medical > Gurney",
+        "MarketSenseFixture.ConcreteMixer": "Building > Crafting > Masonry",
+    }
+    check(
+        "audited nested hierarchy paths",
+        all(by_type.get(item, {}).get("categoryPath") == path
+            for item, path in expected_paths.items()),
+        ", ".join(
+            f"{item.rsplit('.', 1)[-1]}={by_type.get(item, {}).get('categoryPath', '?')}"
+            for item in sorted(expected_paths)
+        ),
+    )
+
+    combo = by_type.get("MarketSenseFixture.ComboWasherDryer", {})
+    combo_context = combo.get("context") or {}
+    combo_world = combo_context.get("worldObjectEvidence") or {}
+    combo_caps = combo_context.get("capabilities") or {}
+    check(
+        "world-object capability evidence is exposed",
+        (
+            combo.get("primary") == "ElectronicsLaundry"
+            and combo_world.get("objectClass") == "IsoCombinationWasherDryer"
+            and combo_world.get("properties", {}).get("Material3") == "Electric"
+            and "wash_clothing" in (combo_caps.get("capabilities") or [])
+            and "dry_clothing" in (combo_caps.get("capabilities") or [])
+            and "electricity" in (combo_caps.get("requirements") or [])
+            and "water_supply" in (combo_caps.get("requirements") or [])
+        ),
+        f"primary={combo.get('primary', '?')} capabilities={combo_caps.get('capabilities', '?')} "
+        f"requirements={combo_caps.get('requirements', '?')}",
+    )
+    table = by_type.get("MarketSenseFixture.LightRoundTable", {})
+    table_context = table.get("context") or {}
+    table_caps = table_context.get("capabilities") or {}
+    fitness = by_type.get("MarketSenseFixture.FitnessContraption", {})
+    fitness_caps = (fitness.get("context") or {}).get("capabilities") or {}
+    check(
+        "world semantics beat ambiguous names",
+        (
+            table.get("primary") == "BuildingFurnitureTable"
+            and "table_surface" in (table_caps.get("capabilities") or [])
+            and fitness.get("primary") == "BuildingRecreationFitness"
+            and "exercise" in (fitness_caps.get("capabilities") or [])
+        ),
+        f"table={table.get('primary', '?')} fitness={fitness.get('primary', '?')}",
+    )
+    furniture_semantics = {
+        item: (by_type.get(item, {}).get("context") or {}).get("capabilities") or {}
+        for item in (
+            "MarketSenseFixture.Counter", "MarketSenseFixture.Drawers",
+            "MarketSenseFixture.MilitaryCrate", "MarketSenseFixture.Dishwasher",
+        )
+    }
+    check(
+        "table placement flags do not erase furniture semantics",
+        (
+            by_type.get("MarketSenseFixture.Counter", {}).get("primary") == "BuildingFurnitureCounter"
+            and by_type.get("MarketSenseFixture.Drawers", {}).get("primary") == "BuildingFurnitureStorage"
+            and by_type.get("MarketSenseFixture.MilitaryCrate", {}).get("primary") == "BuildingFurnitureStorage"
+            and by_type.get("MarketSenseFixture.Dishwasher", {}).get("primary") == "ElectronicsAppliance"
+            and "table_surface" not in (furniture_semantics["MarketSenseFixture.Counter"].get("capabilities") or [])
+            and "table_surface" not in (furniture_semantics["MarketSenseFixture.Drawers"].get("capabilities") or [])
+            and "table_surface" not in (furniture_semantics["MarketSenseFixture.MilitaryCrate"].get("capabilities") or [])
+        ),
+        ", ".join(
+            f"{item.rsplit('.', 1)[-1]}={by_type.get(item, {}).get('primary', '?')}"
+            for item in furniture_semantics
+        ),
+    )
+    garden_expected = {
+        "MarketSenseFixture.GardenSeed": "GardeningSeed",
+        "MarketSenseFixture.Compost": "GardeningCompost",
+        "MarketSenseFixture.Fertilizer": "GardeningFertilizer",
+        "MarketSenseFixture.SlugRepellent": "GardeningPestControl",
+    }
+    check(
+        "gardening subcategories use script tags and item use",
+        all(by_type.get(item, {}).get("primary") == primary
+            for item, primary in garden_expected.items()),
+        ", ".join(
+            f"{item.rsplit('.', 1)[-1]}={by_type.get(item, {}).get('primary', '?')}"
+            for item in garden_expected
+        ),
+    )
+    lamp_caps = (by_type.get("MarketSenseFixture.MoveableLamp", {}).get("context") or {}).get("capabilities") or {}
+    sink_caps = (by_type.get("MarketSenseFixture.MoveableSink", {}).get("context") or {}).get("capabilities") or {}
+    check(
+        "placement surface is not a false table positive",
+        (
+            "table_surface" not in (lamp_caps.get("capabilities") or [])
+            and "table_surface" not in (sink_caps.get("capabilities") or [])
+            and by_type.get("MarketSenseFixture.MoveableLamp", {}).get("primary") == "BuildingFixtureLighting"
+            and by_type.get("MarketSenseFixture.MoveableSink", {}).get("primary") == "BuildingFixturePlumbing"
+        ),
+        f"lamp={lamp_caps.get('capabilities', '?')} sink={sink_caps.get('capabilities', '?')}",
     )
 
     availability = {

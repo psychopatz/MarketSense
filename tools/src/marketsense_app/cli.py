@@ -12,11 +12,16 @@ from .bridge import find_lua
 from .config import (
     DEFAULT_CACHE_DIR,
     DEFAULT_GAME_VERSION,
+    DEFAULT_INSPECTOR_SETTINGS_PATH,
     DEFAULT_SANDBOX_SETTINGS_PATH,
 )
 from .evaluation import ScanOptions, evaluate
 from .fixtures import print_self_test, self_test
-from .reporting import write_csv, write_low_confidence_report
+from .reporting import (
+    write_csv,
+    write_heuristic_gap_report,
+    write_low_confidence_report,
+)
 from .sandbox import SandboxSettingsError, load_sandbox_settings, load_sandbox_option_specs
 from .terminal import print_terminal
 from .workshop_paths import default_roots
@@ -58,8 +63,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Write all low-confidence rows to .json, .jsonl, or .csv without flooding stdout.",
     )
     parser.add_argument(
+        "--heuristic-gap-out", type=Path,
+        help=(
+            "Write all broad/default-bucket heuristic candidates to .json, .jsonl, "
+            "or .csv without flooding stdout."
+        ),
+    )
+    parser.add_argument(
         "--chunk-size", type=int, default=25,
-        help="Rows per compact low-confidence/settings terminal chunk (default: 25).",
+        help="Rows per compact terminal chunk (default: 25).",
     )
     parser.add_argument(
         "--low-confidence-chunk", type=int, default=1,
@@ -68,6 +80,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--availability-chunk", type=int, default=1,
         help="1-based uncertain/excluded availability chunk shown in the terminal report (default: 1).",
+    )
+    parser.add_argument(
+        "--heuristic-gap-chunk", type=int, default=1,
+        help="1-based generic/default-bucket candidate chunk shown in the terminal report (default: 1).",
     )
     parser.add_argument("--chart", choices=["all", "categories", "prices", "none"], default="all")
     parser.add_argument("--format", choices=["terminal", "json", "jsonl"], default="terminal")
@@ -132,6 +148,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--sandbox-config", type=Path, default=DEFAULT_SANDBOX_SETTINGS_PATH,
         help=f"JSON sandbox override file (default: {DEFAULT_SANDBOX_SETTINGS_PATH}).",
     )
+    parser.add_argument(
+        "--settings-config", type=Path, default=DEFAULT_INSPECTOR_SETTINGS_PATH,
+        help=f"GUI path/settings file (default: {DEFAULT_INSPECTOR_SETTINGS_PATH}).",
+    )
     return parser.parse_args(argv)
 
 
@@ -140,9 +160,13 @@ def main(argv: list[str] | None = None) -> int:
     if not 0.0 <= args.confidence_threshold <= 1.0:
         print("--confidence-threshold must be between 0 and 1.", file=sys.stderr)
         return 2
-    if args.chunk_size < 1 or args.low_confidence_chunk < 1 or args.availability_chunk < 1:
+    if (
+        args.chunk_size < 1 or args.low_confidence_chunk < 1
+        or args.availability_chunk < 1 or args.heuristic_gap_chunk < 1
+    ):
         print(
-            "--chunk-size, --low-confidence-chunk, and --availability-chunk must be positive.",
+            "--chunk-size, --low-confidence-chunk, --availability-chunk, "
+            "and --heuristic-gap-chunk must be positive.",
             file=sys.stderr,
         )
         return 2
@@ -210,6 +234,13 @@ def main(argv: list[str] | None = None) -> int:
             f"Wrote {summary.get('low_confidence_count', 0)} low-confidence rows to {output_path}",
             file=sys.stderr,
         )
+    if args.heuristic_gap_out:
+        output_path = write_heuristic_gap_report(args.heuristic_gap_out, rows)
+        print(
+            f"Wrote {summary.get('heuristic_coverage', {}).get('candidate_count', 0)} "
+            f"heuristic-gap candidates to {output_path}",
+            file=sys.stderr,
+        )
     if args.format == "json":
         print(json.dumps({"summary": summary, "items": rows}, indent=2, sort_keys=True))
     elif args.format == "jsonl":
@@ -225,5 +256,6 @@ def main(argv: list[str] | None = None) -> int:
             args.chunk_size,
             args.low_confidence_chunk,
             args.availability_chunk,
+            args.heuristic_gap_chunk,
         )
     return 0

@@ -11,6 +11,8 @@ require "MarketSense/signatures/tags/MS_Sig_Material"
 require "MarketSense/signatures/tags/MS_Sig_Ammo"
 require "MarketSense/signatures/tags/MS_Sig_Apparel"
 require "MarketSense/signatures/tags/MS_Sig_Container"
+require "MarketSense/signatures/tags/MS_Sig_Electronics"
+require "MarketSense/signatures/tags/MS_Sig_Building"
 require "MarketSense/signatures/tags/MS_Sig_Gardening"
 require "MarketSense/signatures/tags/MS_Sig_Literature"
 require "MarketSense/signatures/tags/MS_Sig_Tool"
@@ -62,8 +64,17 @@ local ROOT_PIPELINES = {
         "Food",
         "CategoryOverride",
     },
+    Electronics = {
+        "Electronics",
+        "CategoryOverride",
+    },
     Literature = {
         "Literature",
+        "CategoryOverride",
+    },
+    Building = {
+        "Gardening",
+        "Building",
         "CategoryOverride",
     },
     Tool = {
@@ -71,10 +82,6 @@ local ROOT_PIPELINES = {
         "Cooking",
         "Tool",
         "BoxesAndStacks",
-        "CategoryOverride",
-    },
-    Building = {
-        "Gardening",
         "CategoryOverride",
     },
     Misc = {

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -17,18 +18,22 @@ from marketsense_app.availability import (
     availability_counts,
     build_acquisition_index,
 )
-from marketsense_app.evaluation import merge_scan_definitions
+from marketsense_app.evaluation import ScanOptions, load_cached_result, merge_scan_definitions
+from marketsense_app.heuristics import heuristic_coverage, heuristic_gap
+from marketsense_app.gui_filters import filter_rows, view_summary
 from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
-from marketsense_app.reporting import write_low_confidence_report
+from marketsense_app.reporting import write_heuristic_gap_report, write_low_confidence_report
+from marketsense_app.preferences import load_preferences, normalize_preferences, save_preferences
 from marketsense_app.sandbox import (
     effective_sandbox_settings,
     load_sandbox_option_specs,
     load_sandbox_settings,
     save_sandbox_settings,
 )
-from marketsense_app.workshop import merge_definitions
+from marketsense_app.workshop import discover_items, discover_mods, merge_definitions
 from marketsense_app.workshop_paths import item_script_paths, pz_version_int
+from marketsense_app.tile_parser import build_tile_property_index, parse_tile_definitions
 
 
 def main() -> int:
@@ -61,6 +66,60 @@ def main() -> int:
         (first / "common.txt").write_text("module Test { item Common { Type = Normal, } }", encoding="utf-8")
         paths, selected = item_script_paths(versioned, "42.20")
         assert selected == "common+42.20" and len(paths) == 2
+
+        workshop = root / "workshop"
+        narcotics = workshop / "123" / "mods" / "Narcotics"
+        other = workshop / "456" / "mods" / "Other"
+        for mod_root, mod_id in ((narcotics, "Narcotics"), (other, "Other")):
+            scripts = mod_root / "media" / "scripts"
+            scripts.mkdir(parents=True)
+            (mod_root / "mod.info").write_text(
+                f"id={mod_id}\nname={mod_id} Test\n", encoding="utf-8"
+            )
+            (scripts / "items.txt").write_text(
+                f"module {mod_id} {{ item Sample {{ Type = Normal, }} }}",
+                encoding="utf-8",
+            )
+        discovered_mods = discover_mods((workshop,))
+        assert {mod.mod_id for mod in discovered_mods} == {"Narcotics", "Other"}
+        all_mods, all_items, _all_files, _all_definitions = discover_items(
+            (workshop,), [], "42.20"
+        )
+        selected_mods, selected_items, _selected_files, _selected_definitions = discover_items(
+            (workshop,), ["Narcotics"], "42.20"
+        )
+        assert len(all_mods) == 2 and len(all_items) == 2
+        assert [mod.mod_id for mod in selected_mods] == ["Narcotics"]
+        assert set(selected_items) == {"Narcotics.Sample"}
+
+        tile_file = root / "tile-mod" / "media" / "newtiledefinitions.tiles.txt"
+        tile_file.parent.mkdir(parents=True)
+        tile_file.write_text(
+            """version = 1
+tileset {
+    file = test
+    // test_0
+    tile {
+        CustomName = Light Round Table
+        GenericCraftingSurface = true
+        IsTable =
+        Surface = 27
+    }
+}
+""",
+            encoding="utf-8",
+        )
+        parsed_tiles = parse_tile_definitions(tile_file)
+        assert parsed_tiles["test_0"] == {
+            "CustomName": "Light Round Table",
+            "GenericCraftingSurface": True,
+            "IsTable": True,
+            "Surface": 27,
+        }
+        indexed_tiles, tile_sources = build_tile_property_index(
+            None, (tile_file.parents[1],), "42.20"
+        )
+        assert indexed_tiles["test_0"]["IsTable"] is True and tile_sources
 
         media = root / "availability" / "media"
         scripts_root = media / "scripts"
@@ -121,6 +180,12 @@ def main() -> int:
             (media.parent,), scripts_root,
         )
         assert key_before != key_after
+        progress_messages: list[str] = []
+        no_root_options = ScanOptions(workshop_roots=(root / "missing",))
+        assert load_cached_result(
+            "lua", no_root_options, progress_messages.append
+        ) is None
+        assert progress_messages and "no exact lookup" in progress_messages[0]
 
     mod = WorkshopMod(Path("fixture"), "fixture", "Fixture", "Fixture", "fixture")
     base = ItemDefinition("Test.One", "Test", {"tags": ["Base"], "capacity": 1}, mod, "base.txt")
@@ -154,6 +219,31 @@ def main() -> int:
         "expandedTags": ["Tool", "ToolCraft"],
     }]) == 1
     assert "unknown test item" in searchable_text(flagged)
+    assert heuristic_gap({
+        "fullType": "Base.Unknown", "category": "Misc", "subcategory": "General",
+        "primary": "Misc", "detector": "RootArbiter", "resolver": "root_fallback",
+        "confidence": 0.2,
+    })["kind"] == "fallback"
+    assert heuristic_gap({
+        "fullType": "Base.Material", "category": "Resource", "subcategory": "Material",
+        "primary": "MaterialButchering", "detector": "RootArbiter",
+        "resolver": "root_fallback", "confidence": 0.9,
+    }) is None
+    assert heuristic_gap({
+        "fullType": "Base.Bag", "category": "Container", "subcategory": "General",
+        "primary": "Container", "detector": "Container", "resolver": "root_container",
+        "confidence": 0.8,
+    })["kind"] == "root_only"
+    coverage = heuristic_coverage([
+        flagged,
+        {
+            "fullType": "Base.Moveable", "category": "Building",
+            "subcategory": "Moveable", "primary": "BuildingMoveable",
+            "detector": "Building", "resolver": "root_building", "confidence": 0.78,
+        },
+    ], example_limit=1)
+    assert coverage["candidate_count"] == 2
+    assert coverage["examples"] and coverage["examples"][0]["fullType"]
     assert "loot/distribution" in searchable_text({
         "fullType": "Base.CannedLeek",
         "availability": {
@@ -167,6 +257,53 @@ def main() -> int:
     })
     assert mismatch_status == "REVIEW" and "absent from expanded tags" in mismatch_reason
     assert review_row({"error": "bridge failed"})[0] == "ERROR"
+
+    cached_view_rows = [
+        {
+            "fullType": "Base.VanillaThing", "workshopMod": "Base",
+            "availability": {"status": "obtainable"}, "price": 10,
+            "category": "Tool", "primary": "ToolCraft", "confidence": 0.9,
+        },
+        {
+            "fullType": "Narcotics.CraftedThing", "workshopMod": "Narcotics",
+            "workshopName": "Narcotics Test",
+            "availability": {"status": "obtainable"}, "price": 20,
+            "category": "Misc", "primary": "Misc", "confidence": 0.7,
+        },
+        {
+            "fullType": "Narcotics.UncertainThing", "workshopMod": "Narcotics",
+            "workshopName": "Narcotics Test",
+            "availability": {"status": "uncertain"}, "price": 30,
+            "category": "Misc", "primary": "Misc", "confidence": 0.7,
+        },
+        {
+            "fullType": "Other.ExcludedThing", "workshopMod": "Other",
+            "workshopName": "Other Test",
+            "availability": {"status": "excluded"}, "price": 40,
+            "category": "Misc", "primary": "Misc", "confidence": 0.7,
+        },
+    ]
+    assert len(filter_rows(cached_view_rows, "All items")) == 4
+    assert len(filter_rows(cached_view_rows, "Obtainable only")) == 2
+    assert len(filter_rows(cached_view_rows, "All items", ("Narcotics",))) == 2
+    assert len(filter_rows(cached_view_rows, "Obtainable only", ("Narcotics",))) == 1
+    assert len(filter_rows(cached_view_rows, "All items", (), True)) == 3
+    assert [row["fullType"] for row in filter_rows(
+        cached_view_rows, "All items", (), False, 2
+    )] == ["Base.VanillaThing", "Narcotics.CraftedThing"]
+    master_summary = {
+        "confidence_threshold": 0.5,
+        "workshop_mods": 2,
+        "mods": [],
+        "cache": {"status": "hit"},
+    }
+    narrowed_summary = view_summary(
+        master_summary, filter_rows(cached_view_rows, "Uncertain only"),
+        cached_view_rows, "Uncertain only",
+    )
+    assert narrowed_summary["evaluated"] == 1
+    assert narrowed_summary["prices"]["median"] == 30
+    assert narrowed_summary["view_filtered_out"] == 3
 
     specs = load_sandbox_option_specs()
     assert len(specs) >= 3
@@ -185,6 +322,39 @@ def main() -> int:
         }
         assert clear_cache(Path(temp_dir)) == 1
 
+    with TemporaryDirectory(prefix="marketsense-cache-lookup-") as temp_dir:
+        root = Path(temp_dir) / "workshop"
+        root.mkdir()
+        lua_path = Path(temp_dir) / "lua"
+        lua_path.write_text("-- fixture", encoding="utf-8")
+        options = ScanOptions(
+            workshop_roots=(root,), no_base_game=True,
+            cache_dir=Path(temp_dir) / "cache", use_cache=True,
+        )
+        cache = ResultCache(
+            options.cache_dir,
+            cache_key(str(lua_path), options, (root,), None),
+        )
+        cache.save({"evaluated": 1}, [{"fullType": "Test.Cached", "price": 7}])
+        cached = load_cached_result(str(lua_path), options)
+        assert cached and cached[0]["cache"]["status"] == "hit"
+        assert load_cached_result(
+            str(lua_path), options.__class__(**{
+                **options.__dict__, "refresh_cache": True,
+            })
+        ) is None
+
+    with TemporaryDirectory(prefix="marketsense-preferences-") as temp_dir:
+        settings_path = Path(temp_dir) / "inspector.json"
+        saved = save_preferences(settings_path, {
+            "workshopRoots": ["/tmp/workshop"], "gameRoot": "/tmp/game",
+            "useCache": True, "maxItems": 12,
+        })
+        assert saved == settings_path.resolve()
+        loaded = normalize_preferences(load_preferences(settings_path))
+        assert loaded["workshopRoots"] == ["/tmp/workshop"]
+        assert loaded["gameRoot"] == "/tmp/game" and loaded["maxItems"] == 12
+
     with TemporaryDirectory(prefix="marketsense-settings-") as temp_dir:
         settings_path = Path(temp_dir) / "settings.json"
         save_sandbox_settings(settings_path, {"PriceGlobalValue": 123}, specs)
@@ -192,6 +362,10 @@ def main() -> int:
         low_path = Path(temp_dir) / "low.jsonl"
         write_low_confidence_report(low_path, [flagged], 0.5)
         assert len(low_path.read_text(encoding="utf-8").splitlines()) == 1
+        gap_path = Path(temp_dir) / "gaps.json"
+        write_heuristic_gap_report(gap_path, [flagged])
+        gap_report = json.loads(gap_path.read_text(encoding="utf-8"))
+        assert gap_report["count"] == 1
 
     print("marketsense_tool_smoke: ok")
     return 0

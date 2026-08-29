@@ -24,6 +24,8 @@ tools/run.sh --console --confidence-threshold 0.65 \
   --low-confidence-out /tmp/marketsense-low.jsonl
 tools/run.sh --console --low-confidence-chunk 2 --chunk-size 25
 tools/run.sh --console --availability all --availability-chunk 2 --chunk-size 25
+tools/run.sh --console --heuristic-gap-chunk 2 --chunk-size 25
+tools/run.sh --console --heuristic-gap-out /tmp/marketsense-gaps.json
 python3 tests/marketsense_tool_smoke.py
 ```
 
@@ -58,17 +60,28 @@ tools/
     bridge_runtime.lua     # PZ-shaped runtime template
     fixtures.py           # deterministic real-evaluator checks
     reporting.py          # summaries and CSV support
+    heuristics.py         # compact broad/default-bucket gap audit
     terminal.py            # readable terminal charts and ranked tables
     evaluation.py          # shared scan pipeline for console and GUI
-    gui.py                 # Tk desktop inspector
+    gui.py                 # Tk entry point and composed inspector class
+    gui_widgets.py         # shared Treeview and form primitives
+    gui_overview.py        # charts and overview summary
+    gui_items.py           # nested item tree, search, and evidence
+    gui_audits.py          # review, low-confidence, and gap views
+    gui_sandbox.py         # sandbox pricing editor
+    gui_controller.py      # settings, discovery, scan lifecycle, exports
     cache.py               # invalidation-aware persistent result cache
+    preferences.py         # atomic GUI path/scan-setting persistence
     sandbox.py             # sandbox declaration parsing, overrides, persistence
     availability.py        # acquisition evidence and obtainable-only gate
 ```
 
 By default it scans the Steam Workshop `108600` directory and
 `~/Zomboid/Workshop` when present. Use `--workshop-root` to provide an explicit
-root. The default game-version ceiling is `42.20`. Versioned Workshop mods
+root. The GUI mod filter is populated by a metadata-only discovery pass; `All`
+is the default and selecting a discovered mod uses its stable ID. The CLI
+`--mod` option remains a substring filter for scripting and compatibility.
+The default game-version ceiling is `42.20`. Versioned Workshop mods
 load `common` plus the highest installed version folder at or below that
 ceiling, matching PZ's `ZomboidFileSystem` selection rule. Override it with
 `--game-version`. The tool also auto-detects the installed Project Zomboid
@@ -96,6 +109,15 @@ is comparison evidence, not a spawn-probability calculation; normal game
 conditions can still gate a valid recipe, distribution, or catch. The Lua
 runtime gate is the final in-game decision.
 
+The console and GUI also expose a bounded heuristic-gap work queue. It uses
+Lua's detector/resolver/category provenance to find missing, broad, and
+root-only classifications without treating every `root_fallback` resolver as
+wrong. Specialized rows such as `MaterialButchering` remain clean. The
+terminal shows only nonzero aggregate bucket counts plus one chunk; advance it
+with `--heuristic-gap-chunk N` or export the complete evidence with
+`--heuristic-gap-out PATH`. The GUI's Heuristic gaps tab adds search, signal
+filtering, runtime evidence, and JSON/CSV export.
+
 DynamicTrading is intentionally not a required scan target: it consumes
 MarketSense prices but does not need to define the items itself. Filtering to a
 consumer-only mod therefore reports zero item definitions instead of treating
@@ -119,7 +141,21 @@ pricing settings. `run.sh` with no arguments opens the GUI; the console remains
 available through `--console` or normal report arguments. Results are cached by
 default under `tools/.cache/results`; the cache key includes scan settings,
 Workshop/base item-script metadata, base/Workshop Lua acquisition sources,
-MarketSense Lua sources, and the Lua interpreter, including sandbox overrides
-and declarations. Use
+MarketSense Lua sources, the Lua interpreter, and evaluator/parser code. GUI,
+terminal, export, and heuristic-report changes do not invalidate the expensive
+item evaluation; cached rows are rehydrated into those views. Use
 `--refresh-cache`, `--no-cache`, or `--cache-dir PATH` to control it. The GUI
-exposes equivalent cache controls and a Clear cache button.
+restores an exact cache entry at startup without scanning, and its normal Scan
+button reuses that entry. `Refresh` explicitly invalidates/rebuilds the
+current entry; source/settings changes automatically produce a new cache key.
+The GUI scan is deliberately unfiltered: it caches all Workshop mods, Base
+items, and availability states in one master result. Its Availability, mod,
+Skip vanilla, and Max items controls are local view filters over those cached
+rows, so changing them does not invoke Workshop discovery or Lua again.
+GUI paths and scan options are saved to
+`tools/.config/inspector-settings.json`, with `--settings-config PATH` available
+for another location. The GUI exposes equivalent cache controls and a Clear
+cache button. Its Diagnostics tab keeps a timestamped, bounded phase log for
+cache lookup, Workshop/base discovery, availability indexing, Lua evaluation,
+and cache writes. Completion shows summary metrics plus a small sample rather
+than rendering every item row; Save JSON/CSV remains the complete export path.

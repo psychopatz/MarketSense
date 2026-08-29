@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import DEFAULT_GAME_VERSION
+from .heuristics import compact_heuristic_gap, heuristic_coverage, heuristic_gap_rows
 from .models import WorkshopMod
 from .review import low_confidence_rows, review_row
 
@@ -87,6 +88,8 @@ def build_summary(
     availability_candidates: int | None = None,
     availability_eligible: int | None = None,
     max_items_omitted: int = 0,
+    tile_definition_files: int = 0,
+    tile_sprite_properties: int = 0,
 ) -> dict[str, Any]:
     valid = [
         row for row in rows
@@ -104,6 +107,7 @@ def build_summary(
         category_summary[category] = stats
     review_statuses = Counter(review_row(row)[0] for row in rows)
     low_confidence = low_confidence_rows(rows, confidence_threshold)
+    heuristic_summary = heuristic_coverage(valid)
     vanilla_items = sum(1 for row in rows if str(row.get("workshopMod") or "") == "Base")
     availability_records = availability_records or {}
     availability_status_counts = Counter(
@@ -135,6 +139,7 @@ def build_summary(
         ),
         "confidence_threshold": confidence_threshold,
         "low_confidence_count": len(low_confidence),
+        "heuristic_coverage": heuristic_summary,
         "review_count": sum(
             count for status, count in review_statuses.items() if status != "OK"
         ),
@@ -155,6 +160,8 @@ def build_summary(
         },
         "availability_source_files": availability_source_files,
         "availability_source_roots": availability_source_roots or [],
+        "tile_definition_files": tile_definition_files,
+        "tile_sprite_properties": tile_sprite_properties,
         "mods_with_items": dict(
             Counter(
                 str(row.get("workshopMod") or "Unknown")
@@ -198,7 +205,8 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "primary", "detector", "resolver", "price", "rawScore", "confidence", "source",
         "availabilityStatus", "availabilityConfidence", "availabilityChannels",
         "availabilityReason", "availabilityReferences", "availabilityExclusions",
-        "reviewStatus", "reviewReason",
+        "reviewStatus", "reviewReason", "heuristicKind", "heuristicBucket",
+        "heuristicReason",
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh",
         "daysRotten", "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity",
         "workshopMod", "workshopName", "workshopId", "workshopVersion", "scriptPath",
@@ -210,6 +218,10 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             output = dict(row)
             output["reviewStatus"], output["reviewReason"] = review_row(row)
+            gap = compact_heuristic_gap(row) or {}
+            output["heuristicKind"] = gap.get("kind", "")
+            output["heuristicBucket"] = gap.get("bucket", "")
+            output["heuristicReason"] = gap.get("reason", "")
             hierarchy = row.get("hierarchy") if isinstance(row.get("hierarchy"), dict) else {}
             output["subcategory"] = row.get("subcategory") or hierarchy.get("subcategory", "")
             output["leaf"] = row.get("leaf") or hierarchy.get("leaf", "")
@@ -230,10 +242,14 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             writer.writerow(output)
 
 
-def _export_row(row: dict[str, Any], threshold: float) -> dict[str, Any]:
+def _export_row(row: dict[str, Any], threshold: float | None) -> dict[str, Any]:
     output = dict(row)
     output["reviewStatus"], output["reviewReason"] = review_row(row)
-    output["lowConfidenceThreshold"] = threshold
+    if threshold is not None:
+        output["lowConfidenceThreshold"] = threshold
+    gap = compact_heuristic_gap(row)
+    if gap:
+        output["heuristicGap"] = gap
     return output
 
 
@@ -259,6 +275,31 @@ def write_low_confidence_report(
                 "confidenceThreshold": threshold,
                 "count": len(selected),
                 "items": [_export_row(row, threshold) for row in selected],
+            }, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return target
+
+
+def write_heuristic_gap_report(path: Path, rows: list[dict[str, Any]]) -> Path:
+    """Write all broad/default-bucket candidates without flooding stdout."""
+
+    target = path.expanduser().resolve()
+    selected = heuristic_gap_rows(rows)
+    if target.suffix.casefold() == ".csv":
+        write_csv(target, selected)
+    elif target.suffix.casefold() == ".jsonl":
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("w", encoding="utf-8") as handle:
+            for row in selected:
+                handle.write(json.dumps(_export_row(row, None), sort_keys=True) + "\n")
+    else:
+        target = target.with_suffix(".json") if not target.suffix else target
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            json.dumps({
+                "count": len(selected),
+                "items": [_export_row(row, None) for row in selected],
             }, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )

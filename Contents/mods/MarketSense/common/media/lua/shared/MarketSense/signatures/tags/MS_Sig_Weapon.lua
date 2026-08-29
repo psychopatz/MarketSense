@@ -38,6 +38,9 @@ local function weaponCatIs(ctx, ...)
 end
 
 function Signature.match(ctx)
+    if itemTypeIs(ctx, "weaponpart") or (ctx.displayCategoryToken or "") == "weaponpart" then
+        return TagMapper.makeResult("WeaponPart", 0.94, { source = "weapon_part_type" })
+    end
     if not itemTypeIs(ctx, "weapon") then return { matched = false, confidence = 0 } end
     if hasTag(ctx, "nomaintenancexp") then return { matched = false, confidence = 0 } end
 

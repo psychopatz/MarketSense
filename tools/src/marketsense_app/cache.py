@@ -12,7 +12,17 @@ from .config import DEFAULT_CACHE_DIR, MOD_ROOT, TOOLS_ROOT
 
 
 # Bumped when the result row universe or exposed runtime evidence changes.
-CACHE_FORMAT_VERSION = 6
+CACHE_FORMAT_VERSION = 8
+
+# Presentation changes (GUI, terminal formatting, exports, and heuristic
+# reports) must not force the expensive Workshop/Lua evaluation to run again.
+# Only modules that can change the evaluated row universe belong in this list.
+EVALUATOR_FILES = (
+    "availability.py", "bridge.py", "bridge_runtime.lua", "bridge_template.py",
+    "config.py", "evaluation.py", "models.py", "sandbox.py",
+    "script_fields.py", "script_parser.py", "tile_parser.py", "workshop.py",
+    "workshop_paths.py",
+)
 
 
 def _file_manifest(roots: Iterable[Path], suffixes: tuple[str, ...]) -> list[dict[str, Any]]:
@@ -38,6 +48,24 @@ def _file_manifest(roots: Iterable[Path], suffixes: tuple[str, ...]) -> list[dic
                     "mtime_ns": stat.st_mtime_ns,
                 })
     return sorted(entries, key=lambda entry: entry["path"])
+
+
+def _file_manifest_paths(paths: Iterable[Path]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for path in paths:
+        path = path.expanduser().resolve()
+        try:
+            stat = path.stat()
+        except OSError:
+            entries.append({"path": str(path), "missing": True})
+            continue
+        if path.is_file():
+            entries.append({
+                "path": str(path),
+                "size": stat.st_size,
+                "mtime_ns": stat.st_mtime_ns,
+            })
+    return entries
 
 
 def cache_key(lua: str, options: Any, roots: Iterable[Path], scripts_root: Path | None) -> str:
@@ -66,7 +94,7 @@ def cache_key(lua: str, options: Any, roots: Iterable[Path], scripts_root: Path 
                 (scripts_root.parent,) if scripts_root else (), (".txt", ".lua")
             ),
             "marketsense": _file_manifest((MOD_ROOT,), (".lua", ".info", ".txt", ".json")),
-            "app": _file_manifest((app_root,), (".py", ".lua")),
+            "app": _file_manifest_paths(app_root / name for name in EVALUATOR_FILES),
         },
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")

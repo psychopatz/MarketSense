@@ -11,8 +11,9 @@ metadata without starting the game. It runs the real MarketSense Lua evaluator
 inside a PZ-shaped harness, so it does not modify item categories or touch
 DynamicTrading. By default it discovers the union of installed vanilla items
 and Workshop items, merges matching Workshop definitions over their vanilla
-definition, and passes only items with acquisition evidence to the pricing
-evaluator/list. Use the GUI's `Skip vanilla` option for a Workshop-only scan.
+definition, and passes the complete discovered universe to the pricing
+evaluator/list. The GUI's `Skip vanilla`, mod, and availability controls are
+fast filters over that cached result; they do not create a Workshop-only scan.
 
 ```bash
 ./tools/run.sh                 # Tk GUI
@@ -21,12 +22,22 @@ evaluator/list. Use the GUI's `Skip vanilla` option for a Workshop-only scan.
 ./tools/run.sh --console --confidence-threshold 0.65 --low-confidence-out /tmp/marketsense-low.jsonl
 ./tools/run.sh --console --sandbox-config tools/.config/sandbox-settings.json --chunk-size 25
 ./tools/run.sh --console --availability all --availability-chunk 2 --chunk-size 25
+./tools/run.sh --console --heuristic-gap-chunk 2 --chunk-size 25
+./tools/run.sh --console --heuristic-gap-out /tmp/marketsense-gaps.json
 ```
 
 The GUI's Items tab supports case-insensitive search across item IDs,
 categories, primary/expanded tags, descriptions, resolver sources, Workshop
 metadata, and definition lineage. Categories are native collapsible tree nodes;
 the review filter can be combined with search.
+The Scan settings mod filter is a combobox populated from detected Workshop
+metadata. It defaults to `All`. The first `Scan Workshop` builds one complete
+cached universe (all detected mods, Base items, and availability states); the
+mod filter, `Skip vanilla`, `Availability`, and `Max items` controls then
+filter that in-memory result instantly. Selecting a mod matches its stable
+ID emitted by the Lua bridge, so it does not trigger another Workshop/Lua
+scan. `Skip vanilla` remains an independent view control when `All` is
+selected.
 Selecting a leaf item opens the runtime evidence panel: the actual Lua
 detector result, resolver source, category path, context variables, evaluator
 provenance, and price balance audit are shown from the bridge output.
@@ -41,9 +52,27 @@ sandbox declarations, lets you edit overrides, and applies them to
 to see price changes immediately; overrides persist in
 `tools/.config/sandbox-settings.json` by default.
 
-The Items tab defaults to `Obtainable only`. The Lua mod applies this gate
-before adding an item to DynamicTrading's `MasterList` or persisting it in the
-`DT_Items` cache. It uses live 42.20 PZ signals (`getObsolete`, `isHidden`,
+The Diagnostics tab shows a timestamped, bounded scan log: cache lookup,
+Workshop discovery, vanilla discovery, availability indexing, Lua evaluation,
+and cache-save phases are reported as they complete. The final diagnostic view
+contains only summary metrics and a small row sample; use Save JSON/CSV for the
+complete result. Exceptions append their traceback without replacing the phase
+history.
+
+The Heuristic gaps tab is the focused work queue for improving Lua detection.
+It finds missing labels, broad/default primaries (`Misc`, `BuildingMoveable`,
+`Gardening`, `Electronics`), and root-only category/primary pairs such as a
+generic `Container` or `Tool`. It is provenance-based and deliberately labels
+every result as a triage candidate, not a confirmed false positive. Search the
+queue by item, mod, detector, resolver, or evidence, select a row for its full
+runtime evidence, or export all candidates as JSON/CSV. The console prints only
+aggregate nonzero bucket counts and one bounded candidate chunk; use
+`--heuristic-gap-chunk N` or `--heuristic-gap-out PATH` for deeper inspection.
+
+The Items tab defaults to `Obtainable only`. In the GUI this is a local view of
+the complete cached Lua result; changing it does not rescan. The Lua mod
+applies the actual gate before adding an item to DynamicTrading's `MasterList`
+or persisting it in the `DT_Items` cache. It uses live 42.20 PZ signals (`getObsolete`, `isHidden`,
 `canSpawnAsLoot`, `isCraftRecipeProduct`, and `canBeForaged`), recipe registries,
 and loaded runtime source tables for distribution/vehicle loot, foraging,
 farming harvests, fishing catches, trapping, animal/butchering outputs, and
@@ -55,7 +84,7 @@ when Availability is changed to `All items`, `Uncertain only`, or `Excluded
 only`. Selecting an item exposes its Lua channels, source references, and
 exclusion reason.
 
-The same gate is available in the console with `--availability`. Use
+The same gate is available as a scan-time option in the console with `--availability`. Use
 `--availability all` to inspect the full evaluated universe; suspicious rows
 are printed in bounded `AVAILABILITY FINDINGS` chunks. Use
 `--availability-chunk N` to advance that section, or `--format json`/`--csv-out`
@@ -65,13 +94,22 @@ The game can still gate a valid recipe or loot table by sandbox, skill, map, or
 runtime conditions; the Lua mod remains the final authority in-game.
 
 The terminal keeps these potentially large sections bounded: low-confidence,
-availability findings, and sandbox overrides are printed in chunks. Use
+heuristic-gap candidates, availability findings, and sandbox overrides are
+printed in chunks. Use
 `--low-confidence-chunk N` to inspect another chunk and
 `--low-confidence-out PATH` to capture the complete list without putting every
-row in the console/context.
+row in the console/context. Use the corresponding heuristic-gap options for
+the heuristic work queue.
 
-Completed scans are cached in `tools/.cache/results` by default. The cache key
+Completed master scans are cached in `tools/.cache/results` by default. The cache key
 includes scan settings, Workshop/base item scripts, the base/Workshop Lua
 acquisition sources, MarketSense Lua source, and the inspector source, so
-changing inputs invalidates stale results. Use `Refresh` or `Clear cache` when
-needed.
+changing inputs automatically invalidates stale results. The GUI attempts a
+cache-only restore at startup and normal `Scan Workshop` reuses an exact hit;
+it does not perform a three-minute scan just to restore the tabs. `Refresh`
+forces the current key to be rebuilt, while `Clear cache` removes saved
+results. The cache tracks evaluator/parser code; GUI, terminal, export, and
+heuristic-report formatting changes reuse the saved evaluated rows. GUI paths and scan options are persisted in
+`tools/.config/inspector-settings.json`. GUI view filters are not part of the
+cache key, so changing them reuses the same master rows and only rebuilds the
+visible tabs/charts.

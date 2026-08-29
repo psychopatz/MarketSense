@@ -1,4 +1,6 @@
 require "MarketSense/MS_RuntimeCache"
+require "MarketSense/MS_WorldObjectEvidence"
+require "MarketSense/MS_ItemCapabilities"
 
 MarketSense = MarketSense or {}
 MarketSense.PropertyReader = MarketSense.PropertyReader or {}
@@ -376,6 +378,17 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
             isDung = isDung,
         },
     }
+
+    -- WorldObjectSprite is the bridge between an item script and the actual
+    -- placeable object.  Read its PZ PropertyContainer once and derive a
+    -- reusable capability record.  These are interface facts only; they do
+    -- not mutate the item's native PZ categories or pricing inputs.
+    context.worldObjectEvidence = MarketSense.WorldObjectEvidence.read(worldObjectSprite)
+    context.capabilities = MarketSense.ItemCapabilities.analyze(context)
+    context.capabilitySet = context.capabilities.capabilitySet
+    context.capabilityRequirements = context.capabilities.requirements
+    context.capabilityRequirementSet = context.capabilities.requirementSet
+    context.capabilityEvidence = context.capabilities.evidence
 
     if isTemporary then Core.releaseTemporaryInstance(instance) end
     Cache.setContext(context.fullType, context)

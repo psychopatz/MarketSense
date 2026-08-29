@@ -40,9 +40,24 @@ function Debug.inspectItem(fullType, withAudit)
         audit    = details.balanceAudit,
         availability = availability,
         marketEligible = availability and availability.status == "obtainable" or false,
+        worldObjectEvidence = ctx.worldObjectEvidence,
+        capabilities = ctx.capabilities,
+        capabilityRequirements = ctx.capabilityRequirements,
+        capabilityEvidence = ctx.capabilityEvidence,
     }
     safeLog("[MarketSense] DebugTools.inspectItem → " .. tostring(fullType))
     return out
+end
+
+function Debug.inspectCapabilities(fullType)
+    local ctx = PropReader.buildContext(fullType)
+    return {
+        fullType = ctx.fullType,
+        worldObjectEvidence = ctx.worldObjectEvidence,
+        capabilities = ctx.capabilities,
+        requirements = ctx.capabilityRequirements,
+        evidence = ctx.capabilityEvidence,
+    }
 end
 
 function Debug.scanAll(itemList, withAudit)

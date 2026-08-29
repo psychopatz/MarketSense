@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .heuristics import heuristic_gap
+
 
 CONFIDENCE_REVIEW_THRESHOLD = 0.5
 
@@ -74,6 +76,7 @@ def searchable_text(row: dict[str, Any]) -> str:
     """Build a case-insensitive search haystack from all useful item evidence."""
 
     status, reason = review_row(row)
+    gap = heuristic_gap(row) or {}
     fields = (
         row.get("fullType"), row.get("category"), row.get("primary"),
         row.get("subcategory"), row.get("leaf"), row.get("primaryPrefix"),
@@ -82,6 +85,7 @@ def searchable_text(row: dict[str, Any]) -> str:
         row.get("workshopId"), row.get("workshopVersion"), row.get("description"),
         _sequence_text(row.get("tags")), _sequence_text(row.get("expandedTags")),
         _sequence_text(row.get("definitionSources")), status, reason,
+        gap.get("kind"), gap.get("bucket"), gap.get("reason"),
     )
     availability = row.get("availability")
     if isinstance(availability, dict):
