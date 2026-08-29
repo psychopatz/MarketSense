@@ -48,6 +48,7 @@ local function collectFoodAuditEntry(ctx, tagInfo, primary, fileEntry)
         reason = details.reason or "",
         displayCategory = ctx.displayCategory,
         itemType = ctx.itemType,
+        description = ctx.description,
         foodType = ctx.foodType,
         lootType = ctx.lootType,
         eatType = ctx.eatType,
@@ -111,6 +112,7 @@ local function serializeFoodAudit(entries)
         jsonField(lines, "reason", Shared.jsonString(entry.reason))
         jsonField(lines, "displayCategory", Shared.jsonString(entry.displayCategory))
         jsonField(lines, "itemType", Shared.jsonString(entry.itemType))
+        jsonField(lines, "description", Shared.jsonString(entry.description))
         jsonField(lines, "foodType", Shared.jsonString(entry.foodType))
         jsonField(lines, "lootType", Shared.jsonString(entry.lootType))
         jsonField(lines, "eatType", Shared.jsonString(entry.eatType))

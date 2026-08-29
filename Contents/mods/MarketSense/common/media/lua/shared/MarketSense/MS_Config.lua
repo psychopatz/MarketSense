@@ -53,10 +53,6 @@ local function getSandboxVarsTable()
 end
 
 function MarketSense.Config.reloadExported()
-    if package and package.loaded then
-        package.loaded["DT/MarketSense/Pricing/MS_PricingConfig_Data"] = nil
-    end
-
     local ok, exported = pcall(require, "DT/MarketSense/Pricing/MS_PricingConfig_Data")
     if ok and type(exported) == "table" then
         if exported.global then
@@ -88,9 +84,15 @@ function MarketSense.Config.applySandboxOptions()
     local vars = getSandboxVarsTable()
     if vars then
         runtime.sandboxVars = vars
-        runtime.pricing.baseMultiplier = vars.PriceMultiplier or runtime.pricing.baseMultiplier
-        runtime.pricing.globalValue = vars.PriceGlobalValue or 0
-        runtime.stock.globalMultiplier = vars.StockMultiplier or 1.0
+        if vars.PriceMultiplier ~= nil then
+            runtime.pricing.baseMultiplier = vars.PriceMultiplier
+        end
+        if vars.PriceGlobalValue ~= nil then
+            runtime.pricing.globalValue = vars.PriceGlobalValue
+        end
+        if vars.StockMultiplier ~= nil then
+            runtime.stock.globalMultiplier = vars.StockMultiplier
+        end
         runtime.stock.categoryMultipliers = nil
     else
         runtime.sandboxVars = nil

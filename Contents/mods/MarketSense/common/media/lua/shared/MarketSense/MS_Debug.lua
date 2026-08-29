@@ -12,8 +12,11 @@ local AutoTag     = MarketSense.AutoTag
 local Pricing     = MarketSense.Pricing
 
 local function safeLog(...)
-    if DynamicTrading and DynamicTrading.Log then
-        DynamicTrading.Log(...)
+    local message = tostring((...) or "")
+    if DynamicTrading and DynamicTrading.LogDebug then
+        DynamicTrading.LogDebug("MarketSense", "DebugTools", "Inspect", message)
+    elseif DynamicTrading and DynamicTrading.Log then
+        DynamicTrading.Log("MarketSense", "DebugTools", "Inspect", message)
     end
 end
 

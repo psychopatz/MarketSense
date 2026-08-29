@@ -16,7 +16,8 @@ end
 
 function Signature.match(ctx)
     local disp = ctx.displayCategoryToken or ""
-    local text = (ctx.idLower or "") .. " " .. (ctx.displayNameLower or "") .. " " .. (ctx.iconLower or "")
+    local text = (ctx.idLower or "") .. " " .. (ctx.displayNameLower or "") .. " "
+        .. (ctx.descriptionLower or "") .. " " .. (ctx.iconLower or "")
     if (ctx.itemTypeToken or "") == "weapon" and hasTag(ctx, "firearm") and disp ~= "ammo" then
         return { matched = false, confidence = 0 }
     end

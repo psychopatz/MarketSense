@@ -55,6 +55,7 @@ local function populateMasterList(indexData, activeState)
     DynamicTrading.Config.ItemRegistryRevision = tonumber(DynamicTrading.Config.ItemRegistryRevision) or 0
 
     local catalog = {
+        items = {},
         total = 0,
         modules = {},
         categories = {},
@@ -91,6 +92,7 @@ local function populateMasterList(indexData, activeState)
                                 registerLiveItem(fullType, liveData)
 
                                 local liveEntry = Build.buildLiveEntry(fullType, liveData, group.origin, nil, nil)
+                                catalog.items[fullType] = liveEntry
                                 catalog.total = catalog.total + 1
                                 catalog.modules[liveEntry.moduleName] = (catalog.modules[liveEntry.moduleName] or 0) + 1
                                 catalog.categories[liveEntry.category] = (catalog.categories[liveEntry.category] or 0) + 1

@@ -21,4 +21,36 @@ Registry.rebuildCache = Runtime.rebuildCache
 Registry.ensureLoaded = Runtime.ensureLoaded
 Registry.regenerate = Runtime.rebuildCache
 
+function Registry.get(fullType)
+    if type(fullType) ~= "string" or fullType == "" then
+        return nil
+    end
+
+    local masterList = DynamicTrading.Config and DynamicTrading.Config.MasterList
+    if type(masterList) == "table" and type(masterList[fullType]) == "table" then
+        return MarketSense.Core.deepCopy(masterList[fullType])
+    end
+
+    local catalog = Registry.state and Registry.state.catalog
+    if type(catalog) == "table" and type(catalog.items) == "table" then
+        return MarketSense.Core.deepCopy(catalog.items[fullType])
+    end
+
+    return nil
+end
+
+function Registry.getAllKnown()
+    local catalog = Registry.state and Registry.state.catalog
+    if type(catalog) == "table" and type(catalog.items) == "table" then
+        return MarketSense.Core.deepCopy(catalog.items)
+    end
+
+    local masterList = DynamicTrading.Config and DynamicTrading.Config.MasterList
+    if type(masterList) == "table" then
+        return MarketSense.Core.deepCopy(masterList)
+    end
+
+    return {}
+end
+
 return Registry

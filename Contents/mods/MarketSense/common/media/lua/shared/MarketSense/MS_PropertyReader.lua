@@ -91,7 +91,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     end
 
     local displayCategory = Core.safeString(scriptItem, { "getDisplayCategory", "getCategories" }, "")
-    local itemType        = Core.safeString(scriptItem, { "getTypeString", "getType" }, "")
+    local itemType        = Core.safeString(scriptItem, { "getItemType", "getTypeString", "getType" }, "")
     local displayName     = Core.safeString(scriptItem, "getDisplayName", typeName)
     local ammoType        = Core.safeString(scriptItem, { "getAmmoType", "getMagazineType" }, "")
     local magazineType    = Core.safeString(scriptItem, "getMagazineType", "")
@@ -105,7 +105,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local icon            = Core.safeString(scriptItem, { "getIcon", "getIconName" }, "")
     local learnedRecipes  = Core.safeCall(scriptItem, "getLearnedRecipes", nil)
     local skillTrained    = Core.safeString(scriptItem, "getSkillTrained", "")
-    local lvlSkillTrained = Core.safeNumber(scriptItem, "getLvlSkillTrained", -1)
+    local lvlSkillTrained = Core.safeNumber(scriptItem, { "getLevelSkillTrained", "getLvlSkillTrained" }, -1)
     local maxLevelTrained = Core.safeNumber(scriptItem, "getMaxLevelTrained", -1)
     local readType        = Core.safeString(scriptItem, "getReadType", "")
     local worldStaticModel   = Core.safeString(scriptItem, "getWorldStaticModel", "")
@@ -140,6 +140,8 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         isInventoryItemInstance = instanceof(instance, "InventoryItem") == true
         isLiteratureInstance  = instanceof(instance, "Literature") == true
     end
+
+    local description = preferString(instance, scriptItem, { "getDescription", "getTooltip" }, "")
 
     local instanceFoodType = Core.safeString(instance, "getFoodType", "")
     if instanceFoodType ~= "" then foodType = instanceFoodType end
@@ -211,6 +213,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         idLower = Core.lower(typeName),
         fullLower = Core.lower(fullType ~= "" and fullType or (moduleName .. "." .. typeName)),
         displayName = displayName, displayNameLower = Core.lower(displayName),
+        description = description, descriptionLower = Core.lower(description),
         displayCategory = displayCategory,
         displayCategoryLower = Core.lower(displayCategory),
         displayCategoryToken = normalizeToken(displayCategory),
@@ -218,7 +221,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         itemTypeToken = normalizeToken((string.match(Core.lower(itemType), "([^:]+)$") or itemType)),
         lootType = lootType, lootTypeLower = Core.lower(lootType),
         lootTypeToken = normalizeToken(lootType),
-        weight = math.max(0, Core.safeNumber(scriptItem, { "getActualWeight", "getWeight" }, 0)),
+        weight = math.max(0, preferNumber(instance, scriptItem, { "getActualWeight", "getWeight" }, 0)),
         hunger = hunger,
         thirst = thirst,
         calories = calories,
@@ -232,20 +235,20 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         unhappy = unhappy,
         boredom = boredom,
         stress = stress,
-        minDamage = math.max(0, Core.safeNumber(scriptItem, "getMinDamage", 0)),
-        maxDamage = math.max(0, Core.safeNumber(scriptItem, "getMaxDamage", 0)),
-        maxRange = math.max(0, Core.safeNumber(scriptItem, "getMaxRange", 0)),
-        maxHit = math.max(1, Core.safeNumber(scriptItem, "getMaxHitCount", 1)),
-        conditionMax = math.max(0, Core.safeNumber(scriptItem, "getConditionMax", 0)),
-        reliability = math.max(0, Core.safeNumber(scriptItem, { "getHitChance", "getAimingTime" }, 0)),
-        useDelta = math.max(0, Core.safeNumber(scriptItem, "getUseDelta", 0)),
-        capacity = math.max(0, Core.safeNumber(scriptItem, "getCapacity", 0)),
-        weightReduction = math.max(0, Core.safeNumber(scriptItem, "getWeightReduction", 0)),
-        biteDefense = math.max(0, Core.safeNumber(scriptItem, "getBiteDefense", 0)),
-        scratchDefense = math.max(0, Core.safeNumber(scriptItem, "getScratchDefense", 0)),
-        bulletDefense = math.max(0, Core.safeNumber(scriptItem, "getBulletDefense", 0)),
-        insulation = math.max(0, Core.safeNumber(scriptItem, "getInsulation", 0)),
-        windResistance = math.max(0, Core.safeNumber(scriptItem, "getWindResistance", 0)),
+        minDamage = math.max(0, preferNumber(instance, scriptItem, "getMinDamage", 0)),
+        maxDamage = math.max(0, preferNumber(instance, scriptItem, "getMaxDamage", 0)),
+        maxRange = math.max(0, preferNumber(instance, scriptItem, "getMaxRange", 0)),
+        maxHit = math.max(1, preferNumber(instance, scriptItem, "getMaxHitCount", 1)),
+        conditionMax = math.max(0, preferNumber(instance, scriptItem, "getConditionMax", 0)),
+        reliability = math.max(0, preferNumber(instance, scriptItem, { "getHitChance", "getAimingTime" }, 0)),
+        useDelta = math.max(0, preferNumber(instance, scriptItem, "getUseDelta", 0)),
+        capacity = math.max(0, preferNumber(instance, scriptItem, "getCapacity", 0)),
+        weightReduction = math.max(0, preferNumber(instance, scriptItem, "getWeightReduction", 0)),
+        biteDefense = math.max(0, preferNumber(instance, scriptItem, "getBiteDefense", 0)),
+        scratchDefense = math.max(0, preferNumber(instance, scriptItem, "getScratchDefense", 0)),
+        bulletDefense = math.max(0, preferNumber(instance, scriptItem, "getBulletDefense", 0)),
+        insulation = math.max(0, preferNumber(instance, scriptItem, "getInsulation", 0)),
+        windResistance = math.max(0, preferNumber(instance, scriptItem, { "getWindresistance", "getWindResistance", "getWindresist" }, 0)),
         bodyLocation = bodyLocation,
         bodyLocationLower = Core.lower(bodyLocation),
         bodyLocationToken = normalizeToken((string.match(Core.lower(bodyLocation), "([^:]+)$") or bodyLocation)),

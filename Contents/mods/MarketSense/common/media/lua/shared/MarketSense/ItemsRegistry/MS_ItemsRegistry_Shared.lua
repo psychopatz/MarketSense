@@ -132,10 +132,20 @@ function Shared.sanitizeOriginTag(origin)
 end
 
 function Shared.getTimestamp()
-    if os and os.date then
-        return os.date("!%Y-%m-%dT%H:%M:%SZ")
+    if type(getGameTime) == "function" then
+        local ok, gameTime = pcall(getGameTime)
+        if ok and gameTime then
+            local year = Core.safeNumber(gameTime, "getYear", 0)
+            local month = Core.safeNumber(gameTime, "getMonth", -1) + 1
+            local day = Core.safeNumber(gameTime, "getDay", 0)
+            local hour = math.floor(Core.safeNumber(gameTime, "getTimeOfDay", 0))
+            local minutes = Core.safeNumber(gameTime, "getMinutes", 0)
+            if year > 0 and month > 0 and day > 0 then
+                return string.format("PZ-%04d-%02d-%02dT%02d:%02d:00", year, month, day, hour, minutes)
+            end
+        end
     end
-    return "1970-01-01T00:00:00Z"
+    return "unknown"
 end
 
 function Shared.getGameVersionString()

@@ -183,6 +183,7 @@ local function hasPackagingEvidence(ctx)
     local text = table.concat({
         ctx.idLower or "",
         ctx.displayNameLower or "",
+        ctx.descriptionLower or "",
         ctx.iconLower or "",
         ctx.worldStaticModelLower or "",
         ctx.worldObjectSpriteLower or "",
@@ -381,6 +382,7 @@ local function isCannedOrJarred(ctx)
     local text = table.concat({
         ctx.idLower or "",
         ctx.displayNameLower or "",
+        ctx.descriptionLower or "",
         ctx.iconLower or "",
         ctx.worldStaticModelLower or "",
         ctx.worldObjectSpriteLower or "",
@@ -506,6 +508,7 @@ local function tokenStage(ctx)
     local text = table.concat({
         ctx.idLower or "",
         ctx.displayNameLower or "",
+        ctx.descriptionLower or "",
         ctx.iconLower or "",
         ctx.worldStaticModelLower or "",
         ctx.evolvedRecipeNameLower or "",

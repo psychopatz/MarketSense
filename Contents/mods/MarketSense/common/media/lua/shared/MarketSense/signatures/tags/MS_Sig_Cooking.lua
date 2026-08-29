@@ -40,7 +40,8 @@ function Signature.match(ctx)
     local disp = ctx.displayCategoryToken or ""
     local id = ctx.idLower or ""
     local name = ctx.displayNameLower or ""
-    local search = id .. " " .. name .. " " .. (ctx.iconLower or "")
+    local search = id .. " " .. name .. " " .. (ctx.descriptionLower or "")
+        .. " " .. (ctx.iconLower or "")
     local cookingDisplay = disp == "cooking" or disp == "cookingweapon"
 
     if not cookingDisplay and not ctx.isCookable then

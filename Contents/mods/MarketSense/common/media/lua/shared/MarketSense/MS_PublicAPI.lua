@@ -1,5 +1,6 @@
 require "MarketSense/MS_Debug"
 require "MarketSense/MS_ItemsRegistry"
+require "MarketSense/MS_RuntimeRules"
 
 MarketSense  = MarketSense  or {}
 DynamicTrading = DynamicTrading or {}
@@ -22,8 +23,13 @@ end
 -- ───────────────────────────────────────────────
 
 function DynamicTrading.GetPriceDetails(fullType, withAudit)
+    if type(fullType) ~= "string" or fullType == "" then
+        return nil
+    end
     local cached = Cache.getDetails(fullType)
-    if cached then return cached end
+    if cached and (withAudit ~= true or type(cached.balanceAudit) == "table") then
+        return cached
+    end
     local details = Pricing.calculateDetails(fullType, withAudit)
     Cache.setDetails(fullType, details)
     return details
@@ -53,9 +59,9 @@ function DynamicTrading.RegenerateItemRegistry()
     end
 end
 
-function DynamicTrading.EnsureRuntimeRegistryLoaded()
+function DynamicTrading.EnsureRuntimeRegistryLoaded(forceRebuild)
     if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.ensureLoaded then
-        return MarketSense.ItemsRegistry.ensureLoaded()
+        return MarketSense.ItemsRegistry.ensureLoaded(forceRebuild == true)
     end
 end
 

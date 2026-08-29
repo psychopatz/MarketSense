@@ -6,9 +6,6 @@ MarketSense.Core = MarketSense.Core or {}
 local Core = MarketSense.Core
 
 local function unpackArgs(args)
-    if table.unpack then
-        return table.unpack(args)
-    end
     return unpack(args)
 end
 
@@ -173,6 +170,7 @@ function Core.ctxContains(ctx, needles)
         ctx and ctx.bodyLocationLower or "",
         ctx and ctx.ammoTypeLower or "",
         ctx and ctx.displayNameLower or "",
+        ctx and ctx.descriptionLower or "",
     }
 
     for _, field in ipairs(fields) do

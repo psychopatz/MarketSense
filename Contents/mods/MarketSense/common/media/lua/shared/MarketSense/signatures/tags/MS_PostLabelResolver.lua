@@ -72,6 +72,7 @@ local function buildText(ctx)
         ctx.fullLower or "",
         ctx.idLower or "",
         ctx.displayNameLower or "",
+        ctx.descriptionLower or "",
         ctx.iconLower or "",
         ctx.worldStaticModelLower or "",
         ctx.worldObjectSpriteLower or "",

@@ -53,7 +53,8 @@ function Signature.match(ctx)
         return TagMapper.makeResult("ContainerLiquid", 0.88, { source = "container_liquid" })
     end
 
-    local text = (ctx.idLower or "") .. " " .. (ctx.displayNameLower or "") .. " " .. (ctx.iconLower or "")
+    local text = (ctx.idLower or "") .. " " .. (ctx.displayNameLower or "") .. " "
+        .. (ctx.descriptionLower or "") .. " " .. (ctx.iconLower or "")
     if contains(text, "box") or contains(text, "crate") or contains(text, "case") then
         return TagMapper.makeResult("ContainerBox", 0.85, { source = "container_box" })
     end

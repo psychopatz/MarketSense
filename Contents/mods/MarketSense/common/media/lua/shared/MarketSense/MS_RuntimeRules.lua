@@ -111,7 +111,12 @@ local function normalizeOverride(entry)
         end
     end
 
-    if next(override) == nil then
+    local hasOverride = false
+    for _ in pairs(override) do
+        hasOverride = true
+        break
+    end
+    if not hasOverride then
         return nil
     end
 
@@ -159,15 +164,8 @@ function RuntimeRules.loadFromFile(force)
 
     RuntimeRules.reset()
 
-    -- Force-reload clears the require cache so the updated file is re-read.
-    if force and package and package.loaded then
-        package.loaded[DATA_MODULE] = nil
-        package.loaded[TAG_DATA_MODULE] = nil
-        package.loaded[LEGACY_TAG_DATA_MODULE] = nil
-        
-        if MarketSense.Config and type(MarketSense.Config.reloadExported) == "function" then
-            MarketSense.Config.reloadExported()
-        end
+    if force and MarketSense.Config and type(MarketSense.Config.reloadExported) == "function" then
+        MarketSense.Config.reloadExported()
     end
 
     local ok, data = pcall(require, DATA_MODULE)
