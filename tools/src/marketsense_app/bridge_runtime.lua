@@ -405,7 +405,7 @@ end
 
 local function rowJson(row)
     local fields = {}
-    local ordered = { "fullType", "category", "primary", "price", "rawScore", "confidence", "source",
+    local ordered = { "fullType", "category", "primary", "price", "basePrice", "rawScore", "confidence", "source",
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh", "daysRotten",
         "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity", "workshopMod", "workshopName",
         "workshopId", "workshopVersion", "scriptPath", "description", "subcategory", "leaf",
@@ -418,6 +418,7 @@ local function rowJson(row)
     fields[#fields + 1] = jsonString("expandedTags") .. ":" .. jsonArray(row.expandedTags)
     fields[#fields + 1] = jsonString("definitionSources") .. ":" .. jsonArray(row.definitionSources)
     fields[#fields + 1] = jsonString("stock") .. ":" .. jsonValue(row.stock)
+    fields[#fields + 1] = jsonString("baseStock") .. ":" .. jsonValue(row.baseStock)
     fields[#fields + 1] = jsonString("hierarchy") .. ":" .. jsonValue(row.hierarchy)
     fields[#fields + 1] = jsonString("detection") .. ":" .. jsonValue(row.detection)
     fields[#fields + 1] = jsonString("context") .. ":" .. jsonValue(row.context)
@@ -445,7 +446,20 @@ for _, spec in ipairs(specs) do
         local category = hierarchy.root or details.category or "Misc"
         local subcategory = hierarchy.subcategory or "Unknown"
         local leaf = hierarchy.leaf or details.primary or "Unknown"
+        local config = MarketSense.ItemRuntimeConfig or {}
+        local pricing = config.pricing or {}
+        local stock = config.stock or {}
+        local basePrice = math.max(
+            tonumber(pricing.minPrice) or 1,
+            MarketSense.Core.round(MarketSense.Core.priceClamp(details.rawScore))
+        )
+        local baseMax = MarketSense.Stock.baseMaxForWeight(context.weight)
+        local baseStock = {
+            min = math.floor(baseMax * (tonumber(stock.defaultMinRatio) or 0.2)),
+            max = baseMax,
+        }
         row.category, row.primary, row.price = details.category, details.primary, details.price
+        row.basePrice = basePrice
         row.rawScore, row.confidence, row.source = details.rawScore, details.confidence, details.source
         row.moduleName, row.typeName = details.moduleName, details.typeName
         row.tags, row.expandedTags = details.tags, details.expandedTags
@@ -459,6 +473,7 @@ for _, spec in ipairs(specs) do
         row.marketEligible = row.availability and row.availability.obtainable == true or false
         row.availabilityStatus = row.availability and row.availability.status or "uncertain"
         row.stock = details.stock
+        row.baseStock = baseStock
         row.hierarchy = hierarchy
         row.subcategory, row.leaf = subcategory, leaf
         row.primaryPrefix = hierarchy.primaryPrefix

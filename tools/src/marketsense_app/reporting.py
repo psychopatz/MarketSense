@@ -202,7 +202,8 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fields = [
         "fullType", "category", "subcategory", "leaf", "primaryPrefix", "categoryPath",
-        "primary", "detector", "resolver", "price", "rawScore", "confidence", "source",
+        "primary", "detector", "resolver", "price", "basePrice", "rawScore",
+        "baseStock", "confidence", "source",
         "availabilityStatus", "availabilityConfidence", "availabilityChannels",
         "availabilityReason", "availabilityReferences", "availabilityExclusions",
         "reviewStatus", "reviewReason", "heuristicKind", "heuristicBucket",
@@ -235,6 +236,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             output["availabilityReferences"] = ";".join(availability.get("references") or [])
             output["availabilityExclusions"] = ";".join(availability.get("exclusions") or [])
             output["tags"] = ";".join(row.get("tags") or [])
+            output["baseStock"] = json.dumps(row.get("baseStock") or {}, sort_keys=True)
             output["definitionSources"] = ";".join(row.get("definitionSources") or [])
             output["priceAudit"] = json.dumps(row.get("priceAudit") or [], sort_keys=True)
             output["context"] = json.dumps(row.get("context") or {}, sort_keys=True)

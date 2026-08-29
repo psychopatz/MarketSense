@@ -400,6 +400,7 @@ class ControllerMixin:
     ) -> None:
         self._finish()
         self.master_summary, self.master_rows = summary, rows
+        self._clear_runtime_verification()
         self._apply_view_filters()
         self.save_button.configure(state="normal")
         self.csv_button.configure(state="normal")

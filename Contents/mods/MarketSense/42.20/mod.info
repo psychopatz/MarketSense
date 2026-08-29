@@ -4,3 +4,4 @@ description=Dynamic Trading dependency module for dynamically detecting items ta
 category=features
 version=1.0.0
 versionMin=42.16
+require=PsychopatzCore

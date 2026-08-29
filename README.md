@@ -4,6 +4,24 @@ Dependency for Dynamic Trading addon mod.
 
 Contains generated runtime market rules and tag pricing additions consumed by DynamicTrading.
 
+## In-game item test catalog
+
+With PsychopatzCore enabled, open `Psychopatz Debug Hub` and launch
+`MarketSense Item Catalog`. The catalog loads MarketSense's obtainable runtime
+items, groups them by the expanded taxonomy (for example
+`WEAPON/RANGED/AMMO`), and keeps each group collapsible. Selecting an item runs
+the existing MarketSense debug evaluator so its price and eligibility can be
+checked while scrolling through the complete available catalog. Use
+`Generate DT_Items` to force the live PZ runtime registry to regenerate the
+same cache consumed by DynamicTrading at `Zomboid/Lua/DT_Items`; the window then
+refreshes and reports the generated item/file counts and elapsed milliseconds.
+
+The offline inspector's `Verify` tab compares those runtime `DT_Items` files
+against the harness result. Run the complete scan, confirm the runtime cache
+directory (default `~/Zomboid/Lua/DT_Items`), and choose `Compare`; the report
+checks item membership, tags, taxonomy, generated base price, and stock, with
+JSON export for the full mismatch list.
+
 ## Offline inspector
 
 The `tools` app scans Project Zomboid 42.20 item definitions and Workshop

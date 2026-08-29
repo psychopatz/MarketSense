@@ -23,6 +23,7 @@ from marketsense_app.heuristics import heuristic_coverage, heuristic_gap
 from marketsense_app.gui_filters import filter_rows, view_summary
 from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
+from marketsense_app.runtime_comparison import compare_harness_to_runtime
 from marketsense_app.reporting import write_heuristic_gap_report, write_low_confidence_report
 from marketsense_app.preferences import load_preferences, normalize_preferences, save_preferences
 from marketsense_app.script_parser import parse_script
@@ -385,6 +386,70 @@ tileset {
         write_heuristic_gap_report(gap_path, [flagged])
         gap_report = json.loads(gap_path.read_text(encoding="utf-8"))
         assert gap_report["count"] == 1
+
+    with TemporaryDirectory(prefix="marketsense-runtime-compare-") as temp_dir:
+        runtime_dir = Path(temp_dir) / "DT_Items" / "Weapon" / "Ranged"
+        runtime_dir.mkdir(parents=True)
+        runtime_file = runtime_dir / "Ammo.txt"
+        runtime_file.write_text(
+            """# schema=DT_ITEMS_V2
+# root=Weapon
+# category=Weapon
+# subcategory=Ranged
+# leaf=Ammo
+# primaryPrefix=Weapon.Ranged.Ammo
+@origin=Vanilla
+@tags=Ammo|Quality.Standard
+Base.Shell|12|2|10
+""",
+            encoding="utf-8",
+        )
+        harness_rows = [{
+            "fullType": "Base.Shell",
+            "availability": {"status": "obtainable"},
+            "tags": ["Ammo", "Quality.Standard"],
+            "primary": "Ammo",
+            "category": "Weapon",
+            "subcategory": "Ranged",
+            "leaf": "Ammo",
+            "primaryPrefix": "Weapon.Ranged.Ammo",
+            "basePrice": 12,
+            "baseStock": {"min": 2, "max": 10},
+        }]
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        assert comparison["status"] == "match"
+        assert comparison["matches"] == 1 and not comparison["differences"]
+
+        (Path(temp_dir) / "DT_Items" / "DT_ItemsIndex.lua").write_text(
+            'return { files = { { path = "Weapon/Ranged/Ammo.txt" } } }\n',
+            encoding="utf-8",
+        )
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        assert comparison["status"] == "match"
+        assert comparison["runtime"]["index"]["indexedFileCount"] == 1
+
+        stale_file = Path(temp_dir) / "DT_Items" / "Weapon" / "Stale.txt"
+        stale_file.write_text(
+            "# schema=DT_ITEMS_V2\n"
+            "@origin=Vanilla\n"
+            "@tags=Stale\n"
+            "Base.Stale|1|1|1\n",
+            encoding="utf-8",
+        )
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        assert comparison["status"] == "mismatch"
+        assert comparison["fieldMismatches"] == {"index": 1}
+        stale_file.unlink()
+
+        runtime_file.write_text(
+            runtime_file.read_text(encoding="utf-8").replace(
+                "Base.Shell|12|2|10", "Base.Shell|13|2|10"
+            ),
+            encoding="utf-8",
+        )
+        comparison = compare_harness_to_runtime(harness_rows, Path(temp_dir) / "DT_Items")
+        assert comparison["status"] == "mismatch"
+        assert comparison["fieldMismatches"] == {"basePrice": 1}
 
     print("marketsense_tool_smoke: ok")
     return 0

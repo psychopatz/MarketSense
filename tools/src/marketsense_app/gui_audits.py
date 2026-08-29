@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from .heuristics import (
@@ -11,7 +12,9 @@ from .heuristics import (
     heuristic_gap_rows,
     heuristic_kind_label,
 )
+from .config import DEFAULT_RUNTIME_ITEMS_DIR
 from .review import low_confidence_rows, review_count, review_row, searchable_text
+from .runtime_comparison import compare_harness_to_runtime
 
 
 class AuditMixin:
@@ -34,6 +37,177 @@ class AuditMixin:
             ("category", 110), ("primary", 180), ("confidence", 90),
             ("source", 180), ("mod", 150), ("tags", 300),
         ])
+
+    def _build_runtime_verification(self) -> None:
+        frame = self.ttk.Frame(self.notebook, padding=8)
+        self.notebook.add(frame, text="Verify")
+        toolbar = self.ttk.Frame(frame)
+        toolbar.pack(fill="x", pady=(0, 6))
+        self.ttk.Label(toolbar, text="Runtime DT_Items").pack(side="left")
+        self.runtime_items_dir_var = self.tk.StringVar(
+            value=str(DEFAULT_RUNTIME_ITEMS_DIR)
+        )
+        self.ttk.Entry(
+            toolbar, textvariable=self.runtime_items_dir_var, width=64
+        ).pack(side="left", padx=(6, 4), fill="x", expand=True)
+        self.ttk.Button(
+            toolbar, text="Browse…", command=self._browse_runtime_items
+        ).pack(side="left", padx=(0, 4))
+        self.ttk.Button(
+            toolbar, text="Compare", command=self._compare_runtime_items
+        ).pack(side="left", padx=(0, 4))
+        self.ttk.Button(
+            toolbar, text="Save JSON…", command=self._save_runtime_comparison_json
+        ).pack(side="left")
+        self.runtime_verify_status_var = self.tk.StringVar(
+            value="Run a complete harness scan, then compare it with the PZ DT_Items output."
+        )
+        self.ttk.Label(
+            frame, textvariable=self.runtime_verify_status_var
+        ).pack(anchor="w", pady=(0, 4))
+        self.ttk.Label(
+            frame,
+            text=(
+                "This compares the runtime cache consumed by DynamicTrading with "
+                "the offline harness at the cache stage: item membership, tags, "
+                "taxonomy, generated base price, and generated stock."
+            ),
+        ).pack(fill="x", pady=(0, 6))
+        self.runtime_verify_difference_by_iid: dict[str, dict[str, Any]] = {}
+        self.runtime_verify_tree = self._tree(frame, [
+            ("status", 140), ("item", 280), ("fields", 260), ("location", 420),
+        ])
+        self.runtime_verify_tree.bind(
+            "<<TreeviewSelect>>", lambda _event: self._show_runtime_difference()
+        )
+        self.ttk.Label(
+            frame, text="Selected comparison detail"
+        ).pack(anchor="w", pady=(6, 2))
+        self.runtime_verify_detail = self.scrolledtext.ScrolledText(
+            frame, height=9, wrap="none", state="disabled"
+        )
+        self.runtime_verify_detail.pack(fill="both", expand=False)
+        self.runtime_verification: dict[str, Any] | None = None
+
+    def _browse_runtime_items(self) -> None:
+        selected = self.filedialog.askdirectory(
+            title="Select the PZ DT_Items directory",
+            initialdir=str(Path(self.runtime_items_dir_var.get()).expanduser().parent),
+        )
+        if selected:
+            self.runtime_items_dir_var.set(selected)
+
+    def _compare_runtime_items(self) -> None:
+        if not self.master_rows:
+            self.messagebox.showinfo(
+                "Runtime verification",
+                "Run Scan all / cache before comparing runtime DT_Items output.",
+            )
+            return
+        try:
+            result = compare_harness_to_runtime(
+                self.master_rows,
+                Path(self.runtime_items_dir_var.get().strip()),
+            )
+        except (OSError, ValueError) as error:
+            self.messagebox.showerror("Runtime verification", str(error))
+            return
+
+        self.runtime_verification = result
+        self.runtime_verify_tree.delete(
+            *self.runtime_verify_tree.get_children()
+        )
+        self.runtime_verify_difference_by_iid.clear()
+        for difference in result.get("differences") or []:
+            status = str(difference.get("status") or "difference")
+            fields = ", ".join(difference.get("fields") or [])
+            location = ""
+            actual = difference.get("actual")
+            if isinstance(actual, dict):
+                location = str(actual.get("path") or "")
+            item_id = self.runtime_verify_tree.insert(
+                "", "end", values=(
+                    status,
+                    difference.get("fullType", ""),
+                    fields,
+                    location,
+                )
+            )
+            self.runtime_verify_difference_by_iid[item_id] = difference
+
+        parse_errors = int(
+            (result.get("runtime") or {}).get("parseErrorCount", 0)
+        )
+        unindexed_files = int(
+            ((result.get("runtime") or {}).get("index") or {}).get(
+                "unindexedFileCount", 0
+            )
+        )
+        unavailable = ", ".join(
+            f"{field} ({count:,})"
+            for field, count in (result.get("unavailableFields") or {}).items()
+        )
+        status = str(result.get("status") or "unknown").upper()
+        message = (
+            f"{status}: {result.get('matches', 0):,}/{result.get('compared', 0):,} "
+            f"compared items match; {result.get('differenceCount', 0):,} differences; "
+            f"runtime {result.get('runtimeItems', 0):,} items"
+        )
+        if parse_errors:
+            message += f"; {parse_errors:,} parse errors"
+        if unindexed_files:
+            message += f"; {unindexed_files:,} unindexed runtime files"
+        if unavailable:
+            message += f"; unavailable harness fields: {unavailable}"
+        self.runtime_verify_status_var.set(message)
+        self._show_runtime_difference()
+
+    def _show_runtime_difference(self) -> None:
+        selection = self.runtime_verify_tree.selection()
+        difference = (
+            self.runtime_verify_difference_by_iid.get(selection[0])
+            if selection else None
+        )
+        detail = (
+            json.dumps(difference, indent=2, sort_keys=True)
+            if difference else
+            "Select a comparison difference to inspect expected and runtime values."
+        )
+        self.runtime_verify_detail.configure(state="normal")
+        self.runtime_verify_detail.delete("1.0", "end")
+        self.runtime_verify_detail.insert("end", detail)
+        self.runtime_verify_detail.configure(state="disabled")
+
+    def _save_runtime_comparison_json(self) -> None:
+        if not self.runtime_verification:
+            self.messagebox.showinfo(
+                "Runtime verification", "Run Compare before saving its report."
+            )
+            return
+        path = self.filedialog.asksaveasfilename(
+            title="Save MarketSense runtime comparison",
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json"), ("All files", "*.*")],
+        )
+        if path:
+            Path(path).write_text(
+                json.dumps(self.runtime_verification, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+            self.runtime_verify_status_var.set(
+                f"Saved runtime comparison to {Path(path).resolve()}"
+            )
+
+    def _clear_runtime_verification(self) -> None:
+        self.runtime_verification = None
+        if not hasattr(self, "runtime_verify_tree"):
+            return
+        self.runtime_verify_tree.delete(*self.runtime_verify_tree.get_children())
+        self.runtime_verify_difference_by_iid.clear()
+        self.runtime_verify_status_var.set(
+            "Scan changed; run Compare again against the current DT_Items output."
+        )
+        self._show_runtime_difference()
 
     def _build_low_confidence(self) -> None:
         frame = self.ttk.Frame(self.notebook, padding=8)

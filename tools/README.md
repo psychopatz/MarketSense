@@ -67,7 +67,8 @@ tools/
     gui_widgets.py         # shared Treeview and form primitives
     gui_overview.py        # charts and overview summary
     gui_items.py           # nested item tree, search, and evidence
-    gui_audits.py          # review, low-confidence, and gap views
+    gui_audits.py          # review, runtime verification, and gap views
+    runtime_comparison.py  # DT_Items parser and harness/runtime comparison
     gui_sandbox.py         # sandbox pricing editor
     gui_controller.py      # settings, discovery, scan lifecycle, exports
     cache.py               # invalidation-aware persistent result cache
@@ -108,6 +109,16 @@ include the channel, source references, confidence, and exclusion reason. This
 is comparison evidence, not a spawn-probability calculation; normal game
 conditions can still gate a valid recipe, distribution, or catch. The Lua
 runtime gate is the final in-game decision.
+
+The GUI's Verify tab compares the complete harness result with the live PZ
+`DT_Items` text cache. Point it at `~/Zomboid/Lua/DT_Items` (the default), then
+choose Compare after a scan. It checks obtainable-item membership, raw tags,
+taxonomy headers, generated base prices, and generated base stock, and lets you
+save the complete mismatch report as JSON. `DT_Items` stores `basePrice`, not
+the final lazy `GetPriceDetails` price; the report calls that distinction out
+instead of treating the two stages as an error. When `DT_ItemsIndex.lua` is
+present, the verifier follows its indexed file list—the same list loaded by
+the runtime—and reports leftover unindexed text files as cache-hygiene issues.
 
 The console and GUI also expose a bounded heuristic-gap work queue. It uses
 Lua's detector/resolver/category provenance to find missing, broad, and

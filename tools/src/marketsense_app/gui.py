@@ -291,6 +291,7 @@ class MarketSenseGui(
         self._build_overview()
         self._build_items()
         self._build_review()
+        self._build_runtime_verification()
         self._build_low_confidence()
         self._build_heuristic_gaps()
         self._build_sandbox()

@@ -1010,6 +1010,15 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         f"calories={canned.get('context', {}).get('calories', '?')}, audit_steps={len(canned.get('priceAudit') or [])}",
     )
     check(
+        "cache-stage comparison fields",
+        (
+            isinstance(canned.get("basePrice"), (int, float))
+            and isinstance(canned.get("baseStock"), dict)
+            and canned.get("baseStock", {}).get("max", 0) > 0
+        ),
+        f"basePrice={canned.get('basePrice', '?')}, baseStock={canned.get('baseStock', '?')}",
+    )
+    check(
         "numeric method bridge",
         (
             abs(float(low.get("hunger", 0)) - 0.05) < 1e-9
