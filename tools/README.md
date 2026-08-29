@@ -1,7 +1,7 @@
 # Offline MarketSense app
 
 The `tools` directory is a small standard-library Python application. It scans
-Project Zomboid Workshop item scripts, creates
+Project Zomboid Workshop item scripts, applies the obtainable-only gate, creates
 PZ-shaped Lua item objects, and runs the real MarketSense Lua pricing and
 classification pipeline without launching the game.
 
@@ -11,7 +11,6 @@ arguments to open the GUI. It creates and reuses `tools/.venv`, installs
 
 ```bash
 tools/run.sh
-tools/run_gui.sh
 tools/run.sh --max-items 500
 tools/run.sh --mod Bandits --chart prices
 tools/run.sh --format jsonl --max-items 100 > /tmp/marketsense-items.jsonl
@@ -24,6 +23,7 @@ tools/run.sh --console --refresh-cache --format json
 tools/run.sh --console --confidence-threshold 0.65 \
   --low-confidence-out /tmp/marketsense-low.jsonl
 tools/run.sh --console --low-confidence-chunk 2 --chunk-size 25
+tools/run.sh --console --availability all --availability-chunk 2 --chunk-size 25
 python3 tests/marketsense_tool_smoke.py
 ```
 
@@ -63,6 +63,7 @@ tools/
     gui.py                 # Tk desktop inspector
     cache.py               # invalidation-aware persistent result cache
     sandbox.py             # sandbox declaration parsing, overrides, persistence
+    availability.py        # acquisition evidence and obtainable-only gate
 ```
 
 By default it scans the Steam Workshop `108600` directory and
@@ -77,6 +78,23 @@ ceiling, matching PZ's `ZomboidFileSystem` selection rule. Override it with
 counts, price ranges, price charts, top/bottom items, mod coverage, definition
 lineage, duplicate definitions, and warnings for zero variation or
 low-confidence results.
+
+The Items tab and console default to `Obtainable only`. The Lua mod is the
+authority: it gates live PZ items before they enter DynamicTrading's
+`MasterList`/`DT_Items` cache using engine acquisition flags, recipe registries,
+and loaded 42.20 runtime source tables. The harness projects its independent
+source scan onto PZ-shaped shims and reports Lua-vs-static mismatches; Python
+does not decide which items the mod registers. Definitions with no positive
+source are marked `uncertain` and omitted from the default market list. Choose
+`--availability all`, `uncertain`, or `excluded` (or the matching GUI option)
+to inspect those definitions and their source-line evidence.
+
+The console prints suspicious rows in bounded `AVAILABILITY FINDINGS` chunks;
+use `--availability-chunk N` to advance that section. JSON/JSONL/CSV exports
+include the channel, source references, confidence, and exclusion reason. This
+is comparison evidence, not a spawn-probability calculation; normal game
+conditions can still gate a valid recipe, distribution, or catch. The Lua
+runtime gate is the final in-game decision.
 
 DynamicTrading is intentionally not a required scan target: it consumes
 MarketSense prices but does not need to define the items itself. Filtering to a
@@ -100,7 +118,8 @@ for the next scan. Results include the requested, applied, and effective Lua
 pricing settings. `run.sh` with no arguments opens the GUI; the console remains
 available through `--console` or normal report arguments. Results are cached by
 default under `tools/.cache/results`; the cache key includes scan settings,
-Workshop/base item-script metadata, MarketSense Lua sources, and the Lua
-interpreter, including sandbox overrides and declarations. Use
+Workshop/base item-script metadata, base/Workshop Lua acquisition sources,
+MarketSense Lua sources, and the Lua interpreter, including sandbox overrides
+and declarations. Use
 `--refresh-cache`, `--no-cache`, or `--cache-dir PATH` to control it. The GUI
 exposes equivalent cache controls and a Clear cache button.

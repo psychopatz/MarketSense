@@ -43,7 +43,7 @@ pz_verify
   Kahlua compatibility: 0 files, 0 errors
 
 tools/run.sh --self-test
-  9/9 checks passed through the real MarketSense Lua evaluator, including
+  10/10 checks passed through the real MarketSense Lua evaluator, including
   hierarchy, detector provenance, runtime variables, price audit, and a
   sandbox-to-price delta assertion
 
@@ -61,11 +61,20 @@ Tk hierarchy/runtime-evidence smoke
 Result cache smoke
   first scan produced a cache miss; identical second scan returned a cache hit
 
+Base/Workshop availability audit
+  42.20 base sources covered loot/distributions, recipes/evolved recipes,
+  foraging, farming, fishing, trapping, animal/butchering, and scripted output
+  paths; explicit Hidden/debug/internal markers are excluded
+  full installed scan: 5,403 merged definitions, 4,471 obtainable rows,
+  723 uncertain rows, 209 excluded rows, 0 Lua evaluation errors
+  5,888 server/shared/scripts runtime source files scanned; Base.CannedLeek resolved through loot,
+  crafting, and foraging evidence
+
 python3 tools/marketsense_offline.py --chart prices --top 3
-  80 selected Workshop mods, 5,403 unique items (4,908 vanilla + 495 Workshop)
+  80 selected Workshop mods, 4,471 obtainable items (4,065 vanilla + 406 Workshop)
   508 selected Workshop definitions over 5,105 vanilla definitions
-  0 evaluation errors, 11 categories, 707 unique generated prices
-  1,002 conservative classification review flags
+  0 evaluation errors, 11 categories, 689 unique generated prices
+  664 conservative classification review flags
 ```
 
 The Java baseline harness verified the current methods used by the Lua reader:
@@ -79,10 +88,11 @@ The former monolith remains only as a compatibility launcher. `tools/run.sh`
 creates a local virtual environment and installs the dependency contract before
 running it; with no arguments it opens the GUI, while arguments or
 `--console` retain the terminal workflow. The current implementation
-intentionally has no third-party Python dependencies. The core Python services are below the local 2,000-token warning
-threshold; the GUI is a cohesive presentation/controller module, and the static
-`bridge_runtime.lua` template is intentionally larger because it contains the
-complete PZ-shaped Lua compatibility surface.
+intentionally has no third-party Python dependencies. Discovery, evaluation,
+reporting, terminal output, and the dedicated availability scanner are kept in
+separate roles; the GUI is a cohesive presentation/controller module, and the
+static `bridge_runtime.lua` template is intentionally larger because it
+contains the complete PZ-shaped Lua compatibility surface.
 
 Completed scan results are cached under `tools/.cache/results` by default. Cache
 keys include scan settings, Workshop/base script metadata, MarketSense Lua
@@ -109,6 +119,39 @@ Selecting an item leaf also exposes the bridge's actual Lua evidence: context
 variables from `PropertyReader.buildContext`, raw and final detector results,
 `TagMapper.getDefinition` hierarchy, evaluator provenance, and the exact
 `balanceAudit` steps used to reach the generated price.
+
+## Availability gate
+
+MarketSense now applies the obtainable-only gate inside the Lua mod before an
+item can enter DynamicTrading's MasterList or the persisted `DT_Items` cache.
+`MS_ItemAvailability.lua` reads live PZ item state (`getObsolete`, `isHidden`,
+`canSpawnAsLoot`, `isCraftRecipeProduct`, and `canBeForaged`), scans the loaded
+recipe registries, and observes the loaded 42.20 runtime source tables for
+distribution/vehicle loot, foraging, farming harvests, fishing catches,
+trapping, animal/butchering outputs, and scripted output providers. The Python
+inspector only projects its independent source findings onto PZ-shaped shims so
+the Lua result can be tested outside the game; it is not the market authority.
+
+PZ distribution and some farming/trapping tables use bare item names. Lua
+resolution is restricted to live ScriptManager items, an unambiguous known item,
+or the preferred Base/mod module, so arbitrary strings do not become obtainable
+evidence.
+
+Strong negative markers are applied after positive evidence: hidden/debug/
+internal categories, zombie-damage and wound/bandage overlays, debug/dummy/
+placeholder names, explicit no-spawn/no-loot/no-drop flags, temporary testing
+paths, and tooltips that say not to spawn/use. The output retains the evidence
+channels, source line references, and exclusion reason for inspection. The
+default `obtainable` list therefore excludes definitions with no acquisition
+source and hard-excluded definitions. `all`, `uncertain`, and `excluded` modes
+remain available for updating heuristics.
+
+The harness's source scan is a conservative comparison against runtime
+reachability. It does not infer spawn probability or prove that a recipe is
+enabled under a specific skill/sandbox/map state; the actual Lua gate prevents
+obvious internal/debug definitions from reaching a market catalog while
+exposing uncertain rows for review. Availability source files are part of the
+result-cache invalidation key.
 
 ## Remaining audit items
 

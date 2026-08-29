@@ -79,6 +79,14 @@ def build_summary(
     game_scripts_root: Path | None,
     game_version: str | None,
     confidence_threshold: float = 0.5,
+    availability_records: dict[str, dict[str, Any]] | None = None,
+    runtime_evaluated: int | None = None,
+    availability_filter: str = "obtainable",
+    availability_source_files: int = 0,
+    availability_source_roots: list[str] | None = None,
+    availability_candidates: int | None = None,
+    availability_eligible: int | None = None,
+    max_items_omitted: int = 0,
 ) -> dict[str, Any]:
     valid = [
         row for row in rows
@@ -97,6 +105,14 @@ def build_summary(
     review_statuses = Counter(review_row(row)[0] for row in rows)
     low_confidence = low_confidence_rows(rows, confidence_threshold)
     vanilla_items = sum(1 for row in rows if str(row.get("workshopMod") or "") == "Base")
+    availability_records = availability_records or {}
+    availability_status_counts = Counter(
+        str(record.get("status") or "uncertain")
+        for record in availability_records.values()
+    )
+    runtime_count = runtime_evaluated if runtime_evaluated is not None else len(rows)
+    candidate_count = availability_candidates if availability_candidates is not None else runtime_count
+    eligible_count = availability_eligible if availability_eligible is not None else len(rows)
     return {
         "workshop_mods": len(mods),
         "workshop_script_selection": (
@@ -125,6 +141,20 @@ def build_summary(
         "review_statuses": dict(review_statuses),
         "vanilla_items": vanilla_items,
         "workshop_items": len(rows) - vanilla_items,
+        "runtime_evaluated": runtime_count,
+        "listed_items": len(rows),
+        "candidate_items": candidate_count,
+        "availability_eligible_items": eligible_count,
+        "filtered_out": max(0, candidate_count - eligible_count),
+        "max_items_omitted": max(0, max_items_omitted),
+        "availability_filter": availability_filter,
+        "availability_counts": {
+            "obtainable": availability_status_counts.get("obtainable", 0),
+            "uncertain": availability_status_counts.get("uncertain", 0),
+            "excluded": availability_status_counts.get("excluded", 0),
+        },
+        "availability_source_files": availability_source_files,
+        "availability_source_roots": availability_source_roots or [],
         "mods_with_items": dict(
             Counter(
                 str(row.get("workshopMod") or "Unknown")
@@ -166,6 +196,8 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     fields = [
         "fullType", "category", "subcategory", "leaf", "primaryPrefix", "categoryPath",
         "primary", "detector", "resolver", "price", "rawScore", "confidence", "source",
+        "availabilityStatus", "availabilityConfidence", "availabilityChannels",
+        "availabilityReason", "availabilityReferences", "availabilityExclusions",
         "reviewStatus", "reviewReason",
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh",
         "daysRotten", "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity",
@@ -183,6 +215,13 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             output["leaf"] = row.get("leaf") or hierarchy.get("leaf", "")
             output["primaryPrefix"] = row.get("primaryPrefix") or hierarchy.get("primaryPrefix", "")
             output["categoryPath"] = row.get("categoryPath", "")
+            availability = row.get("availability") if isinstance(row.get("availability"), dict) else {}
+            output["availabilityStatus"] = availability.get("status", "")
+            output["availabilityConfidence"] = availability.get("confidence", "")
+            output["availabilityChannels"] = ";".join(availability.get("channelLabels") or availability.get("channels") or [])
+            output["availabilityReason"] = availability.get("reason", "")
+            output["availabilityReferences"] = ";".join(availability.get("references") or [])
+            output["availabilityExclusions"] = ";".join(availability.get("exclusions") or [])
             output["tags"] = ";".join(row.get("tags") or [])
             output["definitionSources"] = ";".join(row.get("definitionSources") or [])
             output["priceAudit"] = json.dumps(row.get("priceAudit") or [], sort_keys=True)

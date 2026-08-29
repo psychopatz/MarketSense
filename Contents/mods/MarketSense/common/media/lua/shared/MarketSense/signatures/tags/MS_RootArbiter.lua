@@ -178,8 +178,20 @@ end
 
 local function buildingRoot(ctx)
     local displayCategory = ctx.displayCategoryToken or ""
+    local itemId = ctx.idLower or ""
+    local displayName = ctx.displayNameLower or ""
+    local lootType = ctx.lootTypeLower or ""
+    local seedNamed = containsAny(itemId, { "bagseed", "seedpacket", "seed" })
+        or containsAny(displayName, { "bag seed", "seed packet" })
+    local seedEvidence = hasTagAlias(ctx, "seedpacket")
+        or hasTagAlias(ctx, "seed")
+        or contains(lootType, "seed")
+        or (seedNamed and displayCategory == "drugs")
+        or (seedNamed and (ctx.isCraftRecipeProduct == true)
+            and containsAny(itemId, { "bagseed", "seedpacket" }))
+
     if displayCategory == "gardening" or hasTagAlias(ctx, "iscompostable")
-        or hasTagAlias(ctx, "seedpacket") then
+        or seedEvidence then
         return resolved("Building", "root_building")
     end
     return nil
@@ -203,12 +215,12 @@ function RootArbiter.resolve(ctx)
         ammoRoot,
         medicalRoot,
         foodRoot,
+        buildingRoot,
         literatureRoot,
         apparelRoot,
         weaponRoot,
         toolRoot,
         containerRoot,
-        buildingRoot,
         mementoRoot,
     }
 

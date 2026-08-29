@@ -280,7 +280,6 @@ return {
             ["base"] = 14.0,
             ["capacity_weight"] = 4.0,
             ["weight_reduction_weight"] = 0.65,
-            ["debug_multiplier"] = 0.12,
             ["weight_penalty"] = 1.0,
             ["stock_multiplier"] = 0.85,
             ["stock_min_ratio"] = 0.12,

@@ -12,7 +12,7 @@ from .config import DEFAULT_CACHE_DIR, MOD_ROOT, TOOLS_ROOT
 
 
 # Bumped when the result row universe or exposed runtime evidence changes.
-CACHE_FORMAT_VERSION = 4
+CACHE_FORMAT_VERSION = 6
 
 
 def _file_manifest(roots: Iterable[Path], suffixes: tuple[str, ...]) -> list[dict[str, Any]]:
@@ -56,10 +56,15 @@ def cache_key(lua: str, options: Any, roots: Iterable[Path], scripts_root: Path 
             "max_items": options.max_items,
             "confidence_threshold": options.confidence_threshold,
             "sandbox_options": sorted(options.sandbox_options.items()),
+            "availability_filter": getattr(options, "availability_filter", "obtainable"),
         },
         "inputs": {
-            "workshop": _file_manifest(roots, (".txt", ".info")),
-            "base": _file_manifest((scripts_root,) if scripts_root else (), (".txt",)),
+            # Lua distribution/recipe/foraging data is part of the strict
+            # availability gate, so edits there must invalidate a result.
+            "workshop": _file_manifest(roots, (".txt", ".lua", ".info")),
+            "base": _file_manifest(
+                (scripts_root.parent,) if scripts_root else (), (".txt", ".lua")
+            ),
             "marketsense": _file_manifest((MOD_ROOT,), (".lua", ".info", ".txt", ".json")),
             "app": _file_manifest((app_root,), (".py", ".lua")),
         },

@@ -6,12 +6,17 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "src"))
 
-from marketsense_app.cache import ResultCache, clear_cache
+from marketsense_app.cache import ResultCache, cache_key, clear_cache
+from marketsense_app.availability import (
+    availability_counts,
+    build_acquisition_index,
+)
 from marketsense_app.evaluation import merge_scan_definitions
 from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
@@ -57,6 +62,66 @@ def main() -> int:
         paths, selected = item_script_paths(versioned, "42.20")
         assert selected == "common+42.20" and len(paths) == 2
 
+        media = root / "availability" / "media"
+        scripts_root = media / "scripts"
+        (media / "lua" / "server" / "Items").mkdir(parents=True)
+        (media / "lua" / "shared" / "Foraging" / "Categories").mkdir(parents=True)
+        (scripts_root / "generated" / "recipes").mkdir(parents=True)
+        (media / "lua" / "server" / "Items" / "ProceduralDistributions.lua").write_text(
+            'items = { "Looted", "9mmClip", 10, }', encoding="utf-8"
+        )
+        (media / "lua" / "shared" / "Foraging" / "Categories" / "Fruit.lua").write_text(
+            'type = "Base.Foraged",', encoding="utf-8"
+        )
+        (media / "lua" / "server" / "Traps").mkdir(parents=True)
+        (media / "lua" / "server" / "Traps" / "TrapDefinition.lua").write_text(
+            'rabbit.item = "Base.Trapped",', encoding="utf-8"
+        )
+        (scripts_root / "generated" / "recipes" / "recipes.txt").write_text(
+            """module Base { craftRecipe MakeCrafted { outputs { item 1 Base.Crafted, } } }""",
+            encoding="utf-8",
+        )
+        availability_mod = WorkshopMod(media.parent, "base", "Base", "Base", "base")
+        availability_definitions = {
+            "Base.Looted": ItemDefinition("Base.Looted", "Base", {}, availability_mod, "looted.txt"),
+            "Base.9mmClip": ItemDefinition("Base.9mmClip", "Base", {}, availability_mod, "ammo.txt"),
+            "Base.Foraged": ItemDefinition("Base.Foraged", "Base", {}, availability_mod, "foraged.txt"),
+            "Base.Trapped": ItemDefinition("Base.Trapped", "Base", {}, availability_mod, "trapped.txt"),
+            "Base.Crafted": ItemDefinition("Base.Crafted", "Base", {}, availability_mod, "crafted.txt"),
+            "Base.DebugThing": ItemDefinition(
+                "Base.DebugThing", "Base", {"displayCategory": "Hidden"}, availability_mod, "debug.txt"
+            ),
+        }
+        availability_index = build_acquisition_index(
+            availability_definitions.values(), scripts_root, (), "42.20"
+        )
+        availability_records = availability_index.records(availability_definitions.values())
+        assert availability_records["Base.Looted"]["status"] == "obtainable"
+        assert availability_records["Base.9mmClip"]["status"] == "obtainable"
+        assert availability_records["Base.Foraged"]["status"] == "obtainable"
+        assert availability_records["Base.Crafted"]["status"] == "obtainable"
+        assert availability_records["Base.Trapped"]["status"] == "obtainable"
+        assert availability_records["Base.DebugThing"]["status"] == "excluded"
+        assert availability_counts(availability_records.values()) == {
+            "obtainable": 5, "uncertain": 0, "excluded": 1
+        }
+        cache_options = SimpleNamespace(
+            filters=(), game_version="42.20", game_root=None, no_base_game=False,
+            max_items=0, confidence_threshold=0.5, sandbox_options={},
+            availability_filter="obtainable",
+        )
+        key_before = cache_key(
+            str(root / "marketsense.lua"), cache_options,
+            (media.parent,), scripts_root,
+        )
+        marker = media / "lua" / "server" / "Items" / "cache-marker.lua"
+        marker.write_text('items = { "Looted", 11, }', encoding="utf-8")
+        key_after = cache_key(
+            str(root / "marketsense.lua"), cache_options,
+            (media.parent,), scripts_root,
+        )
+        assert key_before != key_after
+
     mod = WorkshopMod(Path("fixture"), "fixture", "Fixture", "Fixture", "fixture")
     base = ItemDefinition("Test.One", "Test", {"tags": ["Base"], "capacity": 1}, mod, "base.txt")
     overlay = ItemDefinition("Test.One", "Test", {"tags": ["Overlay"], "capacity": 2}, mod, "overlay.txt")
@@ -89,6 +154,13 @@ def main() -> int:
         "expandedTags": ["Tool", "ToolCraft"],
     }]) == 1
     assert "unknown test item" in searchable_text(flagged)
+    assert "loot/distribution" in searchable_text({
+        "fullType": "Base.CannedLeek",
+        "availability": {
+            "status": "obtainable",
+            "channelLabels": ["loot/distribution"],
+        },
+    })
     mismatch_status, mismatch_reason = review_row({
         "category": "Food", "primary": "FoodStaple", "confidence": 0.9,
         "expandedTags": ["Tool", "ToolCraft"],

@@ -94,6 +94,20 @@ function DynamicTrading.GetAllKnownItems()
     return {}
 end
 
+function DynamicTrading.GetItemAvailability(fullType)
+    if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.getAvailability then
+        return MarketSense.ItemsRegistry.getAvailability(fullType)
+    end
+    return nil
+end
+
+function DynamicTrading.GetItemAvailabilitySummary()
+    if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.getAvailabilitySummary then
+        return MarketSense.ItemsRegistry.getAvailabilitySummary()
+    end
+    return {}
+end
+
 function DynamicTrading.IsRuntimeDebugEnabled()
     return DynamicTrading.IsItemRuntimeDebugEnabled and DynamicTrading.IsItemRuntimeDebugEnabled() or false
 end

@@ -25,6 +25,7 @@ local FULLTYPE_OVERRIDES = {
     ["base.comicbook"] = "LiteratureComic",
     ["base.comicbook_retail"] = "LiteratureComic",
     ["base.flier"] = "LiteratureFlier",
+    ["base.flier_nolans"] = "LiteratureFlier",
     ["base.rpgmanual"] = "LiteratureRpgManual",
     ["base.twigsbundle"] = "MaterialBundled",
     ["base.zipties"] = "MaterialMaintenance",

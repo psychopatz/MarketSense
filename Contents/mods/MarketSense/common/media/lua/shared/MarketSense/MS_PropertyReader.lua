@@ -93,6 +93,11 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local displayCategory = Core.safeString(scriptItem, { "getDisplayCategory", "getCategories" }, "")
     local itemType        = Core.safeString(scriptItem, { "getItemType", "getTypeString", "getType" }, "")
     local displayName     = Core.safeString(scriptItem, "getDisplayName", typeName)
+    local isHidden        = Core.safeBoolean(scriptItem, "isHidden", false)
+    local isObsolete      = Core.safeBoolean(scriptItem, "getObsolete", false)
+    local canSpawnAsLoot  = Core.safeBoolean(scriptItem, "canSpawnAsLoot", false)
+    local canBeForaged    = Core.safeBoolean(scriptItem, "canBeForaged", false)
+    local isCraftRecipeProduct = Core.safeBoolean(scriptItem, "isCraftRecipeProduct", false)
     local ammoType        = Core.safeString(scriptItem, { "getAmmoType", "getMagazineType" }, "")
     local magazineType    = Core.safeString(scriptItem, "getMagazineType", "")
     local partType        = Core.safeString(scriptItem, "getPartType", "")
@@ -213,6 +218,11 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         idLower = Core.lower(typeName),
         fullLower = Core.lower(fullType ~= "" and fullType or (moduleName .. "." .. typeName)),
         displayName = displayName, displayNameLower = Core.lower(displayName),
+        isHidden = isHidden,
+        isObsolete = isObsolete,
+        canSpawnAsLoot = canSpawnAsLoot,
+        canBeForaged = canBeForaged,
+        isCraftRecipeProduct = isCraftRecipeProduct,
         description = description, descriptionLower = Core.lower(description),
         displayCategory = displayCategory,
         displayCategoryLower = Core.lower(displayCategory),

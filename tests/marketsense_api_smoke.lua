@@ -73,6 +73,10 @@ T.equal(details.primary, "FoodNonPerishableCanned", "description drives canned s
 T.truthy(details.price > 0, "generated price")
 T.equal(type(details.balanceAudit), "table", "audit is present")
 
+local debugDetails = assert(api.DebugItem(scriptItem.fullName, false))
+T.equal(debugDetails.availability.status, "uncertain", "debug exposes Lua availability")
+T.equal(debugDetails.marketEligible, false, "uncertain item is not market eligible")
+
 local tags = api.GetTags(scriptItem.fullName)
 T.equal(tags.primary, details.primary, "public tag primary")
 T.equal(tags.category, details.category, "public tag category")

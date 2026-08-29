@@ -1,6 +1,7 @@
 local Shared = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_Shared"
 local IO = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_IO"
 local Build = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_Build"
+local Availability = require "MarketSense/MS_ItemAvailability"
 
 local Runtime = {}
 local Registry = Shared.Registry
@@ -77,6 +78,10 @@ local function populateMasterList(indexData, activeState)
                         local fullType = tostring(row[1] or "")
                         if fullType ~= "" then
                             local skip = runtimeRules and runtimeRules.shouldSkip and runtimeRules.shouldSkip(fullType) or false
+                            local availability = Availability.get(fullType)
+                            if availability.status ~= "obtainable" then
+                                skip = true
+                            end
                             if not skip then
                                 local baseData = {
                                     item = fullType,
@@ -89,6 +94,7 @@ local function populateMasterList(indexData, activeState)
                                 }
 
                                 local liveData = Build.applyRuntimeOverride(fullType, baseData, runtimeRules)
+                                liveData.availability = availability
                                 registerLiveItem(fullType, liveData)
 
                                 local liveEntry = Build.buildLiveEntry(fullType, liveData, group.origin, nil, nil)
@@ -117,6 +123,7 @@ end
 
 function Runtime.loadCatalogFromCache()
     local activeState = Shared.buildActiveModState()
+    Availability.ensureBuilt()
     local indexData = IO.loadIndex()
     local valid, reason = IO.validateIndex(indexData, activeState)
     if not valid then

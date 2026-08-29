@@ -13,7 +13,7 @@ from .review import low_confidence_rows, review_row
 def print_terminal(
     summary: dict[str, Any], rows: list[dict[str, Any]], top: int, chart: str,
     confidence_threshold: float = 0.5, chunk_size: int = 25,
-    low_confidence_chunk: int = 1,
+    low_confidence_chunk: int = 1, availability_chunk: int = 1,
 ) -> None:
     prices = summary["prices"]
     print("MarketSense offline PZ harness")
@@ -37,6 +37,32 @@ def print_terminal(
         f"review flags: {summary.get('review_count', 0)} | "
         f"duplicate definitions: {summary['duplicate_definitions']}"
     )
+    availability = summary.get("availability_counts") or {}
+    print(
+        f"Availability gate: {summary.get('availability_filter', 'obtainable')} | "
+        f"listed: {summary.get('listed_items', summary['evaluated'])} | "
+        f"obtainable: {availability.get('obtainable', 0)} | "
+        f"uncertain: {availability.get('uncertain', 0)} | "
+        f"excluded: {availability.get('excluded', 0)} | "
+        f"filtered out: {summary.get('filtered_out', 0)}"
+    )
+    verification = summary.get("availability_verification") or {}
+    if verification:
+        print(
+            f"  Lua authority verification: {verification.get('matches', 0):,}/"
+            f"{verification.get('checked', 0):,} match static audit | "
+            f"mismatches: {verification.get('mismatch_count', 0):,}"
+        )
+    if summary.get("max_items_omitted"):
+        print(
+            f"  evaluation limit omitted: {summary['max_items_omitted']} eligible items "
+            f"after selecting the first {summary.get('evaluated', 0)}"
+        )
+    if summary.get("availability_source_files"):
+        print(
+            f"Static comparison evidence: {summary['availability_source_files']} base/Workshop "
+            "runtime source files scanned (Lua remains authoritative)"
+        )
     print(
         f"Item sources: {summary.get('vanilla_items', 0)} vanilla | "
         f"{summary.get('workshop_items', summary['evaluated'])} Workshop"
@@ -124,6 +150,33 @@ def print_terminal(
             )
         elif len(low_confidence) > chunk_size:
             print("  ... all remaining rows are in the saved low-confidence export")
+        print()
+
+    availability_findings = [
+        row for row in rows
+        if str((row.get("availability") or {}).get("status") or "uncertain") != "obtainable"
+    ]
+    if availability_findings:
+        total_chunks = max(1, math.ceil(len(availability_findings) / chunk_size))
+        chunk_number = min(availability_chunk, total_chunks)
+        start = (chunk_number - 1) * chunk_size
+        selected = availability_findings[start:start + chunk_size]
+        print(
+            f"AVAILABILITY FINDINGS CHUNK {chunk_number}/{total_chunks} "
+            f"(rows {start + 1}-{start + len(selected)} of {len(availability_findings)})"
+        )
+        print("  status     | item | reason")
+        for row in selected:
+            availability = row.get("availability") or {}
+            print(
+                f"  {str(availability.get('status') or 'uncertain'):<10} | "
+                f"{row.get('fullType', '-'):<36} | {availability.get('reason', '-')}"
+            )
+        if total_chunks > chunk_number:
+            print(
+                f"  ... use --availability-chunk {chunk_number + 1} "
+                f"for the next {chunk_size} rows"
+            )
         print()
 
     review_flags = [row for row in rows if review_row(row)[0] != "OK"]

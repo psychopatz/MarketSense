@@ -65,6 +65,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--low-confidence-chunk", type=int, default=1,
         help="1-based low-confidence chunk shown in the terminal report (default: 1).",
     )
+    parser.add_argument(
+        "--availability-chunk", type=int, default=1,
+        help="1-based uncertain/excluded availability chunk shown in the terminal report (default: 1).",
+    )
     parser.add_argument("--chart", choices=["all", "categories", "prices", "none"], default="all")
     parser.add_argument("--format", choices=["terminal", "json", "jsonl"], default="terminal")
     parser.add_argument("--csv-out", type=Path, help="Also write evaluated rows as CSV.")
@@ -88,6 +92,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--no-base-game",
         action="store_true",
         help="Do not load installed vanilla item scripts before Workshop patches.",
+    )
+    parser.add_argument(
+        "--availability",
+        choices=("obtainable", "all", "uncertain", "excluded"),
+        default="obtainable",
+        help=(
+            "Item availability list: obtainable (default), all, uncertain, or excluded. "
+            "Obtainable requires loot/craft/forage/farm/fishing/animal evidence."
+        ),
     )
     parser.add_argument(
         "--gui",
@@ -127,8 +140,11 @@ def main(argv: list[str] | None = None) -> int:
     if not 0.0 <= args.confidence_threshold <= 1.0:
         print("--confidence-threshold must be between 0 and 1.", file=sys.stderr)
         return 2
-    if args.chunk_size < 1 or args.low_confidence_chunk < 1:
-        print("--chunk-size and --low-confidence-chunk must be positive.", file=sys.stderr)
+    if args.chunk_size < 1 or args.low_confidence_chunk < 1 or args.availability_chunk < 1:
+        print(
+            "--chunk-size, --low-confidence-chunk, and --availability-chunk must be positive.",
+            file=sys.stderr,
+        )
         return 2
     if args.gui:
         from .gui import launch
@@ -177,6 +193,7 @@ def main(argv: list[str] | None = None) -> int:
                 refresh_cache=args.refresh_cache,
                 confidence_threshold=args.confidence_threshold,
                 sandbox_options=sandbox_options,
+                availability_filter=args.availability,
             ),
         )
     except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
@@ -207,5 +224,6 @@ def main(argv: list[str] | None = None) -> int:
             args.confidence_threshold,
             args.chunk_size,
             args.low_confidence_chunk,
+            args.availability_chunk,
         )
     return 0

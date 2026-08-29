@@ -1,5 +1,6 @@
 local Shared = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_Shared"
 local IO = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_IO"
+local Availability = require "MarketSense/MS_ItemAvailability"
 
 local Build = {}
 local Registry = Shared.Registry
@@ -258,6 +259,7 @@ function Build.buildLiveEntry(fullType, itemData, sourceOrigin, category, primar
             min = math.max(0, tonumber(itemData.stockRange and itemData.stockRange.min) or 0),
             max = math.max(0, tonumber(itemData.stockRange and itemData.stockRange.max) or 0),
         },
+        availability = itemData.availability or Availability.get(fullType),
         source = "lean-cache",
     }
 end
@@ -276,6 +278,11 @@ function Build.collectGeneratedItems()
         return {}
     end
 
+    -- Build the acquisition index from live PZ item state before applying any
+    -- market heuristics.  This is the authoritative market-entry gate; the
+    -- offline Python tool only audits the result against source evidence.
+    Availability.rebuild(allItems)
+
     local generated = {}
     local foodAudit = {}
     for index = 0, allItems:size() - 1 do
@@ -283,7 +290,11 @@ function Build.collectGeneratedItems()
         local ctx = MarketSense.PropertyReader.buildContext(scriptItem)
         if ctx and ctx.fullType and ctx.fullType ~= "" then
             local syntheticSkip, syntheticReason = Shared.shouldSkipSyntheticContext(ctx)
-            local skip = syntheticSkip or (runtimeRules and runtimeRules.shouldSkip and runtimeRules.shouldSkip(ctx.fullType) or false)
+            local availability = Availability.get(ctx.fullType)
+            local availabilitySkip = availability.status ~= "obtainable"
+            local skip = syntheticSkip
+                or availabilitySkip
+                or (runtimeRules and runtimeRules.shouldSkip and runtimeRules.shouldSkip(ctx.fullType) or false)
             if not skip then
                 local tagInfo = MarketSense.AutoTag.generate(ctx)
                 local baseData = {
@@ -309,6 +320,7 @@ function Build.collectGeneratedItems()
                         min = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.min) or 0),
                         max = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.max) or 0),
                     },
+                    availability = availability,
                     origin = origin,
                     root = fileEntry.root,
                     category = fileEntry.category,
@@ -318,8 +330,11 @@ function Build.collectGeneratedItems()
                     primaryPrefix = fileEntry.primaryPrefix,
                     path = fileEntry.path,
                 }
-            elseif syntheticSkip then
-                Shared.debugLog("Skipped synthetic/invalid item during DT_Items generation: " .. tostring(ctx.fullType) .. " (" .. tostring(syntheticReason or "synthetic") .. ")")
+            else
+                local reason = syntheticSkip and (syntheticReason or "synthetic")
+                    or availabilitySkip and (availability.reason or availability.status)
+                    or "runtime rule"
+                Shared.debugLog("Skipped item during DT_Items generation: " .. tostring(ctx.fullType) .. " (" .. tostring(reason) .. ")")
             end
         end
     end

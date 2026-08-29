@@ -1,4 +1,5 @@
 require "MarketSense/MS_Pricing"
+require "MarketSense/MS_ItemAvailability"
 
 MarketSense = MarketSense or {}
 MarketSense.DebugTools = MarketSense.DebugTools or {}
@@ -10,6 +11,7 @@ local Cache       = MarketSense.RuntimeCache
 local Catalog     = MarketSense.StaticCatalog
 local AutoTag     = MarketSense.AutoTag
 local Pricing     = MarketSense.Pricing
+local Availability = MarketSense.ItemAvailability
 
 local function safeLog(...)
     local message = tostring((...) or "")
@@ -23,6 +25,7 @@ end
 function Debug.inspectItem(fullType, withAudit)
     local ctx     = PropReader.buildContext(fullType)
     local details = Pricing.calculateDetails(ctx, withAudit ~= false)
+    local availability = Availability and Availability.get and Availability.get(ctx.fullType) or nil
     local out = {
         fullType = ctx.fullType,
         category = details.category,
@@ -35,6 +38,8 @@ function Debug.inspectItem(fullType, withAudit)
         source   = details.source,
         confidence = details.confidence,
         audit    = details.balanceAudit,
+        availability = availability,
+        marketEligible = availability and availability.status == "obtainable" or false,
     }
     safeLog("[MarketSense] DebugTools.inspectItem → " .. tostring(fullType))
     return out
@@ -60,6 +65,8 @@ function Debug.exportCatalog(catalog)
             primary  = entry.primary,
             tags     = entry.tags,
             price    = entry.price,
+            availability = entry.availability,
+            marketEligible = entry.availability and entry.availability.status == "obtainable" or false,
             source   = "static_catalog",
         }
     end

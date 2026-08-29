@@ -83,6 +83,15 @@ def searchable_text(row: dict[str, Any]) -> str:
         _sequence_text(row.get("tags")), _sequence_text(row.get("expandedTags")),
         _sequence_text(row.get("definitionSources")), status, reason,
     )
+    availability = row.get("availability")
+    if isinstance(availability, dict):
+        fields += (
+            availability.get("status"), availability.get("reason"),
+            _sequence_text(availability.get("channels")),
+            _sequence_text(availability.get("channelLabels")),
+            _sequence_text(availability.get("references")),
+            _sequence_text(availability.get("exclusions")),
+        )
     return " ".join(_text(field) for field in fields if _text(field)).casefold()
 
 

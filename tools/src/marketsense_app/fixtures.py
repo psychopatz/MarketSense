@@ -33,29 +33,53 @@ def mock_definitions() -> list[ItemDefinition]:
             "itemType": "Food", "displayCategory": "Food", "foodType": "Meat",
             "hungerChange": -0.05, "calories": 50, "daysFresh": 1, "daysRotten": 2,
             "actualWeight": 0.2, "description": "a small portion of meat",
+            "canSpawnAsLoot": True,
         }),
         make("FoodHigh", {
             "itemType": "Food", "displayCategory": "Food", "foodType": "Meat",
             "hungerChange": -0.8, "calories": 800, "daysFresh": 10, "daysRotten": 20,
             "actualWeight": 0.2, "description": "a large portion of meat",
+            "canSpawnAsLoot": True,
         }),
         make("CannedMeal", {
             "itemType": "Food", "displayCategory": "Food", "hungerChange": -0.2,
             "calories": 250, "daysFresh": 20, "daysRotten": 40, "actualWeight": 0.5,
-            "description": "Canned preserved bean meal",
+            "description": "Canned preserved bean meal", "isCraftRecipeProduct": True,
         }),
+        make("VanillaReceipt", {
+            "itemType": "base:literature", "displayCategory": "Junk",
+            "tags": ["base:uninteresting"], "readType": "photo",
+            "description": "a small receipt", "canSpawnAsLoot": True,
+        }),
+        make("NarcoticsSeedPacket", {
+            "itemType": "Base:Literature", "displayCategory": "Drugs",
+            "tags": ["Base:FastRead"], "readType": "photo",
+            "learnedRecipes": "Weed Growing Season", "isCraftRecipeProduct": True,
+            "description": "a packet of growing seeds", "canSpawnAsLoot": True,
+        }),
+        ItemDefinition(
+            full_type="Base.Flier_Nolans", module="Base",
+            props={
+                "itemType": "base:literature", "displayCategory": "Junk",
+                "tags": ["base:fastread", "base:picture"], "readType": "photo",
+            }, mod=fixture_mod, script_path="<offline-fixture>",
+        ),
         make("Bandage", {
             "displayCategory": "FirstAid", "bandagePower": 1, "actualWeight": 0.1,
-            "description": "sterile medical dressing",
+            "description": "sterile medical dressing", "canBeForaged": True,
         }),
         make("Axe", {
             "itemType": "Weapon", "displayCategory": "Weapon", "weaponCategories": ["Axe"],
             "minDamage": 1, "maxDamage": 2, "maxRange": 1, "conditionMax": 10,
-            "actualWeight": 1.5, "description": "a heavy hand axe",
+            "actualWeight": 1.5, "description": "a heavy hand axe", "canSpawnAsLoot": True,
         }),
         make("Bag", {
             "itemType": "Container", "capacity": 20, "weightReduction": 80,
-            "actualWeight": 1, "description": "a canvas carrying bag",
+            "actualWeight": 1, "description": "a canvas carrying bag", "canSpawnAsLoot": True,
+        }),
+        make("DebugDummy", {
+            "displayCategory": "Hidden", "displayName": "DUMMY ITEM", "hidden": True,
+            "canSpawnAsLoot": True,
         }),
     ]
 
@@ -70,8 +94,11 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
 
     expected_types = {
         "MarketSenseFixture.FoodLow", "MarketSenseFixture.FoodHigh",
-        "MarketSenseFixture.CannedMeal", "MarketSenseFixture.Bandage",
+        "MarketSenseFixture.CannedMeal", "MarketSenseFixture.VanillaReceipt",
+        "MarketSenseFixture.NarcoticsSeedPacket", "MarketSenseFixture.Bandage",
+        "Base.Flier_Nolans",
         "MarketSenseFixture.Axe", "MarketSenseFixture.Bag",
+        "MarketSenseFixture.DebugDummy",
     }
     check(
         "all fixture rows evaluated",
@@ -83,9 +110,13 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "MarketSenseFixture.FoodLow": "Food",
         "MarketSenseFixture.FoodHigh": "Food",
         "MarketSenseFixture.CannedMeal": "Food",
+        "MarketSenseFixture.VanillaReceipt": "Literature",
+        "MarketSenseFixture.NarcoticsSeedPacket": "Building",
+        "Base.Flier_Nolans": "Literature",
         "MarketSenseFixture.Bandage": "Medical",
         "MarketSenseFixture.Axe": "Weapon",
         "MarketSenseFixture.Bag": "Container",
+        "MarketSenseFixture.DebugDummy": "Misc",
     }
     category_ok = all(
         by_type.get(item, {}).get("category") == category
@@ -97,6 +128,62 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         ", ".join(
             f"{item.rsplit('.', 1)[-1]}={by_type.get(item, {}).get('category', '?')}"
             for item in sorted(expected_categories)
+        ),
+    )
+
+    receipt = by_type.get("MarketSenseFixture.VanillaReceipt", {})
+    receipt_detection = receipt.get("detection") or {}
+    check(
+        "vanilla junk literature is not a photo",
+        (
+            receipt.get("primary") == "LiteratureOrJunk"
+            and receipt_detection.get("resolverSource") == "root_literature"
+            and (receipt_detection.get("classifier") or {}).get("details", {}).get("source")
+            == "lit_uninteresting"
+        ),
+        f"primary={receipt.get('primary', '?')} source="
+        f"{((receipt_detection.get('classifier') or {}).get('details') or {}).get('source', '?')}",
+    )
+
+    flier = by_type.get("Base.Flier_Nolans", {})
+    check(
+        "vanilla flier uses its explicit literature subtype",
+        flier.get("primary") == "LiteratureFlier",
+        f"primary={flier.get('primary', '?')} source={flier.get('source', '?')}",
+    )
+
+    seed = by_type.get("MarketSenseFixture.NarcoticsSeedPacket", {})
+    seed_context = seed.get("context") or {}
+    seed_detection = seed.get("detection") or {}
+    check(
+        "literature-backed seed packet is gardening stock",
+        (
+            seed.get("category") == "Building"
+            and seed.get("primary") == "GardeningSeedPacket"
+            and seed_detection.get("root") == "Building"
+            and (seed_detection.get("classifier") or {}).get("signature") == "Gardening"
+            and seed_context.get("learnedRecipes") == ["Weed Growing Season"]
+        ),
+        f"category={seed.get('category', '?')} primary={seed.get('primary', '?')} "
+        f"root={seed_detection.get('root', '?')} recipes={seed_context.get('learnedRecipes', '?')}",
+    )
+
+    availability = {
+        item: by_type.get(item, {}).get("availability") or {}
+        for item in expected_types
+    }
+    check(
+        "Lua runtime availability gate",
+        (
+            availability["MarketSenseFixture.FoodLow"].get("status") == "obtainable"
+            and availability["MarketSenseFixture.CannedMeal"].get("status") == "obtainable"
+            and availability["MarketSenseFixture.Bandage"].get("status") == "obtainable"
+            and availability["MarketSenseFixture.DebugDummy"].get("status") == "excluded"
+            and availability["MarketSenseFixture.DebugDummy"].get("obtainable") is False
+        ),
+        ", ".join(
+            f"{item.rsplit('.', 1)[-1]}={availability[item].get('status', '?')}"
+            for item in sorted(expected_types)
         ),
     )
 

@@ -59,6 +59,16 @@ class MarketSenseGui:
         self.no_base_var = self.tk.BooleanVar(value=args.no_base_game)
         self.use_cache_var = self.tk.BooleanVar(value=not args.no_cache)
         self.refresh_cache_var = self.tk.BooleanVar(value=args.refresh_cache)
+        availability_filter = getattr(args, "availability", "obtainable")
+        availability_labels = {
+            "obtainable": "Obtainable only",
+            "all": "All items",
+            "uncertain": "Uncertain only",
+            "excluded": "Excluded only",
+        }
+        self.availability_var = self.tk.StringVar(
+            value=availability_labels.get(availability_filter, "Obtainable only")
+        )
         self.sandbox_path = Path(
             getattr(args, "sandbox_config", None) or DEFAULT_SANDBOX_SETTINGS_PATH
         ).expanduser()
@@ -91,8 +101,17 @@ class MarketSenseGui:
         self.ttk.Checkbutton(
             cache_options, text="Refresh", variable=self.refresh_cache_var
         ).pack(side="left", padx=(10, 0))
+        self.ttk.Label(controls, text="Availability").grid(
+            row=3, column=0, sticky="w", padx=(0, 6), pady=2
+        )
+        self.availability_combo = self.ttk.Combobox(
+            controls, textvariable=self.availability_var,
+            values=("Obtainable only", "All items", "Uncertain only", "Excluded only"),
+            state="readonly", width=18,
+        )
+        self.availability_combo.grid(row=3, column=1, sticky="w", pady=2)
         buttons = self.ttk.Frame(controls)
-        buttons.grid(row=3, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        buttons.grid(row=4, column=0, columnspan=4, sticky="w", pady=(8, 0))
         self.scan_button = self.ttk.Button(buttons, text="Scan Workshop", command=self.scan)
         self.scan_button.pack(side="left")
         self.test_button = self.ttk.Button(buttons, text="Run self-test", command=self.self_test)
@@ -223,13 +242,15 @@ class MarketSenseGui:
             text=(
                 "Hierarchy: main category → subcategory → primary tag → item. "
                 "Use Expand Food to inspect every food row; review flags are triage hints, "
-                "not confirmed false positives."
+                "not confirmed false positives. The default list requires authoritative "
+                "loot/crafting/foraging/farming/fishing/animal evidence; change Availability "
+                "to inspect uncertain or excluded definitions."
             ),
         ).pack(fill="x", pady=(0, 4))
         self.item_category_nodes: dict[str, str] = {}
         self.item_row_by_iid: dict[str, dict[str, Any]] = {}
         self.item_columns = [
-            ("price", 80), ("review", 90), ("reason", 320),
+            ("price", 80), ("availability", 110), ("review", 90), ("reason", 320),
             ("detector", 140), ("resolver", 160), ("confidence", 90),
             ("mod", 170), ("description", 300),
         ]
@@ -587,6 +608,12 @@ class MarketSenseGui:
             refresh_cache=self.refresh_cache_var.get(),
             confidence_threshold=confidence_threshold,
             sandbox_options=dict(self.sandbox_overrides),
+            availability_filter={
+                "Obtainable only": "obtainable",
+                "All items": "all",
+                "Uncertain only": "uncertain",
+                "Excluded only": "excluded",
+            }.get(self.availability_var.get(), "obtainable"),
         )
 
     def scan(self) -> None:
@@ -655,6 +682,11 @@ class MarketSenseGui:
             f"Scan complete: {summary['evaluated']} items, {summary['workshop_mods']} Workshop mods, "
             f"{summary.get('vanilla_items', 0)} vanilla items, {summary.get('workshop_items', 0)} Workshop items, "
             f"{summary['errors']} errors, {flagged} review flags. "
+            f"Availability: {summary.get('availability_filter', 'obtainable')} "
+            f"({summary.get('filtered_out', 0):,} filtered; "
+            f"{summary.get('max_items_omitted', 0):,} omitted by limit; "
+            f"{(summary.get('availability_counts') or {}).get('uncertain', 0):,} uncertain, "
+            f"{(summary.get('availability_counts') or {}).get('excluded', 0):,} excluded). "
             f"Cache: {(summary.get('cache') or {}).get('status', 'disabled')}. "
             f"Version ceiling: {summary['workshop_script_selection']}"
         )
@@ -738,7 +770,7 @@ class MarketSenseGui:
             )
             category_id = self.item_tree.insert(
                 "", "end", text=f"{category} ({category_count:,})", open=False,
-                values=("", "", f"{category_count:,} items", "", "", "", "", ""),
+                values=("", "", "", f"{category_count:,} items", "", "", "", "", ""),
             )
             self.item_category_nodes[category] = category_id
             for subcategory, primaries in sorted(subcategories.items()):
@@ -746,7 +778,7 @@ class MarketSenseGui:
                 subcategory_id = self.item_tree.insert(
                     category_id, "end", text=f"{subcategory} ({subcategory_count:,})", open=False,
                     values=(
-                        "", "", f"{subcategory_count:,} items", "", "", "", "", "",
+                        "", "", "", f"{subcategory_count:,} items", "", "", "", "", "",
                     ),
                 )
                 for primary, primary_rows in sorted(primaries.items()):
@@ -760,13 +792,15 @@ class MarketSenseGui:
                     primary_id = self.item_tree.insert(
                         subcategory_id, "end", text=f"{primary_label} ({primary_count:,})", open=False,
                         values=(
-                            "", "", f"{primary_count:,} items", "", "", "", "", "",
+                            "", "", "", f"{primary_count:,} items", "", "", "", "", "",
                         ),
                     )
                     for row, status, reason in primary_rows:
                         item_id = self.item_tree.insert(
                             primary_id, "end", text=row.get("fullType") or "<unknown>", values=(
-                                row.get("price", ""), status, reason,
+                                row.get("price", ""),
+                                str((row.get("availability") or {}).get("status") or "uncertain"),
+                                status, reason,
                                 row.get("detector", ""), row.get("resolver", ""),
                                 row.get("confidence", ""), row.get("workshopMod", ""),
                                 row.get("description", ""),
@@ -775,7 +809,7 @@ class MarketSenseGui:
                         self.item_row_by_iid[item_id] = row
                         item_row_number += 1
         self.item_count_var.set(
-            f"{shown:,} items in {len(grouped):,} categories / {len(self.rows):,} total"
+            f"{shown:,} items in {len(grouped):,} categories / {len(self.rows):,} listed"
         )
 
     def _show_item_details(self) -> None:

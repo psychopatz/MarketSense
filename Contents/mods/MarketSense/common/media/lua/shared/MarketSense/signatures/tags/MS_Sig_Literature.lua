@@ -7,7 +7,13 @@ local Signature = {}
 local TagMapper = MarketSense.TagMapper
 
 local function hasTag(ctx, token)
-    return ctx.normalizedTags and ctx.normalizedTags[token] == true
+    if not ctx or not ctx.normalizedTags then
+        return false
+    end
+    -- PZ commonly stores vanilla tags with a Base: prefix. PropertyReader
+    -- normalizes that to "basetag", while signatures use the short token.
+    return ctx.normalizedTags[token] == true
+        or ctx.normalizedTags["base" .. token] == true
 end
 local function itemTypeIs(ctx, t)
     return (ctx.itemTypeToken or "") == t

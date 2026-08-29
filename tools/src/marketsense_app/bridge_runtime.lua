@@ -15,7 +15,24 @@ end
 
 local function listProperty(self, key)
     local value = property(self, key)
-    return type(value) == "table" and value or {}
+    if type(value) == "table" then
+        return value
+    end
+    if type(value) ~= "string" or value == "" then
+        return {}
+    end
+
+    -- Item scripts store LearnedRecipes as a semicolon-separated string,
+    -- while the real PZ API exposes a Java collection. Convert the static
+    -- script form into the same one-based Lua collection used by the bridge.
+    local values = {}
+    for entry in string.gmatch(value, "[^;,]+") do
+        local trimmed = string.gsub(entry, "^%s*(.-)%s*$", "%1")
+        if trimmed ~= "" then
+            values[#values + 1] = trimmed
+        end
+    end
+    return values
 end
 
 local methods = {}
@@ -30,6 +47,11 @@ function methods.getType(self) return property(self, "itemType", property(self, 
 function methods.getDisplayName(self) return property(self, "displayName", self._name) end
 function methods.getTooltip(self) return property(self, "tooltip", "") end
 function methods.getDescription(self) if self._instance then return property(self, "description", "") end end
+function methods.isHidden(self) return property(self, "hidden", false) end
+function methods.getObsolete(self) return property(self, "obsolete", false) end
+function methods.canSpawnAsLoot(self) return property(self, "canSpawnAsLoot", false) end
+function methods.canBeForaged(self) return property(self, "canBeForaged", false) end
+function methods.isCraftRecipeProduct(self) return property(self, "isCraftRecipeProduct", false) end
 function methods.getTags(self) return self._tags end
 function methods.getAmmoType(self) return property(self, "ammoType", "") end
 function methods.getMagazineType(self) return property(self, "magazineType", "") end
@@ -336,7 +358,7 @@ local function rowJson(row)
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh", "daysRotten",
         "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity", "workshopMod", "workshopName",
         "workshopId", "workshopVersion", "scriptPath", "description", "subcategory", "leaf",
-        "primaryPrefix", "categoryPath", "detector", "resolver" }
+        "primaryPrefix", "categoryPath", "detector", "resolver", "marketEligible", "availabilityStatus" }
     for _, key in ipairs(ordered) do
         local value = row[key]
         fields[#fields + 1] = jsonString(key) .. ":" .. (type(value) == "number" and jsonNumber(value) or jsonString(value))
@@ -350,6 +372,7 @@ local function rowJson(row)
     fields[#fields + 1] = jsonString("context") .. ":" .. jsonValue(row.context)
     fields[#fields + 1] = jsonString("priceAudit") .. ":" .. jsonValue(row.priceAudit)
     fields[#fields + 1] = jsonString("evaluator") .. ":" .. jsonValue(row.evaluator)
+    fields[#fields + 1] = jsonString("availability") .. ":" .. jsonValue(row.availability)
     if row.error then fields[#fields + 1] = jsonString("error") .. ":" .. jsonString(row.error) end
     return "{" .. table.concat(fields, ",") .. "}"
 end
@@ -380,6 +403,10 @@ for _, spec in ipairs(specs) do
         row.minDamage, row.maxDamage, row.maxRange = context.minDamage, context.maxDamage, context.maxRange
         row.conditionMax, row.capacity = context.conditionMax, context.capacity
         row.description = context.description
+        row.availability = MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.getAvailability
+            and MarketSense.ItemsRegistry.getAvailability(spec.fullType) or nil
+        row.marketEligible = row.availability and row.availability.obtainable == true or false
+        row.availabilityStatus = row.availability and row.availability.status or "uncertain"
         row.stock = details.stock
         row.hierarchy = hierarchy
         row.subcategory, row.leaf = subcategory, leaf
