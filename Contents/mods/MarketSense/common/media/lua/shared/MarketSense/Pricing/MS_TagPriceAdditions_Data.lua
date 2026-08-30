@@ -4,7 +4,6 @@
 return {
     tagAdditions = {
         -- Root categories
-        ["Misc"]           = 2,
         -- Tool subtypes
         -- Gardening subtypes
         ["GardeningSeed"]           = 8,

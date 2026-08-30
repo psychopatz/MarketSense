@@ -329,6 +329,26 @@ local function priceHeuristicSummary(details)
                 and heuristic.yieldOutputQuantity or 0))
     end
 
+    if model == "misc_v2_pending" then
+        local signals = heuristic.signals or {}
+        local signalText = signals[1] or "-"
+        if signals[2] then signalText = signalText .. "," .. tostring(signals[2]) end
+        local uses = heuristic.remainingUsesRatio
+        if uses == nil then uses = heuristic.maxUses end
+        return string.format(
+            "Pricing: %s | subtype=%s | signals=%s | uses=%s | weight=%s | yield=%s (%s outputs, qty=%s)",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "Misc"),
+            tostring(signalText),
+            tostring(uses ~= nil and uses or "-"),
+            tostring(heuristic.weight ~= nil and heuristic.weight or "-"),
+            tostring(heuristic.yieldStatus or "not_detected"),
+            tostring(heuristic.yieldOutputCount ~= nil
+                and heuristic.yieldOutputCount or 0),
+            tostring(heuristic.yieldOutputQuantity ~= nil
+                and heuristic.yieldOutputQuantity or 0))
+    end
+
     if model == "weapon_v2_pending" then
         local demand = heuristic.recipeDemand or {}
         return string.format(

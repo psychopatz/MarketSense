@@ -195,6 +195,13 @@ pending `resource_v2_pending` model, including material family/form,
 stackability, depletion/use state, and resolved package output quantities so
 multi-output resources can be calibrated as individualized child value rather
 than a single guessed bundle price.
+
+Misc rows are included in the same evidence views and the terminal's Misc
+status table. The old Misc root/subtype price additions and sandbox price
+option are removed while taxonomy and stock controls remain. Rows report the
+pending `misc_v2_pending` model, including subtype, verified capabilities and
+requirements, state/weight/use signals, and deterministic package output
+quantities for later utility calibration.
 GUI paths and scan options are saved to
 `tools/.config/inspector-settings.json`, with `--settings-config PATH` available
 for another location; the selected sandbox JSON path is saved there too. The GUI exposes equivalent cache controls and a Clear

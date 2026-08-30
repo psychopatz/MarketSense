@@ -1,8 +1,6 @@
 {
     "Sandbox_MarketSense.PriceGlobalValue": "Price Addition: Global",
     "Sandbox_MarketSense.PriceGlobalValue_tooltip": "Flat price addition applied to ALL items.",
-    "Sandbox_MarketSense.PriceMiscValue": "Price: Misc",
-    "Sandbox_MarketSense.PriceMiscValue_tooltip": "Flat price addition for Misc items.",
     "Sandbox_MarketSense.PriceMultiplier": "Price Multiplier: Global",
     "Sandbox_MarketSense.PriceMultiplier_tooltip": "Secondary multiplier applied AFTER additive values.",
     "Sandbox_MarketSense.PriceQualityLuxuryValue": "Price: Quality > Luxury",

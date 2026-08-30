@@ -656,6 +656,7 @@ def mock_definitions() -> list[ItemDefinition]:
         make("MiscFishing", {
             "itemType": "base:normal", "displayCategory": "Fishing",
             "tags": ["base:fishinghook"], "description": "a fishing hook",
+            "isFishingLure": True,
             "canSpawnAsLoot": True,
         }),
         make("MoveableShelf", {
@@ -1233,6 +1234,29 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         f"ore={resource_ore.get('price', '?')} nails={resource_nails.get('price', '?')} "
         f"model={resource_heuristic.get('model', '?')} form={resource_heuristic.get('materialForm', '?')} "
         f"yield={resource_heuristic.get('yieldOutputQuantity', '?')}",
+    )
+
+    misc_fishing = by_type.get("MarketSenseFixture.MiscFishing", {})
+    misc_memento = by_type.get("MarketSenseFixture.NamespacedMemento", {})
+    misc_heuristic = misc_fishing.get("priceHeuristic") or {}
+    misc_signals = misc_heuristic.get("signals") or []
+    misc_checks = (
+        misc_fishing.get("category") == "Misc"
+        and misc_fishing.get("primary") == "MiscFishing"
+        and misc_fishing.get("categoryPath") == "Misc > Fishing > Fishing"
+        and misc_fishing.get("price") == 2
+        and misc_heuristic.get("model") == "misc_v2_pending"
+        and misc_heuristic.get("status") == "pending"
+        and "fishing_lure" in misc_signals
+        and misc_memento.get("price") == 2
+        and (misc_memento.get("priceHeuristic") or {}).get("isMemento") is True
+    )
+    check(
+        "Misc pricing exposes capability and decorative-state evidence",
+        misc_checks,
+        f"fishing={misc_fishing.get('price', '?')} model={misc_heuristic.get('model', '?')} "
+        f"signals={','.join(str(signal) for signal in misc_signals)} "
+        f"memento={misc_memento.get('price', '?')}",
     )
 
     def classifier_source(item: str) -> str:

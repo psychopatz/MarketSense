@@ -90,6 +90,7 @@ def main() -> int:
     ).read_text(encoding="utf-8")
     assert "PriceResourceFuelValue" not in sandbox_options
     assert "PriceResourceMaterialValue" not in sandbox_options
+    assert "PriceMiscValue" not in sandbox_options
 
     with TemporaryDirectory(prefix="marketsense-tool-smoke-") as temp_dir:
         root = Path(temp_dir)

@@ -102,6 +102,13 @@ flat Resource fuel/material price additions are removed; taxonomy and stock
 controls remain. The neutral resource score is shown with these diagnostics
 until utility, quantity, processing, and weight anchors are calibrated.
 
+Misc pricing likewise enters `misc_v2_pending`. The old Misc root/subtype price
+additions and sandbox price option are removed; taxonomy and stock controls
+remain. Diagnostics expose subtype, verified capabilities and requirements,
+state/weight/use signals, and deterministic package output quantities so the
+fallback and decorative groups stay neutral until their player-utility anchors
+are calibrated.
+
 The Diagnostics tab shows a timestamped, bounded scan log: cache lookup,
 Workshop discovery, vanilla discovery, availability indexing, Lua evaluation,
 and cache-save phases are reported as they complete. The final diagnostic view

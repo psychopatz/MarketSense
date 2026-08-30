@@ -630,6 +630,95 @@ T.equal(staleResource.priceHeuristic.model, "resource_v2_pending",
 T.truthy(staleResource.price < 999,
     "cached legacy resource dollars are discarded")
 
+local miscContext = {
+    fullType = "Base.HarnessFishingBundle",
+    typeName = "HarnessFishingBundle",
+    displayCategory = "Fishing",
+    itemType = "base:normal",
+    displayName = "Harness fishing bundle",
+    description = "a bundle of fishing lures",
+    worldStaticModel = "HarnessFishingBundle",
+    weight = 1.5,
+    weightEmpty = 0.2,
+    canStack = "true",
+    stackCount = 2,
+    conditionMax = 100,
+    condition = 100,
+    conditionRatio = 1,
+    canSpawnAsLoot = true,
+    canBeForaged = false,
+    isCraftRecipeProduct = false,
+    isMoveable = false,
+    canStoreWater = false,
+    isFishingLure = true,
+    isDrainable = false,
+    isDrainableInstance = false,
+    isPackaged = true,
+    isPoison = false,
+    isDung = false,
+    openingRecipe = "OpenHarnessFishingBundle",
+    doubleClickRecipe = "",
+    replaceOnDeplete = "",
+    replaceOnUse = "",
+    isDisappearOnUse = false,
+    capabilities = {
+        available = false,
+        capabilities = {},
+        requirements = {},
+        evidence = {},
+        powerSource = "",
+    },
+}
+local miscDetails = {
+    category = "Misc",
+    primary = "MiscFishing",
+    tags = { "MiscFishing" },
+    expandedTags = { "Misc", "MiscFishing" },
+    classificationDetails = {
+        source = "misc_display_or_fishing_tag",
+        tag = "MiscFishing",
+    },
+    yieldResolution = {
+        status = "resolved",
+        recipe = "OpenHarnessFishingBundle",
+        outputs = {
+            { fullType = "Base.HarnessFishingLure", quantity = 6, resolution = "exact" },
+        },
+    },
+}
+local miscScore = MarketSense.Pricing.calculateRawScore(miscContext, miscDetails)
+T.equal(miscDetails.priceHeuristic.model, "misc_v2_pending",
+    "misc pricing reset is exposed")
+T.equal(miscDetails.priceHeuristic.status, "pending",
+    "misc pricing reset is marked pending")
+T.equal(miscScore, 2, "pending Misc pricing uses neutral fallback anchor")
+T.equal(miscDetails.priceHeuristic.subtype, "MiscFishing",
+    "misc heuristic exposes its subcategory")
+T.equal(miscDetails.priceHeuristic.signals[1], "fishing_lure",
+    "misc heuristic exposes direct utility signals")
+T.equal(miscDetails.priceHeuristic.unbundleCandidate, true,
+    "misc heuristic marks package candidates")
+T.equal(miscDetails.priceHeuristic.yieldOutputCount, 1,
+    "misc heuristic exposes deterministic child output count")
+T.equal(miscDetails.priceHeuristic.yieldOutputQuantity, 6,
+    "misc heuristic exposes deterministic child quantity")
+miscDetails.rawScore = miscScore
+T.equal(MarketSense.Pricing.applyBalances(miscContext, miscDetails), 2,
+    "pending Misc pricing ignores legacy flat additions")
+
+local staleMisc = MarketSense.Pricing.applyOverridesOnly(miscContext, {
+    fullType = miscContext.fullType,
+    category = "Misc",
+    primary = "MiscFishing",
+    tags = { "MiscFishing" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleMisc.priceHeuristic.model, "misc_v2_pending",
+    "cached legacy Misc score is rebuilt")
+T.truthy(staleMisc.price < 999,
+    "cached legacy Misc dollars are discarded")
+
 local toolContext = {
     fullType = "Base.HarnessBlowtorch",
     conditionMax = 100,

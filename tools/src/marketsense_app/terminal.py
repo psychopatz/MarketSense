@@ -339,6 +339,33 @@ def print_terminal(
             print(f"  ... {len(resource_rows) - top:,} more resource rows are in JSON/CSV output")
         print()
 
+    misc_rows = [
+        row for row in rows
+        if row.get("category") == "Misc"
+        and (row.get("priceHeuristic") or {}).get("model") == "misc_v2_pending"
+    ]
+    if misc_rows:
+        print("MISC PRICING STATUS")
+        print("  item | subtype | signals | uses | weight | yield | outputs | qty | status | price")
+        for row in sorted(misc_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            signals = heuristic.get("signals") or []
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{str(signals[0] if signals else '-'):<24} | "
+                f"{format_number(heuristic.get('remainingUsesRatio') if heuristic.get('remainingUsesRatio') is not None else heuristic.get('maxUses')):>5} | "
+                f"{format_number(heuristic.get('weight')):>6} | "
+                f"{str(heuristic.get('yieldStatus') or 'not_detected'):<12} | "
+                f"{format_number(heuristic.get('yieldOutputCount')):>7} | "
+                f"{format_number(heuristic.get('yieldOutputQuantity')):>5} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(misc_rows) > top:
+            print(f"  ... {len(misc_rows) - top:,} more Misc rows are in JSON/CSV output")
+        print()
+
     sandbox = summary.get("sandbox") or {}
     requested_sandbox = sandbox.get("overrides") or {}
     effective_sandbox = sandbox.get("requested") or {}

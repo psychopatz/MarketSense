@@ -748,16 +748,6 @@ option MarketSense.StockMedicalMult
     translation = MarketSense.StockMedicalMult,
 }
 
-option MarketSense.PriceMiscValue
-{
-    type = integer,
-    default = 17,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseMisc,
-    translation = MarketSense.PriceMiscValue,
-}
-
 option MarketSense.StockMiscMult
 {
     type = double,

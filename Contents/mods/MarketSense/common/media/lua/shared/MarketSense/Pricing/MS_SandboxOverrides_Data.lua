@@ -4,7 +4,6 @@
 
 return {
     ["PriceGlobalValue"] = 0.0,
-    ["PriceMiscValue"] = 17.0,
     ["PriceMultiplier"] = 1.0,
     ["PriceQualityLuxuryValue"] = 40.0,
     ["PriceQualityValue"] = 0.0,

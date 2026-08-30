@@ -1,6 +1,7 @@
 require "MarketSense/MS_Stock"
 require "MarketSense/Pricing/MS_LiquidPricing"
 require "MarketSense/Pricing/MS_ResourcePricing"
+require "MarketSense/Pricing/MS_MiscPricing"
 require "MarketSense/Pricing/MS_FoodPricing"
 require "MarketSense/Pricing/MS_YieldResolver"
 require "MarketSense/Pricing/MS_ContainerPricing"
@@ -20,6 +21,7 @@ local DB       = MarketSense.HeuristicsDB
 local Config   = MarketSense.ItemRuntimeConfig
 local LiquidPricing = MarketSense.LiquidPricing
 local ResourcePricing = MarketSense.ResourcePricing
+local MiscPricing = MarketSense.MiscPricing
 local FoodPricing = MarketSense.FoodPricing
 local YieldResolver = MarketSense.YieldResolver
 local ContainerPricing = MarketSense.ContainerPricing
@@ -292,6 +294,13 @@ function Pricing.calculateRawScore(ctx, details)
         details.priceHeuristic = ResourcePricing.buildPendingHeuristic(ctx, details)
         score = base
 
+    elseif category == "Misc" then
+        -- Misc is a heterogeneous fallback. Keep verified capability, state,
+        -- and package evidence visible while preventing the old flat subtype
+        -- bonuses from pricing unknown or decorative items as useful goods.
+        details.priceHeuristic = MiscPricing.buildPendingHeuristic(ctx, details)
+        score = base
+
     else
         score = base - weightPenalty
     end
@@ -401,6 +410,9 @@ function Pricing.applyBalances(ctx, details, audit)
                 canStack = details.priceHeuristic.canStack,
                 stackCount = details.priceHeuristic.stackCount,
                 unbundleCandidate = details.priceHeuristic.unbundleCandidate,
+                signals = details.priceHeuristic.signals,
+                isMemento = details.priceHeuristic.isMemento,
+                isJunk = details.priceHeuristic.isJunk,
             })
     end
 
@@ -416,7 +428,8 @@ function Pricing.applyBalances(ctx, details, audit)
         and details.category ~= "Medical"
         and details.category ~= "Building"
         and details.category ~= "Liquid"
-        and details.category ~= "Resource" then
+        and details.category ~= "Resource"
+        and details.category ~= "Misc" then
         local tags = { details.primary }
         for _, t in ipairs(details.tags or {}) do
             if string.find(t, ".", 1, true) then
@@ -440,7 +453,8 @@ function Pricing.applyBalances(ctx, details, audit)
         and details.category ~= "Tool"
         and details.category ~= "Medical"
         and details.category ~= "Building"
-        and details.category ~= "Resource" then
+        and details.category ~= "Resource"
+        and details.category ~= "Misc" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or details.tags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -499,6 +513,11 @@ function Pricing.applyBalances(ctx, details, audit)
         addAudit(audit, "resource v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Resource valuation is neutral pending calibrated utility, quantity, and processing anchors.",
+        })
+    elseif details.category == "Misc" then
+        addAudit(audit, "misc v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Misc valuation is neutral pending calibrated capability and fallback anchors.",
         })
     else
         addAudit(audit, "generic balances", working, working, {
@@ -623,7 +642,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         or isClothingCategory(details.category) or isContainerCategory(details.category)
         or details.category == "Tool" or details.category == "Electronics"
         or details.category == "Medical" or details.category == "Building"
-        or details.category == "Liquid" or details.category == "Resource" then
+        or details.category == "Liquid" or details.category == "Resource"
+        or details.category == "Misc" then
         -- A cached pre-v2 detail may still contain a retired category score.
         -- Rebuild the neutral pending score after tag overrides so the cache
         -- cannot preserve legacy category dollars across a catalog refresh.
@@ -648,7 +668,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and details.category ~= "Medical"
         and details.category ~= "Building"
         and details.category ~= "Liquid"
-        and details.category ~= "Resource" then
+        and details.category ~= "Resource"
+        and details.category ~= "Misc" then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -670,7 +691,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and details.category ~= "Electronics"
         and details.category ~= "Medical"
         and details.category ~= "Building"
-        and details.category ~= "Resource" then
+        and details.category ~= "Resource"
+        and details.category ~= "Misc" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -724,6 +746,11 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         addAudit(audit, "resource v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Resource valuation is neutral pending calibrated utility, quantity, and processing anchors.",
+        })
+    elseif details.category == "Misc" then
+        addAudit(audit, "misc v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Misc valuation is neutral pending calibrated capability and fallback anchors.",
         })
     else
         addAudit(audit, "generic balances", working, working, {

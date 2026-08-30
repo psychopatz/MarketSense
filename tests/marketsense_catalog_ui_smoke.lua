@@ -147,6 +147,22 @@ local resourceHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(resourceHeuristicText,
     "Pricing: pending | subtype=MaterialMetalworking | family=Metalworking | form=ore | stack=true | yield=resolved (1 outputs, qty=4)",
     "catalog displays pending resource yield evidence")
+local miscHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "misc_v2_pending",
+        status = "pending",
+        subtype = "MiscFishing",
+        signals = { "fishing_lure", "recipe_transform" },
+        maxUses = 6,
+        weight = 1.5,
+        yieldStatus = "resolved",
+        yieldOutputCount = 1,
+        yieldOutputQuantity = 6,
+    },
+})
+T.equal(miscHeuristicText,
+    "Pricing: pending | subtype=MiscFishing | signals=fishing_lure,recipe_transform | uses=6 | weight=1.5 | yield=resolved (1 outputs, qty=6)",
+    "catalog displays pending Misc utility and yield evidence")
 local clothingHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
         model = "clothing_v2_pending",

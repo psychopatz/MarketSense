@@ -28,6 +28,7 @@ local defaults = {
     foodPricing = {},
     liquidPricing = {},
     resourcePricing = {},
+    miscPricing = {},
     electronicsPricing = {},
     medicalPricing = {},
     buildingPricing = {},
@@ -90,6 +91,8 @@ function MarketSense.Config.reloadExported()
             or runtime.liquidPricing or {}
         runtime.resourcePricing = exported.resource_pricing
             or runtime.resourcePricing or {}
+        runtime.miscPricing = exported.misc_pricing
+            or runtime.miscPricing or {}
         runtime.electronicsPricing = exported.electronics_pricing
             or runtime.electronicsPricing or {}
         runtime.medicalPricing = exported.medical_pricing
