@@ -317,6 +317,28 @@ def print_terminal(
             print(f"  ... {len(liquid_rows) - top:,} more liquid rows are in JSON/CSV output")
         print()
 
+    resource_rows = [row for row in rows if row.get("category") == "Resource"]
+    if resource_rows:
+        print("RESOURCE PRICING STATUS")
+        print("  item | subtype | family | form | stack | yield | outputs | qty | status | price")
+        for row in sorted(resource_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{str(heuristic.get('materialFamily') or '-'):<14} | "
+                f"{str(heuristic.get('materialForm') or '-'):<10} | "
+                f"{str(heuristic.get('canStack') or '-'):<7} | "
+                f"{str(heuristic.get('yieldStatus') or 'not_detected'):<12} | "
+                f"{format_number(heuristic.get('yieldOutputCount')):>7} | "
+                f"{format_number(heuristic.get('yieldOutputQuantity')):>5} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(resource_rows) > top:
+            print(f"  ... {len(resource_rows) - top:,} more resource rows are in JSON/CSV output")
+        print()
+
     sandbox = summary.get("sandbox") or {}
     requested_sandbox = sandbox.get("overrides") or {}
     effective_sandbox = sandbox.get("requested") or {}

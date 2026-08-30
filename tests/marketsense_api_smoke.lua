@@ -26,6 +26,7 @@ function scriptItem:getLevelSkillTrained() return 3 end
 local inventoryItem = {}
 function inventoryItem:getDescription() return "Canned preserved bean meal" end
 function inventoryItem:getActualWeight() return 0.5 end
+function inventoryItem:getCount() return 6 end
 function inventoryItem:getCalories() return 180 end
 function inventoryItem:getConditionMax() return 99 end
 function inventoryItem:getAge() return 30 end
@@ -159,6 +160,7 @@ T.equal(context.itemType, "Food", "PZ Item.getItemType is read")
 T.equal(context.lvlSkillTrained, 3, "PZ Item.getLevelSkillTrained is read")
 T.equal(context.description, "Canned preserved bean meal", "inventory description is read")
 T.equal(context.weight, 0.5, "live weight overrides script weight")
+T.equal(context.stackCount, 6, "live inventory stack count is read")
 T.equal(context.conditionMax, 99, "live condition overrides script condition")
 T.equal(context.hungerChange, -0.2, "signed hunger change is preserved")
 T.equal(context.foodAge, 30, "live food age is read")
@@ -550,6 +552,83 @@ T.equal(staleBuilding.priceHeuristic.model, "building_v2_pending",
     "cached legacy building score is rebuilt")
 T.truthy(staleBuilding.price < 999,
     "cached legacy building dollars are discarded")
+
+local resourceContext = {
+    fullType = "Base.HarnessMetalOre",
+    typeName = "HarnessMetalOre",
+    displayCategory = "Material",
+    itemType = "base:normal",
+    displayName = "Harness metal ore",
+    description = "a bundle of iron ore",
+    worldStaticModel = "HarnessMetalOre",
+    weight = 2.0,
+    canStack = "true",
+    stackCount = 6,
+    conditionMax = 100,
+    condition = 100,
+    conditionRatio = 1,
+    isCraftRecipeProduct = false,
+    canSpawnAsLoot = true,
+    canBeForaged = false,
+    isMoveable = false,
+    isDrainable = false,
+    isDrainableInstance = false,
+    useDelta = 0,
+    isPoison = false,
+    isDung = false,
+    openingRecipe = "OpenHarnessOreBundle",
+    doubleClickRecipe = "",
+    replaceOnDeplete = "",
+}
+local resourceDetails = {
+    category = "Resource",
+    primary = "MaterialMetalworking",
+    tags = { "MaterialMetalworking" },
+    expandedTags = { "Resource", "Material", "MaterialMetalworking" },
+    classificationDetails = {
+        source = "material_metalworking_evidence",
+        tag = "MaterialMetalworking",
+    },
+    yieldResolution = {
+        status = "resolved",
+        recipe = "OpenHarnessOreBundle",
+        outputs = {
+            { fullType = "Base.HarnessIronChunk", quantity = 4, resolution = "exact" },
+        },
+    },
+}
+local resourceScore = MarketSense.Pricing.calculateRawScore(resourceContext, resourceDetails)
+T.equal(resourceDetails.priceHeuristic.model, "resource_v2_pending",
+    "resource pricing reset is exposed")
+T.equal(resourceDetails.priceHeuristic.status, "pending",
+    "resource pricing reset is marked pending")
+T.equal(resourceScore, 5, "pending resource pricing uses neutral anchor")
+T.equal(resourceDetails.priceHeuristic.materialFamily, "Metalworking",
+    "resource heuristic exposes material family")
+T.equal(resourceDetails.priceHeuristic.materialForm, "bundle",
+    "resource heuristic exposes package/material form")
+T.equal(resourceDetails.priceHeuristic.unbundleCandidate, true,
+    "resource heuristic marks package candidates")
+T.equal(resourceDetails.priceHeuristic.yieldOutputCount, 1,
+    "resource heuristic exposes deterministic child output count")
+T.equal(resourceDetails.priceHeuristic.yieldOutputQuantity, 4,
+    "resource heuristic exposes deterministic child quantity")
+resourceDetails.rawScore = resourceScore
+T.equal(MarketSense.Pricing.applyBalances(resourceContext, resourceDetails), 5,
+    "pending resource pricing ignores legacy flat additions")
+
+local staleResource = MarketSense.Pricing.applyOverridesOnly(resourceContext, {
+    fullType = resourceContext.fullType,
+    category = "Resource",
+    primary = "MaterialMetalworking",
+    tags = { "MaterialMetalworking" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleResource.priceHeuristic.model, "resource_v2_pending",
+    "cached legacy resource score is rebuilt")
+T.truthy(staleResource.price < 999,
+    "cached legacy resource dollars are discarded")
 
 local toolContext = {
     fullType = "Base.HarnessBlowtorch",

@@ -84,6 +84,12 @@ def main() -> int:
     )
     assert not (liquid_pricing_root / "MS_FluidPricing.lua").exists()
     assert not (liquid_pricing_root / "MS_LiquidPricing_Data.lua").exists()
+    sandbox_options = (
+        ROOT / "Contents" / "mods" / "MarketSense" / "42.20" / "media"
+        / "sandbox-options.txt"
+    ).read_text(encoding="utf-8")
+    assert "PriceResourceFuelValue" not in sandbox_options
+    assert "PriceResourceMaterialValue" not in sandbox_options
 
     with TemporaryDirectory(prefix="marketsense-tool-smoke-") as temp_dir:
         root = Path(temp_dir)

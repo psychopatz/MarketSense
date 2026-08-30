@@ -95,6 +95,13 @@ amount, capacity, primary amount, fill ratio, mixture state, fluid identity and
 categories, player-effect evidence, vessel burden, and deterministic yield
 evidence.
 
+Resource pricing likewise enters `resource_v2_pending`. It records material
+family/form, classifier evidence, weight and stackability, condition and
+depletion state, direct-use signals, and deterministic package outputs. The old
+flat Resource fuel/material price additions are removed; taxonomy and stock
+controls remain. The neutral resource score is shown with these diagnostics
+until utility, quantity, processing, and weight anchors are calibrated.
+
 The Diagnostics tab shows a timestamped, bounded scan log: cache lookup,
 Workshop discovery, vanilla discovery, availability indexing, Lua evaluation,
 and cache-save phases are reported as they complete. The final diagnostic view

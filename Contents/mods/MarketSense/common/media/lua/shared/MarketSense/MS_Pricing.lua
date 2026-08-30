@@ -1,5 +1,6 @@
 require "MarketSense/MS_Stock"
 require "MarketSense/Pricing/MS_LiquidPricing"
+require "MarketSense/Pricing/MS_ResourcePricing"
 require "MarketSense/Pricing/MS_FoodPricing"
 require "MarketSense/Pricing/MS_YieldResolver"
 require "MarketSense/Pricing/MS_ContainerPricing"
@@ -18,6 +19,7 @@ local TagUtils = MarketSense.TagUtils
 local DB       = MarketSense.HeuristicsDB
 local Config   = MarketSense.ItemRuntimeConfig
 local LiquidPricing = MarketSense.LiquidPricing
+local ResourcePricing = MarketSense.ResourcePricing
 local FoodPricing = MarketSense.FoodPricing
 local YieldResolver = MarketSense.YieldResolver
 local ContainerPricing = MarketSense.ContainerPricing
@@ -28,7 +30,7 @@ local ToolPricing = MarketSense.ToolPricing
 
 local CATEGORY_BASE_SCORES = {
     Medical = 18, Weapon = 18, Tool = 14,
-    Container = 14, Clothing = 4, Electronics = 14, Resource = 7,
+    Container = 14, Clothing = 4, Electronics = 14, Resource = 5,
     Building = 5, Liquid = 5, Literature = 5, Misc = 2,
 }
 
@@ -57,10 +59,6 @@ local function applyAdjustment(value, entry, label, audit)
         addAudit(audit, label .. " min", before, working)
     end
     return working
-end
-
-local function hasTag(details, tag)
-    return TagUtils.hasTag(details.expandedTags or details.tags or {}, tag)
 end
 
 local function isFoodCategory(category)
@@ -288,12 +286,11 @@ function Pricing.calculateRawScore(ctx, details)
         score = base
 
     elseif category == "Resource" then
-        score = base - weightPenalty
-        if hasTag(details, "ResourceFuel")          then score = score + (cc.fuel_container_bonus or 28) end
-        if hasTag(details, "MaterialMetalworking")  then score = score + (cc.metal_family_generic_bonus or 4) end
-        if hasTag(details, "MaterialHardware")      then score = score + (cc.hardware_bonus or 2) end
-        if hasTag(details, "MaterialWood")          then score = score + 8 end
-        if hasTag(details, "MaterialChemical")      then score = score + 18 end
+        -- The old resource score mixed a weight penalty with flat family and
+        -- fuel dollars. Keep material, form, quantity, and processing evidence
+        -- visible while the delivered-utility model is calibrated.
+        details.priceHeuristic = ResourcePricing.buildPendingHeuristic(ctx, details)
+        score = base
 
     else
         score = base - weightPenalty
@@ -399,6 +396,11 @@ function Pricing.applyBalances(ctx, details, audit)
                 worldObjectClass = details.priceHeuristic.worldObjectClass,
                 worldContainerCapacity = details.priceHeuristic.worldContainerCapacity,
                 worldSurface = details.priceHeuristic.worldSurface,
+                materialFamily = details.priceHeuristic.materialFamily,
+                materialForm = details.priceHeuristic.materialForm,
+                canStack = details.priceHeuristic.canStack,
+                stackCount = details.priceHeuristic.stackCount,
+                unbundleCandidate = details.priceHeuristic.unbundleCandidate,
             })
     end
 
@@ -413,7 +415,8 @@ function Pricing.applyBalances(ctx, details, audit)
         and details.category ~= "Electronics"
         and details.category ~= "Medical"
         and details.category ~= "Building"
-        and details.category ~= "Liquid" then
+        and details.category ~= "Liquid"
+        and details.category ~= "Resource" then
         local tags = { details.primary }
         for _, t in ipairs(details.tags or {}) do
             if string.find(t, ".", 1, true) then
@@ -436,7 +439,8 @@ function Pricing.applyBalances(ctx, details, audit)
         and not isContainerCategory(details.category)
         and details.category ~= "Tool"
         and details.category ~= "Medical"
-        and details.category ~= "Building" then
+        and details.category ~= "Building"
+        and details.category ~= "Resource" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or details.tags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -490,6 +494,11 @@ function Pricing.applyBalances(ctx, details, audit)
         addAudit(audit, "liquid v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Liquid valuation is neutral pending calibrated utility anchors.",
+        })
+    elseif details.category == "Resource" then
+        addAudit(audit, "resource v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Resource valuation is neutral pending calibrated utility, quantity, and processing anchors.",
         })
     else
         addAudit(audit, "generic balances", working, working, {
@@ -614,7 +623,7 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         or isClothingCategory(details.category) or isContainerCategory(details.category)
         or details.category == "Tool" or details.category == "Electronics"
         or details.category == "Medical" or details.category == "Building"
-        or details.category == "Liquid" then
+        or details.category == "Liquid" or details.category == "Resource" then
         -- A cached pre-v2 detail may still contain a retired category score.
         -- Rebuild the neutral pending score after tag overrides so the cache
         -- cannot preserve legacy category dollars across a catalog refresh.
@@ -638,7 +647,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and details.category ~= "Electronics"
         and details.category ~= "Medical"
         and details.category ~= "Building"
-        and details.category ~= "Liquid" then
+        and details.category ~= "Liquid"
+        and details.category ~= "Resource" then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -659,7 +669,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and details.category ~= "Tool"
         and details.category ~= "Electronics"
         and details.category ~= "Medical"
-        and details.category ~= "Building" then
+        and details.category ~= "Building"
+        and details.category ~= "Resource" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -708,6 +719,11 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         addAudit(audit, "liquid v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Liquid valuation is neutral pending calibrated utility anchors.",
+        })
+    elseif details.category == "Resource" then
+        addAudit(audit, "resource v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Resource valuation is neutral pending calibrated utility, quantity, and processing anchors.",
         })
     else
         addAudit(audit, "generic balances", working, working, {

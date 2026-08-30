@@ -4,15 +4,8 @@
 return {
     tagAdditions = {
         -- Root categories
-        ["Resource"]       = 8,
         ["Misc"]           = 2,
         -- Tool subtypes
-        -- Resource subtypes
-        ["ResourceFuel"]            = 50,
-        ["MaterialMetalworking"]    = 12,
-        ["MaterialTailoring"]       = 8,
-        ["MaterialChemical"]        = 18,
-        ["MaterialMaintenance"]     = 10,
         -- Gardening subtypes
         ["GardeningSeed"]           = 8,
         ["GardeningSeedPacket"]     = 14,

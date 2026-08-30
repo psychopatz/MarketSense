@@ -131,6 +131,22 @@ local liquidHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(liquidHeuristicText,
     "Pricing: pending | subtype=LiquidWater | fluid=Water | amount=2 | primary=2 | ratio=1.00 | mixture=no | yield=not_detected",
     "catalog displays pending liquid heuristic evidence")
+local resourceHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "resource_v2_pending",
+        status = "pending",
+        subtype = "MaterialMetalworking",
+        materialFamily = "Metalworking",
+        materialForm = "ore",
+        canStack = "true",
+        yieldStatus = "resolved",
+        yieldOutputCount = 1,
+        yieldOutputQuantity = 4,
+    },
+})
+T.equal(resourceHeuristicText,
+    "Pricing: pending | subtype=MaterialMetalworking | family=Metalworking | form=ore | stack=true | yield=resolved (1 outputs, qty=4)",
+    "catalog displays pending resource yield evidence")
 local clothingHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
         model = "clothing_v2_pending",

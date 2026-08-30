@@ -264,6 +264,11 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local maxUses = nil
     local currentUsesFloat = nil
     local weightEmpty = nil
+    local stackCount = nil
+    if hasRuntimeState then
+        stackCount = readNumber(instance, "getCount")
+        if stackCount ~= nil then stackCount = math.max(0, stackCount) end
+    end
     if isDrainableInstance then
         maxUses = readNumber(instance, "getMaxUses")
         currentUsesFloat = readNumber(instance, "getCurrentUsesFloat")
@@ -469,6 +474,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         currentUsesFloat = currentUsesFloat,
         remainingUsesRatio = currentUsesFloat,
         weightEmpty = weightEmpty,
+        stackCount = stackCount,
         capacity = math.max(0, preferNumber(instance, scriptItem, "getCapacity", 0)),
         weightReduction = math.max(0, preferNumber(instance, scriptItem, "getWeightReduction", 0)),
         lightStrength = lightStrength,

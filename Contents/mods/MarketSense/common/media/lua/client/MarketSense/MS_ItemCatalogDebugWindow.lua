@@ -310,6 +310,25 @@ local function priceHeuristicSummary(details)
             tostring(heuristic.yieldStatus or "not_detected"))
     end
 
+    if model == "resource_v2_pending" then
+        local yield = tostring(heuristic.yieldStatus or "not_detected")
+        local outputs = tostring(heuristic.yieldOutputCount ~= nil
+            and heuristic.yieldOutputCount or 0)
+        local stack = heuristic.canStack
+        if stack == nil or stack == "" then stack = "-" end
+        return string.format(
+            "Pricing: %s | subtype=%s | family=%s | form=%s | stack=%s | yield=%s (%s outputs, qty=%s)",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "ResourceUnknown"),
+            tostring(heuristic.materialFamily or "-"),
+            tostring(heuristic.materialForm or "unknown"),
+            tostring(stack),
+            yield,
+            outputs,
+            tostring(heuristic.yieldOutputQuantity ~= nil
+                and heuristic.yieldOutputQuantity or 0))
+    end
+
     if model == "weapon_v2_pending" then
         local demand = heuristic.recipeDemand or {}
         return string.format(

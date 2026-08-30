@@ -187,6 +187,14 @@ because they could not account for player utility, harmful state, mixture
 uncertainty, vessel burden, or deterministic package yields. Liquid rows now
 report the pending `liquid_v2_pending` evidence model until those anchors are
 calibrated.
+
+Resource rows are included in the same evidence views and the terminal's
+resource status table. The old flat Resource fuel/material price additions are
+removed while Resource taxonomy and stock controls remain. Rows report the
+pending `resource_v2_pending` model, including material family/form,
+stackability, depletion/use state, and resolved package output quantities so
+multi-output resources can be calibrated as individualized child value rather
+than a single guessed bundle price.
 GUI paths and scan options are saved to
 `tools/.config/inspector-settings.json`, with `--settings-config PATH` available
 for another location; the selected sandbox JSON path is saved there too. The GUI exposes equivalent cache controls and a Clear

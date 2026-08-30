@@ -704,6 +704,24 @@ def mock_yield_recipes() -> dict[str, list[dict[str, Any]]]:
             "nameHeuristic": True,
             "candidateMethod": "explicit_property",
         }],
+        "MarketSenseFixture.UnknownBundle": [{
+            "recipe": "OpenResourceBundle",
+            "source": "offline_recipe_graph",
+            "sourceFullType": "MarketSenseFixture.UnknownBundle",
+            "inputAmount": 1.0,
+            "inputCount": 1,
+            "outputs": [{
+                "fullType": "MarketSenseFixture.WoodMaterial",
+                "quantity": 3,
+                "chance": 1.0,
+                "inputFlags": [],
+                "outputFlags": [],
+                "inheritFoodAge": False,
+            }],
+            "resolution": "exact",
+            "nameHeuristic": True,
+            "candidateMethod": "explicit_property",
+        }],
     }
 
 
@@ -1188,6 +1206,33 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         f"amount={water_context.get('fluidAmount', '?')} one_liter={water.get('price', '?')} "
         f"two_liter={water_two_liter.get('price', '?')} can={water_in_can.get('price', '?')} "
         f"empty={empty_fluid.get('primary', '?')}",
+    )
+
+    resource_ore = by_type.get("MarketSenseFixture.MetalOre", {})
+    resource_nails = by_type.get("MarketSenseFixture.HardwareNails", {})
+    resource_bundle = by_type.get("MarketSenseFixture.UnknownBundle", {})
+    resource_heuristic = resource_bundle.get("priceHeuristic") or {}
+    resource_resolution = resource_bundle.get("yieldResolution") or {}
+    resource_checks = (
+        resource_ore.get("category") == "Resource"
+        and resource_nails.get("category") == "Resource"
+        and resource_ore.get("price") == 5
+        and resource_nails.get("price") == 5
+        and resource_heuristic.get("model") == "resource_v2_pending"
+        and resource_heuristic.get("status") == "pending"
+        and resource_heuristic.get("materialFamily") == "Bundled"
+        and resource_heuristic.get("materialForm") == "bundle"
+        and resource_heuristic.get("unbundleCandidate") is True
+        and resource_resolution.get("status") == "resolved"
+        and resource_heuristic.get("yieldOutputCount") == 1
+        and resource_heuristic.get("yieldOutputQuantity") == 3
+    )
+    check(
+        "resource pricing exposes material and unbundle evidence",
+        resource_checks,
+        f"ore={resource_ore.get('price', '?')} nails={resource_nails.get('price', '?')} "
+        f"model={resource_heuristic.get('model', '?')} form={resource_heuristic.get('materialForm', '?')} "
+        f"yield={resource_heuristic.get('yieldOutputQuantity', '?')}",
     )
 
     def classifier_source(item: str) -> str:
