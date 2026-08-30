@@ -88,6 +88,34 @@ local missingYieldText = Window.BuildYieldSummary({
 })
 T.equal(missingYieldText, "Yield: NOT_DETECTED (4326 recipes, 1875 sources indexed)",
     "catalog displays missing-yield index diagnostics")
+local literatureHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "literature_v2_pending",
+        status = "pending",
+        subtype = "Literature.SkillBook",
+        skill = "Carpentry",
+        skillLevel = 3,
+        learnedRecipeCount = 2,
+        readType = "normal",
+    },
+})
+T.equal(literatureHeuristicText,
+    "Pricing: pending | subtype=Literature.SkillBook | skill=Carpentry | level=3 | recipes=2 | read=normal",
+    "catalog displays pending literature heuristic metadata")
+local clothingHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "clothing_v2_pending",
+        status = "pending",
+        subtype = "ClothingOuterwear",
+        bodyLocationToken = "jacket",
+        biteDefense = 10,
+        scratchDefense = 20,
+        bulletDefense = 0,
+    },
+})
+T.equal(clothingHeuristicText,
+    "Pricing: pending | subtype=ClothingOuterwear | slot=jacket | bite=10 | scratch=20 | bullet=0",
+    "catalog displays pending clothing heuristic evidence")
 T.equal(PsychopatzCore.DebugHub.testTool.id, "marketsense.itemCatalog",
     "catalog debug tool registration")
 local generatedWindow = {

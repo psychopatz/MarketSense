@@ -10,10 +10,8 @@ return {
         ["Medical"]        = 40,
         ["Tool"]           = 25,
         ["Container"]      = 30,
-        ["Clothing"]       = 10,
         ["Electronics"]    = 20,
         ["Resource"]       = 8,
-        ["Literature"]     = 50,
         ["Building"]       = 14,
         ["Misc"]           = 2,
         -- Tool subtypes
@@ -31,18 +29,6 @@ return {
         ["ContainerAmmo"]           = 15,
         ["ContainerBox"]            = 6,
         ["ContainerLiquid"]         = 10,
-        -- Clothing subtypes
-        ["ProtectiveGear"]          = 25,
-        ["ClothingOuterwear"]       = 12,
-        ["ClothingTop"]             = 6,
-        ["ClothingBottom"]          = 6,
-        ["ClothingFullBody"]        = 14,
-        ["ClothingHead"]            = 8,
-        ["ClothingHands"]           = 8,
-        ["ClothingFootwear"]        = 8,
-        ["AccessoryJewelry"]        = 20,
-        ["AccessoryNeck"]           = 7,
-        ["AccessoryArms"]           = 5,
         -- Electronics subtypes
         ["ElectronicsGenerator"]    = 240,
         ["ElectronicsBattery"]      = 10,
@@ -56,11 +42,6 @@ return {
         ["MaterialTailoring"]       = 8,
         ["MaterialChemical"]        = 18,
         ["MaterialMaintenance"]     = 10,
-        -- Literature subtypes
-        ["SkillBook"]               = 468,
-        ["LiteratureRecipe"]        = 348,
-        ["LiteratureMagazine"]      = 5,
-        ["LiteratureOrJunk"]        = -10,
         -- Gardening subtypes
         ["GardeningSeed"]           = 8,
         ["GardeningSeedPacket"]     = 14,

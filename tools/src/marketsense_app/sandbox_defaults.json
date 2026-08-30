@@ -3,11 +3,6 @@
   "gameVersion": "42.20",
   "purpose": "Recommended MarketSense sandbox values used by the offline harness. Live sandbox-options.txt remains authoritative for Project Zomboid; entries missing there are shown as Python-only recommendations and are not silently treated as live declarations.",
   "recommendations": [
-    {"path": "Literature.Book", "price": 12, "stock": 1.0, "reason": "Repair the negative generated book addition."},
-    {"path": "Literature.Cards", "price": 6, "stock": 1.0, "reason": "Repair the negative generated card addition."},
-    {"path": "Literature.Media", "price": 7, "stock": 1.0, "reason": "Matches the current Literature.Media pricing definition."},
-    {"path": "Clothing.Accessory.Wrist", "price": 5, "stock": 1.0, "reason": "Give wrist accessories a usable category baseline."},
-
     {"path": "Building.Fixture.Lighting", "price": 6, "stock": 1.0, "reason": "Moveable and fixture lighting."},
     {"path": "Building.Furniture.Counter", "price": 10, "stock": 1.0, "reason": "Counters and work surfaces."},
     {"path": "Building.Furniture.Decor", "price": 5, "stock": 1.0, "reason": "Decorative furniture."},
@@ -141,26 +136,7 @@
     {"path": "Beverage.Milk", "price": 5, "stock": 1.0, "reason": "Milk."},
     {"path": "Beverage.Juice", "price": 4, "stock": 1.0, "reason": "Juice."},
 
-    {"path": "Clothing.Footwear", "price": 8, "stock": 1.0, "reason": "Footwear."},
-    {"path": "Clothing.FullBody", "price": 14, "stock": 1.0, "reason": "Full-body clothing."},
-    {"path": "Clothing.Head", "price": 8, "stock": 1.0, "reason": "Headwear."},
-    {"path": "Clothing.Outerwear", "price": 12, "stock": 1.0, "reason": "Outerwear."},
-    {"path": "Clothing.Socks", "price": 5, "stock": 1.0, "reason": "Socks."},
-    {"path": "Clothing.Top", "price": 6, "stock": 1.0, "reason": "Tops."},
-    {"path": "Clothing.Underwear", "price": 6, "stock": 1.0, "reason": "Underwear."},
 
-    {"path": "Literature.Adult", "price": 6, "stock": 1.0, "reason": "Adult literature."},
-    {"path": "Literature.Brochure", "price": 2, "stock": 1.0, "reason": "Brochures."},
-    {"path": "Literature.Comic", "price": 5, "stock": 1.0, "reason": "Comics."},
-    {"path": "Literature.Consumable", "price": 3, "stock": 1.0, "reason": "Consumable reading material."},
-    {"path": "Literature.FancyBook", "price": 10, "stock": 1.0, "reason": "Fancy and hardcover books."},
-    {"path": "Literature.Flier", "price": 2, "stock": 1.0, "reason": "Fliers."},
-    {"path": "Literature.Magazine", "price": 5, "stock": 1.0, "reason": "Magazines."},
-    {"path": "Literature.Newspaper", "price": 2, "stock": 1.0, "reason": "Newspapers."},
-    {"path": "Literature.Photo", "price": 4, "stock": 1.0, "reason": "Photos and photo-like media."},
-    {"path": "Literature.PictureBook", "price": 6, "stock": 1.0, "reason": "Picture books."},
-    {"path": "Literature.RpgManual", "price": 10, "stock": 1.0, "reason": "RPG manuals."},
-    {"path": "Literature.Softcover", "price": 6, "stock": 1.0, "reason": "Softcover books."},
     {"path": "FirstAid", "price": 8, "stock": 1.0, "reason": "First-aid supplies."},
     {"path": "Bandage", "price": 5, "stock": 1.0, "reason": "Bandages."}
   ]

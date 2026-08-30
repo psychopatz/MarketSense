@@ -535,9 +535,8 @@ def sandbox_definition_audit(
         )
 
     # The generated pricing table is the current category-definition source
-    # for the live sandbox declarations.  A conflict here catches cases such
-    # as Literature.Media being -258 in the sandbox section but 7 in the
-    # corresponding category addition.
+    # for the live sandbox declarations. A conflict here catches stale
+    # category additions that disagree with their declared sandbox value.
     for key, tag_value in sorted(tag_values.items()):
         sandbox_value = pricing_sandbox.get(key)
         if sandbox_value is not None and not _same_number(sandbox_value, tag_value):

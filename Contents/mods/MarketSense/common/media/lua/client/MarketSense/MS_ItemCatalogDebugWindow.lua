@@ -273,6 +273,44 @@ local function yieldSummary(details)
         status ~= "" and status or "not detected")
 end
 
+local function priceHeuristicSummary(details)
+    local heuristic = details and details.priceHeuristic
+    if type(heuristic) ~= "table" then return nil end
+
+    local model = tostring(heuristic.model or "")
+    if model == "literature_v2_pending" then
+        return string.format(
+            "Pricing: %s | subtype=%s | skill=%s | level=%s | recipes=%s | read=%s",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "Literature"),
+            tostring(heuristic.skill or "-"),
+            tostring(heuristic.skillLevel ~= nil and heuristic.skillLevel or "-"),
+            tostring(heuristic.learnedRecipeCount ~= nil
+                and heuristic.learnedRecipeCount or "-"),
+            tostring(heuristic.readType or "-"))
+    end
+
+    if model == "weapon_v2_pending" then
+        return string.format("Pricing: %s | model=%s | class=%s | role=%s",
+            tostring(heuristic.status or "pending"), model,
+            tostring(heuristic.mechanicalClass or "-"),
+            tostring(heuristic.role or "-"))
+    end
+
+    if model == "clothing_v2_pending" then
+        return string.format(
+            "Pricing: %s | subtype=%s | slot=%s | bite=%s | scratch=%s | bullet=%s",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "Clothing"),
+            tostring(heuristic.bodyLocationToken or heuristic.bodyLocation or "-"),
+            tostring(heuristic.biteDefense ~= nil and heuristic.biteDefense or "-"),
+            tostring(heuristic.scratchDefense ~= nil and heuristic.scratchDefense or "-"),
+            tostring(heuristic.bulletDefense ~= nil and heuristic.bulletDefense or "-"))
+    end
+
+    return nil
+end
+
 local function drawMarketItemRow(list, y, entry, alternate)
     local row = entry.item.item
     local height = entry.height or list.itemheight
@@ -620,7 +658,7 @@ function MarketSenseItemCatalogDebugWindow:render()
         detailText = string.format("%s  |  %s  |  $%d  |  %s",
             self.selectedItem.displayName or self.selectedItem.fullType,
             self.selectedItem.category or "Misc", math.floor(price), status)
-        detailSubtext = yieldSummary(details)
+        detailSubtext = yieldSummary(details) or priceHeuristicSummary(details)
     elseif self.statusText then
         detailText = self.statusText
     else
@@ -654,6 +692,7 @@ end
 -- that need to preview the same taxonomy grouping without opening a window.
 MarketSenseItemCatalogDebugWindow.BuildCategoryPath = categoryPath
 MarketSenseItemCatalogDebugWindow.BuildYieldSummary = yieldSummary
+MarketSenseItemCatalogDebugWindow.BuildPriceHeuristicSummary = priceHeuristicSummary
 
 function MarketSenseItemCatalogDebugWindow.Open()
     if MarketSenseItemCatalogDebugWindow.instance then

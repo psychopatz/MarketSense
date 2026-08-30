@@ -18,7 +18,7 @@ local YieldResolver = MarketSense.YieldResolver
 local CATEGORY_BASE_SCORES = {
     Medical = 18, Weapon = 18, Tool = 14,
     Container = 14, Clothing = 4, Electronics = 14, Resource = 7,
-    Building = 5, Liquid = 0, Misc = 2,
+    Building = 5, Liquid = 0, Literature = 5, Misc = 2,
 }
 
 local function addAudit(audit, label, before, after, extra)
@@ -54,6 +54,14 @@ end
 
 local function isFoodCategory(category)
     return category == "Food" or category == "Beverage"
+end
+
+local function isLiteratureCategory(category)
+    return category == "Literature"
+end
+
+local function isClothingCategory(category)
+    return category == "Clothing"
 end
 
 local function clampAndRound(value)
@@ -124,6 +132,56 @@ function Pricing.calculateRawScore(ctx, details)
         }
         score = base
 
+    elseif category == "Literature" then
+        -- The old literature score was a collection of flat root/subtype
+        -- additions. It is intentionally retired until the value of
+        -- knowledge, information, entertainment, and physical format can be
+        -- normalized into one evidence-based model.
+        local literatureDetails = type(details.classificationDetails) == "table"
+            and details.classificationDetails or {}
+        local learnedRecipes = type(ctx.learnedRecipes) == "table"
+            and ctx.learnedRecipes or {}
+        details.priceHeuristic = {
+            model = "literature_v2_pending",
+            status = "pending",
+            reason = "Legacy literature scoring removed; awaiting calibrated usefulness anchors.",
+            subtype = details.primary or "Literature",
+            classifierSource = literatureDetails.source,
+            skill = ctx.skillTrained,
+            skillLevel = ctx.lvlSkillTrained,
+            maxLevelTrained = ctx.maxLevelTrained,
+            learnedRecipeCount = #learnedRecipes,
+            readType = ctx.readType,
+            canBeWrite = ctx.canBeWrite == true,
+            isLiteratureInstance = ctx.isLiteratureInstance == true,
+            staticMetricsAvailable = {
+                skill = ctx.skillTrained ~= nil and ctx.skillTrained ~= "",
+                skillLevel = (tonumber(ctx.lvlSkillTrained) or -1) >= 0,
+                maxLevelTrained = (tonumber(ctx.maxLevelTrained) or -1) >= 0,
+                learnedRecipes = ctx.learnedRecipes ~= nil,
+                readType = ctx.readType ~= nil and ctx.readType ~= "",
+                entertainmentEffects = ctx.boredomChange ~= nil
+                    or ctx.unhappyChange ~= nil or ctx.stressChange ~= nil,
+                writing = ctx.canBeWrite ~= nil,
+                weight = ctx.weight ~= nil,
+            },
+            plannedPositiveAnchors = {
+                "skill progression and level span",
+                "recipe unlock count and utility",
+                "map or information utility",
+                "boredom, stress, and unhappiness relief",
+                "readable or writable utility",
+            },
+            plannedNegativeAnchors = {
+                "already-read or already-known state",
+                "empty, consumed, or unusable content",
+                "reading time and physical weight",
+                "generic or explicitly uninteresting content",
+                "format cost without additional utility",
+            },
+        }
+        score = base
+
     elseif category == "Tool" then
         local durabilityWeight = (ctx.conditionMax or 0) * (ctx.useDelta and ctx.useDelta > 0 and 18 or 8)
         score = base + durabilityWeight - weightPenalty
@@ -137,14 +195,64 @@ function Pricing.calculateRawScore(ctx, details)
             + ((ctx.weightReduction or 0) * (cc.weight_reduction_weight or 0.65))
             - weightPenalty
 
-    elseif category == "Clothing" then
-        local defenseScore = (ctx.biteDefense    or 0) * 4
-                           + (ctx.scratchDefense  or 0) * 3
-                           + (ctx.bulletDefense   or 0) * 6
-        score = base + defenseScore
-            + ((ctx.insulation    or 0) * (cc.warmth_weight or 10))
-            + ((ctx.windResistance or 0) * (cc.wind_weight   or 8))
-            - weightPenalty
+    elseif isClothingCategory(category) then
+        -- The old clothing score stacked raw defense, warmth, wind, and a
+        -- flat weight penalty.  It is intentionally retired until those
+        -- signals are normalized by clothing family, coverage, and state.
+        details.priceHeuristic = {
+            model = "clothing_v2_pending",
+            status = "pending",
+            reason = "Legacy clothing scoring removed; awaiting calibrated clothing anchors.",
+            subtype = details.primary or "Clothing",
+            bodyLocation = ctx.bodyLocation,
+            bodyLocationToken = ctx.bodyLocationToken,
+            biteDefense = ctx.biteDefense,
+            scratchDefense = ctx.scratchDefense,
+            bulletDefense = ctx.bulletDefense,
+            insulation = ctx.insulation,
+            windResistance = ctx.windResistance,
+            waterResistance = ctx.waterResistance,
+            temperature = ctx.temperature,
+            runSpeedModifier = ctx.runSpeedModifier,
+            combatSpeedModifier = ctx.combatSpeedModifier,
+            neckProtectionModifier = ctx.neckProtectionModifier,
+            conditionMax = ctx.conditionMax,
+            condition = ctx.condition,
+            conditionRatio = ctx.conditionRatio,
+            weight = ctx.weight,
+            staticMetricsAvailable = {
+                bodyLocation = ctx.bodyLocation ~= nil and ctx.bodyLocation ~= "",
+                biteDefense = ctx.biteDefense ~= nil,
+                scratchDefense = ctx.scratchDefense ~= nil,
+                bulletDefense = ctx.bulletDefense ~= nil,
+                insulation = ctx.insulation ~= nil,
+                windResistance = ctx.windResistance ~= nil,
+                waterResistance = ctx.waterResistance ~= nil,
+                temperature = ctx.temperature ~= nil,
+                runSpeedModifier = ctx.runSpeedModifier ~= nil,
+                combatSpeedModifier = ctx.combatSpeedModifier ~= nil,
+                neckProtectionModifier = ctx.neckProtectionModifier ~= nil,
+                conditionMax = ctx.conditionMax ~= nil,
+                weight = ctx.weight ~= nil,
+            },
+            plannedPositiveAnchors = {
+                "effective bite, scratch, and bullet protection",
+                "body-slot coverage and protection relevance",
+                "insulation, wind, water, and temperature utility",
+                "mobility or combat-speed benefit",
+                "durability and repairability",
+                "functional or verified accessory utility",
+            },
+            plannedNegativeAnchors = {
+                "weight relative to delivered protection or utility",
+                "run-speed, combat-speed, or fall-risk penalties",
+                "holes, broken condition, and worn state",
+                "blood, dirtiness, and wetness maintenance state",
+                "neck-protection reduction or uncovered critical areas",
+                "cosmetic or rarity labels without mechanical utility",
+            },
+        }
+        score = base
 
     elseif category == "Electronics" then
         score = base - weightPenalty
@@ -194,16 +302,32 @@ function Pricing.applyBalances(ctx, details, audit)
                 status = details.priceHeuristic.status,
                 mechanicalClass = details.priceHeuristic.mechanicalClass,
                 role = details.priceHeuristic.role,
+                subtype = details.priceHeuristic.subtype,
+                learnedRecipeCount = details.priceHeuristic.learnedRecipeCount,
+                skillLevel = details.priceHeuristic.skillLevel,
+                readType = details.priceHeuristic.readType,
                 pricePerLiter = details.priceHeuristic.pricePerLiter,
                 volume = details.priceHeuristic.volume,
                 contentValue = details.priceHeuristic.contentValue,
+                bodyLocation = details.priceHeuristic.bodyLocation,
+                bodyLocationToken = details.priceHeuristic.bodyLocationToken,
+                biteDefense = details.priceHeuristic.biteDefense,
+                scratchDefense = details.priceHeuristic.scratchDefense,
+                bulletDefense = details.priceHeuristic.bulletDefense,
+                insulation = details.priceHeuristic.insulation,
+                windResistance = details.priceHeuristic.windResistance,
+                conditionRatio = details.priceHeuristic.conditionRatio,
+                runSpeedModifier = details.priceHeuristic.runSpeedModifier,
+                combatSpeedModifier = details.priceHeuristic.combatSpeedModifier,
             })
     end
 
     local beforeSandbox = working
     local sandboxAdd = Config.pricing.globalValue or 0
     if Config.getSandboxTagMultiplier and details.category ~= "Weapon"
-        and not isFoodCategory(details.category) then
+        and not isFoodCategory(details.category)
+        and not isLiteratureCategory(details.category)
+        and not isClothingCategory(details.category) then
         local tags = { details.primary }
         -- Liquid content has its own per-litre anchor.  Do not inherit
         -- generic item descriptor additions (for example Rarity.Common),
@@ -228,7 +352,9 @@ function Pricing.applyBalances(ctx, details, audit)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
 
     if details.category ~= "Liquid" and details.category ~= "Weapon"
-        and not isFoodCategory(details.category) then
+        and not isFoodCategory(details.category)
+        and not isLiteratureCategory(details.category)
+        and not isClothingCategory(details.category) then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or details.tags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -242,6 +368,16 @@ function Pricing.applyBalances(ctx, details, audit)
         addAudit(audit, "weapon v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Weapon valuation is intentionally neutral pending calibration.",
+        })
+    elseif isLiteratureCategory(details.category) then
+        addAudit(audit, "literature v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Literature valuation is intentionally neutral pending calibration.",
+        })
+    elseif isClothingCategory(details.category) then
+        addAudit(audit, "clothing v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Clothing valuation is intentionally neutral pending calibration.",
         })
     else
         addAudit(audit, "liquid vessel-neutral balance", working, working, {
@@ -364,10 +500,11 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
 
     local itemEntry = applyTagOverrideIfPresent(ctx, details)
     local working
-    if details.category == "Weapon" then
-        -- A cached pre-v2 detail may still contain the retired weapon score.
+    if details.category == "Weapon" or isLiteratureCategory(details.category)
+        or isClothingCategory(details.category) then
+        -- A cached pre-v2 detail may still contain a retired category score.
         -- Rebuild the neutral pending score after tag overrides so the cache
-        -- cannot preserve legacy weapon dollars across a catalog refresh.
+        -- cannot preserve legacy category dollars across a catalog refresh.
         details.priceHeuristic = nil
         details.rawScore = Pricing.calculateRawScore(ctx, details)
         working = details.rawScore
@@ -380,7 +517,9 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     local beforeSandbox = working
     local sandboxAdd = Config.pricing.globalValue or 0
     if Config.getSandboxTagMultiplier and details.category ~= "Weapon"
-        and not isFoodCategory(details.category) then
+        and not isFoodCategory(details.category)
+        and not isLiteratureCategory(details.category)
+        and not isClothingCategory(details.category) then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -394,7 +533,9 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
 
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeSandbox, working)
-    if not isFoodCategory(details.category) and details.category ~= "Weapon" then
+    if not isFoodCategory(details.category) and details.category ~= "Weapon"
+        and not isLiteratureCategory(details.category)
+        and not isClothingCategory(details.category) then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -403,6 +544,16 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         addAudit(audit, "weapon v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Weapon valuation is intentionally neutral pending calibration.",
+        })
+    elseif isLiteratureCategory(details.category) then
+        addAudit(audit, "literature v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Literature valuation is intentionally neutral pending calibration.",
+        })
+    elseif isClothingCategory(details.category) then
+        addAudit(audit, "clothing v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Clothing valuation is intentionally neutral pending calibration.",
         })
     else
         addAudit(audit, "food v2 balances", working, working, {

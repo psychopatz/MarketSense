@@ -217,6 +217,94 @@ local harmfulFood = MarketSense.FoodPricing.calculate(
 T.truthy(freshFood > harmfulFood, "harmful signed changes lower food value")
 T.truthy(beneficialFood > freshFood, "beneficial mood change raises food value")
 
+local literatureContext = {
+    fullType = "Base.HarnessSkillBook",
+    skillTrained = "Carpentry",
+    lvlSkillTrained = 3,
+    maxLevelTrained = 5,
+    learnedRecipes = { "MakePlank" },
+    readType = "normal",
+    canBeWrite = false,
+    isLiteratureInstance = false,
+    boredomChange = -10,
+    unhappyChange = -2,
+    stressChange = 0,
+    weight = 0.2,
+}
+local literatureDetails = {
+    category = "Literature",
+    primary = "SkillBook",
+    tags = { "SkillBook" },
+    expandedTags = { "Literature", "SkillBook" },
+    classificationDetails = { source = "lit_skillbook" },
+}
+local literatureScore = MarketSense.Pricing.calculateRawScore(literatureContext, literatureDetails)
+T.equal(literatureDetails.priceHeuristic.model, "literature_v2_pending",
+    "literature pricing reset is exposed")
+T.equal(literatureDetails.priceHeuristic.status, "pending",
+    "literature pricing reset is marked pending")
+T.equal(literatureScore, 5, "pending literature pricing uses neutral anchor")
+literatureDetails.rawScore = literatureScore
+T.equal(MarketSense.Pricing.applyBalances(literatureContext, literatureDetails), 5,
+    "pending literature pricing ignores legacy flat additions")
+
+local staleLiterature = MarketSense.Pricing.applyOverridesOnly(literatureContext, {
+    fullType = literatureContext.fullType,
+    category = "Literature",
+    primary = "SkillBook",
+    tags = { "SkillBook" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleLiterature.priceHeuristic.model, "literature_v2_pending",
+    "cached legacy literature score is rebuilt")
+T.truthy(staleLiterature.price < 999, "cached legacy literature dollars are discarded")
+
+local clothingContext = {
+    fullType = "Base.HarnessJacket",
+    bodyLocation = "Jacket",
+    bodyLocationToken = "jacket",
+    biteDefense = 10,
+    scratchDefense = 20,
+    bulletDefense = 0,
+    insulation = 0.5,
+    windResistance = 0.6,
+    conditionMax = 10,
+    condition = 10,
+    conditionRatio = 1,
+    weight = 1.0,
+    runSpeedModifier = 0.95,
+    combatSpeedModifier = 0.9,
+}
+local clothingDetails = {
+    category = "Clothing",
+    primary = "ClothingOuterwear",
+    tags = { "ClothingOuterwear" },
+    expandedTags = { "Clothing", "ClothingOuterwear" },
+    classificationDetails = { source = "apparel_bodyloc" },
+}
+local clothingScore = MarketSense.Pricing.calculateRawScore(clothingContext, clothingDetails)
+T.equal(clothingDetails.priceHeuristic.model, "clothing_v2_pending",
+    "clothing pricing reset is exposed")
+T.equal(clothingDetails.priceHeuristic.status, "pending",
+    "clothing pricing reset is marked pending")
+T.equal(clothingScore, 4, "pending clothing pricing uses neutral anchor")
+clothingDetails.rawScore = clothingScore
+T.equal(MarketSense.Pricing.applyBalances(clothingContext, clothingDetails), 4,
+    "pending clothing pricing ignores legacy flat additions")
+
+local staleClothing = MarketSense.Pricing.applyOverridesOnly(clothingContext, {
+    fullType = clothingContext.fullType,
+    category = "Clothing",
+    primary = "ClothingOuterwear",
+    tags = { "ClothingOuterwear" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleClothing.priceHeuristic.model, "clothing_v2_pending",
+    "cached legacy clothing score is rebuilt")
+T.truthy(staleClothing.price < 999, "cached legacy clothing dollars are discarded")
+
 local details = assert(api.GetPriceDetails(scriptItem.fullName, true))
 T.equal(details.category, "Food", "food root")
 T.equal(details.primary, "FoodNonPerishableCanned", "description drives canned subtype")

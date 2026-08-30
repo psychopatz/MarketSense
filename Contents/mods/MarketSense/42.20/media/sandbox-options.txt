@@ -290,15 +290,6 @@ option MarketSense.StockBuildingVehicleMult
     translation = MarketSense.StockBuildingVehicleMult,
 }
 
-option MarketSense.PriceClothingValue
-{
-    type = integer,
-    default = 199,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingValue,
-}
 
 option MarketSense.StockClothingMult
 {
@@ -310,15 +301,6 @@ option MarketSense.StockClothingMult
     translation = MarketSense.StockClothingMult,
 }
 
-option MarketSense.PriceClothingAccessoryJewelryValue
-{
-    type = integer,
-    default = 20,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryJewelryValue,
-}
 
 option MarketSense.StockClothingAccessoryJewelryMult
 {
@@ -330,15 +312,6 @@ option MarketSense.StockClothingAccessoryJewelryMult
     translation = MarketSense.StockClothingAccessoryJewelryMult,
 }
 
-option MarketSense.PriceClothingAccessoryJewelryEarsValue
-{
-    type = integer,
-    default = 5,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryJewelryEarsValue,
-}
 
 option MarketSense.StockClothingAccessoryJewelryEarsMult
 {
@@ -350,15 +323,6 @@ option MarketSense.StockClothingAccessoryJewelryEarsMult
     translation = MarketSense.StockClothingAccessoryJewelryEarsMult,
 }
 
-option MarketSense.PriceClothingAccessoryJewelryNecklaceValue
-{
-    type = integer,
-    default = 13,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryJewelryNecklaceValue,
-}
 
 option MarketSense.StockClothingAccessoryJewelryNecklaceMult
 {
@@ -370,15 +334,6 @@ option MarketSense.StockClothingAccessoryJewelryNecklaceMult
     translation = MarketSense.StockClothingAccessoryJewelryNecklaceMult,
 }
 
-option MarketSense.PriceClothingAccessoryJewelryNoseValue
-{
-    type = integer,
-    default = 14,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryJewelryNoseValue,
-}
 
 option MarketSense.StockClothingAccessoryJewelryNoseMult
 {
@@ -390,15 +345,6 @@ option MarketSense.StockClothingAccessoryJewelryNoseMult
     translation = MarketSense.StockClothingAccessoryJewelryNoseMult,
 }
 
-option MarketSense.PriceClothingAccessoryJewelryRingValue
-{
-    type = integer,
-    default = 7,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryJewelryRingValue,
-}
 
 option MarketSense.StockClothingAccessoryJewelryRingMult
 {
@@ -410,15 +356,6 @@ option MarketSense.StockClothingAccessoryJewelryRingMult
     translation = MarketSense.StockClothingAccessoryJewelryRingMult,
 }
 
-option MarketSense.PriceClothingAccessoryNeckValue
-{
-    type = integer,
-    default = 7,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryNeckValue,
-}
 
 option MarketSense.StockClothingAccessoryNeckMult
 {
@@ -430,15 +367,6 @@ option MarketSense.StockClothingAccessoryNeckMult
     translation = MarketSense.StockClothingAccessoryNeckMult,
 }
 
-option MarketSense.PriceClothingAccessoryUtilityValue
-{
-    type = integer,
-    default = 5,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryUtilityValue,
-}
 
 option MarketSense.StockClothingAccessoryUtilityMult
 {
@@ -450,15 +378,6 @@ option MarketSense.StockClothingAccessoryUtilityMult
     translation = MarketSense.StockClothingAccessoryUtilityMult,
 }
 
-option MarketSense.PriceClothingAccessoryWristValue
-{
-    type = integer,
-    default = 0,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryWristValue,
-}
 
 option MarketSense.StockClothingAccessoryWristMult
 {
@@ -470,15 +389,6 @@ option MarketSense.StockClothingAccessoryWristMult
     translation = MarketSense.StockClothingAccessoryWristMult,
 }
 
-option MarketSense.PriceClothingAccessoryWristWatchValue
-{
-    type = integer,
-    default = 7,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAccessoryWristWatchValue,
-}
 
 option MarketSense.StockClothingAccessoryWristWatchMult
 {
@@ -490,15 +400,6 @@ option MarketSense.StockClothingAccessoryWristWatchMult
     translation = MarketSense.StockClothingAccessoryWristWatchMult,
 }
 
-option MarketSense.PriceClothingArmorValue
-{
-    type = integer,
-    default = 252,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorValue,
-}
 
 option MarketSense.StockClothingArmorMult
 {
@@ -510,15 +411,6 @@ option MarketSense.StockClothingArmorMult
     translation = MarketSense.StockClothingArmorMult,
 }
 
-option MarketSense.PriceClothingArmorArmsValue
-{
-    type = integer,
-    default = 8,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorArmsValue,
-}
 
 option MarketSense.StockClothingArmorArmsMult
 {
@@ -530,15 +422,6 @@ option MarketSense.StockClothingArmorArmsMult
     translation = MarketSense.StockClothingArmorArmsMult,
 }
 
-option MarketSense.PriceClothingArmorFaceValue
-{
-    type = integer,
-    default = 6,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorFaceValue,
-}
 
 option MarketSense.StockClothingArmorFaceMult
 {
@@ -550,15 +433,6 @@ option MarketSense.StockClothingArmorFaceMult
     translation = MarketSense.StockClothingArmorFaceMult,
 }
 
-option MarketSense.PriceClothingArmorHandsValue
-{
-    type = integer,
-    default = 18,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorHandsValue,
-}
 
 option MarketSense.StockClothingArmorHandsMult
 {
@@ -570,15 +444,6 @@ option MarketSense.StockClothingArmorHandsMult
     translation = MarketSense.StockClothingArmorHandsMult,
 }
 
-option MarketSense.PriceClothingArmorHeadValue
-{
-    type = integer,
-    default = 13,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorHeadValue,
-}
 
 option MarketSense.StockClothingArmorHeadMult
 {
@@ -590,15 +455,6 @@ option MarketSense.StockClothingArmorHeadMult
     translation = MarketSense.StockClothingArmorHeadMult,
 }
 
-option MarketSense.PriceClothingArmorHeavyValue
-{
-    type = integer,
-    default = 18,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorHeavyValue,
-}
 
 option MarketSense.StockClothingArmorHeavyMult
 {
@@ -610,15 +466,6 @@ option MarketSense.StockClothingArmorHeavyMult
     translation = MarketSense.StockClothingArmorHeavyMult,
 }
 
-option MarketSense.PriceClothingArmorLegsValue
-{
-    type = integer,
-    default = 7,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorLegsValue,
-}
 
 option MarketSense.StockClothingArmorLegsMult
 {
@@ -630,15 +477,6 @@ option MarketSense.StockClothingArmorLegsMult
     translation = MarketSense.StockClothingArmorLegsMult,
 }
 
-option MarketSense.PriceClothingArmorLightValue
-{
-    type = integer,
-    default = 15,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorLightValue,
-}
 
 option MarketSense.StockClothingArmorLightMult
 {
@@ -650,15 +488,6 @@ option MarketSense.StockClothingArmorLightMult
     translation = MarketSense.StockClothingArmorLightMult,
 }
 
-option MarketSense.PriceClothingArmorMediumValue
-{
-    type = integer,
-    default = 14,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorMediumValue,
-}
 
 option MarketSense.StockClothingArmorMediumMult
 {
@@ -670,15 +499,6 @@ option MarketSense.StockClothingArmorMediumMult
     translation = MarketSense.StockClothingArmorMediumMult,
 }
 
-option MarketSense.PriceClothingArmorNeckValue
-{
-    type = integer,
-    default = 21,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorNeckValue,
-}
 
 option MarketSense.StockClothingArmorNeckMult
 {
@@ -690,15 +510,6 @@ option MarketSense.StockClothingArmorNeckMult
     translation = MarketSense.StockClothingArmorNeckMult,
 }
 
-option MarketSense.PriceClothingArmorTorsoValue
-{
-    type = integer,
-    default = 12,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingArmorTorsoValue,
-}
 
 option MarketSense.StockClothingArmorTorsoMult
 {
@@ -710,15 +521,6 @@ option MarketSense.StockClothingArmorTorsoMult
     translation = MarketSense.StockClothingArmorTorsoMult,
 }
 
-option MarketSense.PriceClothingAuthorityValue
-{
-    type = integer,
-    default = 19,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingAuthorityValue,
-}
 
 option MarketSense.StockClothingAuthorityMult
 {
@@ -730,15 +532,6 @@ option MarketSense.StockClothingAuthorityMult
     translation = MarketSense.StockClothingAuthorityMult,
 }
 
-option MarketSense.PriceClothingBiteResistantValue
-{
-    type = integer,
-    default = 10,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingBiteResistantValue,
-}
 
 option MarketSense.StockClothingBiteResistantMult
 {
@@ -750,15 +543,6 @@ option MarketSense.StockClothingBiteResistantMult
     translation = MarketSense.StockClothingBiteResistantMult,
 }
 
-option MarketSense.PriceClothingBottomValue
-{
-    type = integer,
-    default = 11,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingBottomValue,
-}
 
 option MarketSense.StockClothingBottomMult
 {
@@ -770,15 +554,6 @@ option MarketSense.StockClothingBottomMult
     translation = MarketSense.StockClothingBottomMult,
 }
 
-option MarketSense.PriceClothingBulletResistantValue
-{
-    type = integer,
-    default = 18,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingBulletResistantValue,
-}
 
 option MarketSense.StockClothingBulletResistantMult
 {
@@ -790,15 +565,6 @@ option MarketSense.StockClothingBulletResistantMult
     translation = MarketSense.StockClothingBulletResistantMult,
 }
 
-option MarketSense.PriceClothingDressValue
-{
-    type = integer,
-    default = 8,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingDressValue,
-}
 
 option MarketSense.StockClothingDressMult
 {
@@ -810,15 +576,6 @@ option MarketSense.StockClothingDressMult
     translation = MarketSense.StockClothingDressMult,
 }
 
-option MarketSense.PriceClothingHandsValue
-{
-    type = integer,
-    default = 8,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingHandsValue,
-}
 
 option MarketSense.StockClothingHandsMult
 {
@@ -830,15 +587,6 @@ option MarketSense.StockClothingHandsMult
     translation = MarketSense.StockClothingHandsMult,
 }
 
-option MarketSense.PriceClothingMedicalValue
-{
-    type = integer,
-    default = 12,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingMedicalValue,
-}
 
 option MarketSense.StockClothingMedicalMult
 {
@@ -850,15 +598,6 @@ option MarketSense.StockClothingMedicalMult
     translation = MarketSense.StockClothingMedicalMult,
 }
 
-option MarketSense.PriceClothingProtectiveValue
-{
-    type = integer,
-    default = 9,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingProtectiveValue,
-}
 
 option MarketSense.StockClothingProtectiveMult
 {
@@ -870,15 +609,6 @@ option MarketSense.StockClothingProtectiveMult
     translation = MarketSense.StockClothingProtectiveMult,
 }
 
-option MarketSense.PriceClothingTacticalValue
-{
-    type = integer,
-    default = 16,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseClothing,
-    translation = MarketSense.PriceClothingTacticalValue,
-}
 
 option MarketSense.StockClothingTacticalMult
 {
@@ -1220,16 +950,6 @@ option MarketSense.StockFoodNonPerishableMult
     translation = MarketSense.StockFoodNonPerishableMult,
 }
 
-option MarketSense.PriceLiteratureValue
-{
-    type = integer,
-    default = 465,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseLiterature,
-    translation = MarketSense.PriceLiteratureValue,
-}
-
 option MarketSense.StockLiteratureMult
 {
     type = double,
@@ -1238,16 +958,6 @@ option MarketSense.StockLiteratureMult
     max = 100.0,
     page = MarketSenseLiterature,
     translation = MarketSense.StockLiteratureMult,
-}
-
-option MarketSense.PriceLiteratureBookValue
-{
-    type = integer,
-    default = -325,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseLiterature,
-    translation = MarketSense.PriceLiteratureBookValue,
 }
 
 option MarketSense.StockLiteratureBookMult
@@ -1260,16 +970,6 @@ option MarketSense.StockLiteratureBookMult
     translation = MarketSense.StockLiteratureBookMult,
 }
 
-option MarketSense.PriceLiteratureCardsValue
-{
-    type = integer,
-    default = -236,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseLiterature,
-    translation = MarketSense.PriceLiteratureCardsValue,
-}
-
 option MarketSense.StockLiteratureCardsMult
 {
     type = double,
@@ -1278,16 +978,6 @@ option MarketSense.StockLiteratureCardsMult
     max = 100.0,
     page = MarketSenseLiterature,
     translation = MarketSense.StockLiteratureCardsMult,
-}
-
-option MarketSense.PriceLiteratureMediaValue
-{
-    type = integer,
-    default = -258,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseLiterature,
-    translation = MarketSense.PriceLiteratureMediaValue,
 }
 
 option MarketSense.StockLiteratureMediaMult
@@ -1300,16 +990,6 @@ option MarketSense.StockLiteratureMediaMult
     translation = MarketSense.StockLiteratureMediaMult,
 }
 
-option MarketSense.PriceLiteratureRecipeValue
-{
-    type = integer,
-    default = 348,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseLiterature,
-    translation = MarketSense.PriceLiteratureRecipeValue,
-}
-
 option MarketSense.StockLiteratureRecipeMult
 {
     type = double,
@@ -1318,16 +998,6 @@ option MarketSense.StockLiteratureRecipeMult
     max = 100.0,
     page = MarketSenseLiterature,
     translation = MarketSense.StockLiteratureRecipeMult,
-}
-
-option MarketSense.PriceLiteratureSkillBookValue
-{
-    type = integer,
-    default = 468,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseLiterature,
-    translation = MarketSense.PriceLiteratureSkillBookValue,
 }
 
 option MarketSense.StockLiteratureSkillBookMult

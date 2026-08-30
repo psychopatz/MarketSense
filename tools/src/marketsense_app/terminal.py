@@ -114,6 +114,53 @@ def print_terminal(
             print(f"  ... {len(weapon_rows) - top:,} more weapon rows are in JSON/CSV output")
         print()
 
+    literature_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") == "literature_v2_pending"
+    ]
+    if literature_rows:
+        print("LITERATURE PRICING STATUS")
+        print("  item | subtype | skill | level | recipes | read type | status | price")
+        for row in sorted(literature_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{str(heuristic.get('skill') or '-'):<12} | "
+                f"{format_number(heuristic.get('skillLevel')):>5} | "
+                f"{format_number(heuristic.get('learnedRecipeCount')):>7} | "
+                f"{str(heuristic.get('readType') or '-'):<9} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(literature_rows) > top:
+            print(f"  ... {len(literature_rows) - top:,} more literature rows are in JSON/CSV output")
+        print()
+
+    clothing_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") == "clothing_v2_pending"
+    ]
+    if clothing_rows:
+        print("CLOTHING PRICING STATUS")
+        print("  item | subtype | slot | bite | scratch | bullet | insulation | status | price")
+        for row in sorted(clothing_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{str(heuristic.get('bodyLocationToken') or heuristic.get('bodyLocation') or '-'):<14} | "
+                f"{format_number(heuristic.get('biteDefense')):>4} | "
+                f"{format_number(heuristic.get('scratchDefense')):>7} | "
+                f"{format_number(heuristic.get('bulletDefense')):>6} | "
+                f"{format_number(heuristic.get('insulation')):>10} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(clothing_rows) > top:
+            print(f"  ... {len(clothing_rows) - top:,} more clothing rows are in JSON/CSV output")
+        print()
+
     liquid_rows = [row for row in rows if row.get("category") == "Liquid"]
     if liquid_rows:
         print("LIQUID CONTENT PRICE SAMPLE")
