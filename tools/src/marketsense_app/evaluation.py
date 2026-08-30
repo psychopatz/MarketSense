@@ -5,33 +5,23 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
-from .bridge import run_lua_result
 from .cache import ResultCache, cache_key
 from .config import DEFAULT_GAME_VERSION
-from .availability import (
-    availability_matches,
-    build_acquisition_index,
-    normalize_availability_filter,
-)
-from .models import ItemDefinition
 from .heuristics import heuristic_coverage
 from .reporting import build_summary
-from .recipe_parser import discover_tool_recipe_usage, discover_yield_recipes
 from .review import low_confidence_rows, review_row
-from .scan_scope import (
-    candidate_definitions,
-    normalize_category_filter,
-    row_matches_category,
+from .sandbox import sandbox_definition_audit
+from .scan_phases import (
+    ProgressCallback,
+    emulate_pz_acquisition_flags,
+    enrich_runtime_rows,
+    merge_scan_definitions,
+    report_progress as _progress,
+    run_discovery_phase,
+    run_evidence_phase,
+    run_runtime_phase,
 )
-from .sandbox import (
-    effective_sandbox_settings,
-    load_sandbox_option_specs,
-    sandbox_definition_audit,
-)
-from .tile_parser import build_tile_property_index
-from .workshop import discover_base_items, discover_items, merge_definitions
 from .workshop_paths import game_scripts_root
 
 
@@ -50,82 +40,6 @@ class ScanOptions:
     sandbox_options: dict[str, int | float] = field(default_factory=dict)
     availability_filter: str = "obtainable"
     category_filter: str = ""
-
-
-ProgressCallback = Callable[[str], None]
-
-
-def _progress(callback: ProgressCallback | None, message: str) -> None:
-    """Report a bounded phase message without making logging part of the scan."""
-
-    if callback is None:
-        return
-    try:
-        callback(message)
-    except Exception:
-        # A diagnostic sink must never change evaluator behavior.  This also
-        # protects console/CLI callers that do not need progress reporting.
-        pass
-
-
-def merge_scan_definitions(
-    base_definitions: dict[str, ItemDefinition],
-    workshop_definitions: dict[str, ItemDefinition],
-) -> dict[str, ItemDefinition]:
-    """Return the full item universe with Workshop patches over vanilla rows."""
-    merged: dict[str, ItemDefinition] = {}
-    for full_type in sorted(set(base_definitions) | set(workshop_definitions)):
-        overlay = workshop_definitions.get(full_type)
-        if overlay is None:
-            merged[full_type] = base_definitions[full_type]
-        else:
-            merged[full_type] = merge_definitions(
-                base_definitions.get(full_type), overlay
-            )
-    return merged
-
-
-def emulate_pz_acquisition_flags(
-    definitions: list[ItemDefinition],
-    static_records: dict[str, dict],
-    sprite_properties: dict[str, dict] | None = None,
-) -> list[ItemDefinition]:
-    """Project source evidence onto the PZ engine flags used by Lua.
-
-    The real game sets these flags while loading distributions, recipes, and
-    foraging data.  The offline bridge has no Java engine, so it supplies a
-    PZ-shaped snapshot for the Lua mod to consume.  It intentionally maps
-    positive evidence only; exclusions remain an independent comparison so a
-    Lua false positive is still visible in the report.
-    """
-    projected: list[ItemDefinition] = []
-    sprite_properties = sprite_properties or {}
-    for definition in definitions:
-        props = dict(definition.props)
-        record = static_records.get(definition.full_type) or {}
-        channels = set(record.get("channels") or [])
-        if channels & {"loot", "farming", "fishing", "trapping", "animal", "scripted"}:
-            props["canSpawnAsLoot"] = True
-        if channels & {"craft", "evolved_recipe"}:
-            props["isCraftRecipeProduct"] = True
-        if "forage" in channels:
-            props["canBeForaged"] = True
-        sprite_name = str(props.get("worldObjectSprite") or "")
-        if sprite_name and sprite_name in sprite_properties:
-            # This is the offline equivalent of getSprite(name):
-            # getProperties().  Keep the data under its own key so script
-            # properties and tile properties cannot accidentally overwrite
-            # one another.
-            props["spriteProperties"] = dict(sprite_properties[sprite_name])
-        projected.append(ItemDefinition(
-            full_type=definition.full_type,
-            module=definition.module,
-            props=props,
-            mod=definition.mod,
-            script_path=definition.script_path,
-            sources=list(definition.sources),
-        ))
-    return projected
 
 
 def _cache_for_options(
@@ -218,147 +132,53 @@ def evaluate(
             return cached_result
     _progress(progress, "cache: miss; evaluating source and Lua")
 
-    _progress(progress, "workshop: discovering mod metadata and item scripts")
-    mods, definitions_by_type, source_files, definition_count = discover_items(
-        roots, list(options.filters), options.game_version
-    )
-    _progress(progress, (
-        f"workshop: found {len(mods):,} mods, {len(definitions_by_type):,} unique "
-        f"definitions across {source_files:,} script files"
-    ))
-    _progress(progress, "base: discovering installed vanilla item scripts")
-    base_definitions, base_source_files, base_definition_count = discover_base_items(scripts_root)
-    _progress(progress, (
-        f"base: found {len(base_definitions):,} definitions across "
-        f"{base_source_files:,} script files"
-    ))
-    merged_definitions = merge_scan_definitions(base_definitions, definitions_by_type)
-    all_ordered = [merged_definitions[key] for key in sorted(merged_definitions)]
-    category_filter = normalize_category_filter(options.category_filter)
-    scoped_ordered = candidate_definitions(all_ordered, category_filter)
-    _progress(progress, f"universe: merged {len(all_ordered):,} item definitions")
-    if category_filter:
-        _progress(progress, (
-            f"scope: {category_filter} candidates {len(scoped_ordered):,} / "
-            f"{len(all_ordered):,} definitions"
-        ))
-    _progress(progress, "availability: building acquisition evidence index")
-    availability_index = build_acquisition_index(
-        scoped_ordered,
-        scripts_root,
-        (mod.root for mod in mods),
+    discovery = run_discovery_phase(
+        roots,
+        options.filters,
         options.game_version,
-    )
-    availability_records = availability_index.records(scoped_ordered)
-    _progress(progress, (
-        f"availability: indexed {len(availability_records):,} rows from "
-        f"{availability_index.scanned_files:,} source files"
-    ))
-    selected_filter = normalize_availability_filter(options.availability_filter)
-    # The Lua mod is authoritative for market eligibility and final category.
-    # Source hints only reduce the candidate universe; an exact category check
-    # below prevents a broad hint from leaking another root into the result.
-    ordered = scoped_ordered
-    duplicate_count = max(0, definition_count - len(definitions_by_type))
-    sandbox_specs = load_sandbox_option_specs(options.game_version)
-    effective_sandbox = effective_sandbox_settings(options.sandbox_options, sandbox_specs)
-    tile_properties, tile_source_files = build_tile_property_index(
         scripts_root,
-        (mod.root for mod in mods),
-        options.game_version,
+        options.category_filter,
+        progress,
     )
-    yield_recipes, yield_stats = discover_yield_recipes(
+    evidence = run_evidence_phase(
+        discovery,
         scripts_root,
-        (mod.root for mod in mods),
         options.game_version,
-        merged_definitions,
+        options.sandbox_options,
+        options.availability_filter,
+        progress,
     )
-    _progress(progress, (
-        f"recipes: indexed {yield_stats['recipeCount']:,} craft recipes and "
-        f"{yield_stats['sourceCount']:,} single-input yield sources"
-    ))
-    tool_recipe_usage, tool_recipe_stats = discover_tool_recipe_usage(
-        scripts_root,
-        (mod.root for mod in mods),
-        options.game_version,
-        merged_definitions,
+    runtime = run_runtime_phase(lua, discovery, evidence, progress)
+    enriched = enrich_runtime_rows(
+        runtime.bridge_result.rows,
+        evidence.availability_records,
+        discovery.category_filter,
+        evidence.selected_filter,
     )
-    _progress(progress, (
-        f"tool demand: indexed {tool_recipe_stats['reusableInputCount']:,} reusable "
-        f"recipe inputs across {len(tool_recipe_usage):,} items"
-    ))
-    bridge_definitions = emulate_pz_acquisition_flags(
-        all_ordered, availability_records, tile_properties
-    )
-    _progress(progress, f"lua: evaluating {len(bridge_definitions):,} definitions")
-    bridge_result = run_lua_result(
-        lua,
-        bridge_definitions,
-        effective_sandbox,
-        yield_recipes=yield_recipes,
-        tool_recipe_usage=tool_recipe_usage,
-        emitted_types={definition.full_type for definition in ordered},
-    )
-    _progress(progress, f"lua: returned {len(bridge_result.rows):,} rows")
-    all_rows: list[dict] = []
-    lua_availability_records: dict[str, dict] = {}
-    availability_mismatches: list[dict] = []
-    for row in bridge_result.rows:
-        enriched = dict(row)
-        static_availability = availability_records.get(
-            str(row.get("fullType") or ""),
-            {
-                "status": "uncertain",
-                "confidence": 0.0,
-                "channels": [],
-                "channelLabels": [],
-                "references": [],
-                "evidence": {},
-                "exclusions": [],
-                "reason": "no matching item definition was found in the availability index",
-            },
-        )
-        runtime_availability = row.get("availability")
-        if not isinstance(runtime_availability, dict):
-            runtime_availability = {
-                "status": "uncertain",
-                "confidence": 0.0,
-                "channels": [],
-                "channelLabels": [],
-                "references": [],
-                "exclusions": [],
-                "reason": "Lua availability API returned no record",
-            }
-        enriched["availability"] = runtime_availability
-        enriched["harnessAvailability"] = static_availability
-        runtime_status = str(runtime_availability.get("status") or "uncertain")
-        static_status = str(static_availability.get("status") or "uncertain")
-        verification = "match" if runtime_status == static_status else "mismatch"
-        enriched["availabilityVerification"] = {
-            "status": verification,
-            "runtime": runtime_status,
-            "staticAudit": static_status,
-        }
-        full_type = str(row.get("fullType") or "")
-        lua_availability_records[full_type] = runtime_availability
-        if verification == "mismatch":
-            availability_mismatches.append({
-                "fullType": full_type,
-                "runtime": runtime_status,
-                "staticAudit": static_status,
-                "runtimeReason": runtime_availability.get("reason", ""),
-                "staticReason": static_availability.get("reason", ""),
-            })
-        all_rows.append(enriched)
-    category_rows = [
-        row for row in all_rows
-        if row_matches_category(row, category_filter)
-    ]
-    category_omitted = max(0, len(all_rows) - len(category_rows))
-    runtime_eligible = [
-        row for row in category_rows
-        if availability_matches(row.get("availability") or {}, selected_filter)
-    ]
+    mods = discovery.mods
+    source_files = discovery.source_files
+    definition_count = discovery.definition_count
+    base_source_files = discovery.base_source_files
+    base_definition_count = discovery.base_definition_count
+    all_ordered = discovery.all_ordered
+    scoped_ordered = discovery.scoped_ordered
+    category_filter = discovery.category_filter
+    duplicate_count = discovery.duplicate_count
+    availability_index = evidence.availability_index
+    availability_records = evidence.availability_records
+    selected_filter = evidence.selected_filter
+    effective_sandbox = evidence.effective_sandbox
+    tile_properties = evidence.tile_properties
+    tile_source_files = evidence.tile_source_files
+    yield_stats = evidence.yield_stats
+    tool_recipe_stats = evidence.tool_recipe_stats
+    bridge_result = runtime.bridge_result
+    all_rows = enriched.all_rows
+    lua_availability_records = enriched.lua_availability_records
+    availability_mismatches = enriched.availability_mismatches
+    category_rows = enriched.category_rows
+    runtime_eligible = enriched.runtime_eligible
+    category_omitted = enriched.category_omitted
     rows = runtime_eligible
     _progress(progress, (
         f"availability: {len(runtime_eligible):,} eligible / {len(all_rows):,} "

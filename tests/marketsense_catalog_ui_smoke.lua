@@ -21,6 +21,14 @@ PsychopatzCore.DebugHub.RegisterTool = function(definition)
     return true
 end
 MarketSense.GetAllKnownItems = function() return {} end
+MarketSense.GetRegistryDetails = function(fullType)
+    if fullType == "Base.CannedCarrots2" then return { basePrice = 1 } end
+    return nil
+end
+getItemDisplayName = function(fullType)
+    if fullType == "Base.CannedCarrots2" then return "Canned Carrots" end
+    return fullType
+end
 MarketSense.ClearRuntimeCache = function() MarketSense.cacheCleared = true end
 MarketSense.RegenerateItemRegistry = function()
     return { total = 2, files = { {}, {} } }
@@ -75,6 +83,15 @@ local yieldText = Window.BuildYieldSummary({
 })
 T.equal(yieldText, "Yield: OpenEggCarton -> 12 x Base.Egg",
     "catalog displays resolved bundle output")
+local baseItemText = Window.BuildBaseItemSummary({
+    yieldResolution = {
+        status = "resolved",
+        outputs = {{ fullType = "Base.CannedCarrots2", quantity = 6 }},
+    },
+})
+T.equal(baseItemText,
+    "Base item: 6 x Canned Carrots [Base.CannedCarrots2] (base price=$1)",
+    "catalog displays bundle base item and persisted base price")
 local ambiguousYieldText = Window.BuildYieldSummary({
     yieldResolution = {
         status = "ambiguous", candidateCount = 2,

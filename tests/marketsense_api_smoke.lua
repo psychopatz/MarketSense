@@ -168,6 +168,19 @@ T.equal(context.hasRuntimeFoodAge, true, "runtime food age evidence is marked")
 T.equal(context.fluidCategories[1], "Beverage", "fluid categories use the supported PZ category list")
 T.equal(context.fluidCategories[2], "Liquid", "fluid category membership is preserved")
 
+local replaceOnUseOnProbeCalled = false
+local emptyReplaceOnUseOn = {}
+function emptyReplaceOnUseOn:getReplaceOnUseOn() return nil end
+function emptyReplaceOnUseOn:getReplaceOnUseOnString()
+    replaceOnUseOnProbeCalled = true
+    error("nullable replace-on-use probe must not call the unsafe formatter")
+end
+local signals = require "MarketSense/MS_PropertyReader_Signals"
+T.equal(signals.preferReplaceOnUseOn(emptyReplaceOnUseOn, nil), "",
+    "nullable replace-on-use metadata is safe")
+T.falsy(replaceOnUseOnProbeCalled,
+    "unsafe replace-on-use formatter is skipped for nil metadata")
+
 local function foodDetails()
     return { category = "Food", primary = "Food", tags = { "Food" }, expandedTags = { "Food" } }
 end

@@ -56,29 +56,55 @@ tools/
     workshop.py           # Workshop/vanilla definition discovery and merging
     workshop_paths.py     # Steam layouts and 42.20 version selection
     script_parser.py      # item-script parsing and normalization
-    bridge.py             # data serialization and Lua subprocess I/O
-    bridge_template.py     # packaged Lua template loader
-    bridge_runtime.lua     # PZ-shaped runtime template
-    fixtures.py           # deterministic real-evaluator checks
+    bridge.py             # stable bridge facade
+    bridge_values.py      # Lua literal encoding and bridge generation
+    bridge_runtime.py     # Lua subprocess execution and result parsing
+    bridge_template.py    # packaged Lua template loader
+    bridge_runtime.lua    # PZ-shaped runtime template
+    fixtures.py           # legacy fixture import facade
     reporting.py          # summaries and CSV support
     heuristics.py         # compact broad/default-bucket gap audit
-    terminal.py            # readable terminal charts and ranked tables
-    evaluation.py          # shared scan pipeline for console and GUI
+    terminal.py            # terminal report coordinator
+    terminal_sections.py   # bounded report sections and rankings
+    evaluation.py          # compatibility facade and scan coordinator
+    scan_phases.py         # discovery, evidence, runtime, enrichment phases
     gui.py                 # Tk entry point and composed inspector class
+    gui_state.py           # explicit mutable GUI state model
+    gui_view.py            # view composition facade
+    gui_view_runtime.py    # view-owned runtime state and preferences
+    gui_view_controls.py   # scan settings controls
+    gui_view_tabs.py       # notebook sections and event bindings
     gui_widgets.py         # shared Treeview and form primitives
     gui_overview.py        # charts and overview summary
-    gui_items.py           # nested item tree, search, and evidence
-    lua_rules.py           # Lua-backed runtime blacklist/whitelist/override editor
+    gui_items.py           # nested item/rule view facade
+    gui_item_model.py      # item columns and metadata contracts
+    gui_item_tree.py       # item tree presentation and filtering
+    gui_item_rules.py      # runtime-rule item actions
+    lua_rules.py           # runtime-rule editor facade
+    lua_rules_contract.py  # normalized rule document contract
+    lua_rules_codec.py     # Lua parsing and deterministic rendering
+    lua_rules_mutations.py # rule document mutations
     gui_audits.py          # review, runtime verification, and gap views
-    runtime_comparison.py  # MS_Items parser and harness/runtime comparison
+    runtime_comparison.py  # runtime cache comparison facade
+    runtime_values.py      # runtime field normalization
+    runtime_loading.py     # MS_Items file/index loading
+    runtime_diff.py        # harness/runtime comparison
     gui_sandbox.py         # sandbox pricing editor
-    gui_controller.py      # settings, discovery, scan lifecycle, exports
+    gui_controller.py      # composed controller facade
+    gui_controller_*.py    # settings, execution, display, output concerns
     cache.py               # invalidation-aware persistent result cache
     scan_scope.py          # conservative bounded category-audit prefilters
     preferences.py         # atomic GUI path/scan-setting persistence
-    sandbox.py             # declarations, JSON recommendations, audit, persistence
+    sandbox.py             # sandbox public facade
+    sandbox_catalog.py     # declarations and JSON recommendations
+    sandbox_audit.py       # definition-vs-sandbox audit
+    sandbox_settings.py    # effective settings and persistence
     sandbox_defaults.json  # editable 42.20 Python-side category defaults
-    availability.py        # acquisition evidence and obtainable-only gate
+    availability.py        # acquisition API facade
+    availability_model.py  # acquisition evidence and obtainable-only gate
+    availability_scan.py   # filesystem and recipe discovery
+  tests/
+    marketsense_app_test_support/ # fixtures and real-evaluator self-test assertions
 ```
 
 By default it scans the Steam Workshop `108600` directory and

@@ -14,10 +14,8 @@ dependencies = []
 marketsense-offline = "marketsense_app.cli:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
+package-dir = {"" = "src", "marketsense_app_test_support" = "tests/marketsense_app_test_support"}
+packages = ["marketsense_app", "marketsense_app.testing", "marketsense_app_test_support"]
 
 [tool.setuptools.package-data]
 marketsense_app = ["*.lua"]

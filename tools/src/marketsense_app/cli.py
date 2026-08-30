@@ -16,7 +16,6 @@ from .config import (
     DEFAULT_SANDBOX_SETTINGS_PATH,
 )
 from .evaluation import ScanOptions, evaluate
-from .fixtures import print_self_test, self_test
 from .reporting import (
     write_csv,
     write_heuristic_gap_report,
@@ -24,6 +23,7 @@ from .reporting import (
 )
 from .sandbox import SandboxSettingsError, load_sandbox_settings, load_sandbox_option_specs
 from .terminal import print_terminal
+from .testing import print_self_test, self_test
 from .workshop_paths import default_roots
 
 
