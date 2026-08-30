@@ -4,6 +4,7 @@ T.addPackagePaths()
 _G.unpack = _G.unpack or table.unpack
 local runtimeRules = assert(T.load("MarketSense/MS_RuntimeRules.lua"))
 local shared = assert(T.load("MarketSense/ItemsRegistry/MS_ItemsRegistry_Shared.lua"))
+local ioLayer = assert(T.load("MarketSense/ItemsRegistry/MS_ItemsRegistry_IO.lua"))
 local availability = assert(T.load("MarketSense/MS_ItemAvailability.lua"))
 local build = assert(T.load("MarketSense/ItemsRegistry/MS_ItemsRegistry_Build.lua"))
 
@@ -50,6 +51,42 @@ local empty = shared.buildEmptyCatalog({ activeModsHash = "test" }, "harness")
 T.equal(type(empty.items), "table", "empty catalog has item map")
 T.equal(empty.source, "harness", "empty catalog source")
 T.equal(shared.stableHash({ "a", "b" }), shared.stableHash({ "a", "b" }), "stable hash")
+
+local serializedIndex = ioLayer.serializeIndex({
+    schemaVersion = 4,
+    generatedAt = "PZ-test",
+    activeModsHash = "hash",
+    generatorVersion = 2,
+    signatureVersion = "signature",
+    pricingHeuristicVersion = 7,
+    activeMods = { "MarketSense", "Example Mod" },
+    files = {
+        {
+            root = "Food", category = "Food", subcategory = "Staple",
+            leaf = "Canned", primaryPrefix = "Food.Canned",
+            path = "Food/Staple/Canned.txt",
+        },
+    },
+})
+local indexLines = {}
+for line in string.gmatch(string.gsub(serializedIndex, "\r\n", "\n"), "[^\n]+") do
+    indexLines[#indexLines + 1] = line
+end
+_G.getFileReader = function()
+    local position = 0
+    return {
+        readLine = function()
+            position = position + 1
+            return indexLines[position]
+        end,
+        close = function() end,
+    }
+end
+local parsedIndex = assert(ioLayer.parseLuaTableFile("MS_Items/MS_ItemsIndex.txt"))
+T.equal(parsedIndex.schemaVersion, 4, "safe index schema")
+T.equal(parsedIndex.activeMods[2], "Example Mod", "safe index active mod")
+T.equal(parsedIndex.files[1].path, "Food/Staple/Canned.txt", "safe index file path")
+_G.getFileReader = nil
 
 _G.getGameTime = function()
     return {

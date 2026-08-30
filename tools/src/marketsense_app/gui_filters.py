@@ -2,7 +2,7 @@
 
 The evaluator intentionally keeps its CLI semantics: command-line filters are
 scan inputs.  The desktop inspector has a different workflow.  It scans and
-caches the complete item universe once, then uses this module to narrow the
+caches the selected category scope once, then uses this module to narrow the
 already-evaluated rows without touching Workshop discovery, Lua, or the disk
 cache.
 """

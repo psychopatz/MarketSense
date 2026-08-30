@@ -24,6 +24,7 @@ tools/run.sh --console --confidence-threshold 0.65 \
   --low-confidence-out /tmp/marketsense-low.jsonl
 tools/run.sh --console --low-confidence-chunk 2 --chunk-size 25
 tools/run.sh --console --availability all --availability-chunk 2 --chunk-size 25
+tools/run.sh --console --category Food --availability all --chart none
 tools/run.sh --console --heuristic-gap-chunk 2 --chunk-size 25
 tools/run.sh --console --heuristic-gap-out /tmp/marketsense-gaps.json
 python3 tests/marketsense_tool_smoke.py
@@ -75,6 +76,7 @@ tools/
     liquid_pricing.py      # Lua-backed liquid anchors and sparse overrides
     gui_controller.py      # settings, discovery, scan lifecycle, exports
     cache.py               # invalidation-aware persistent result cache
+    scan_scope.py          # conservative bounded category-audit prefilters
     preferences.py         # atomic GUI path/scan-setting persistence
     sandbox.py             # declarations, JSON recommendations, audit, persistence
     sandbox_defaults.json  # editable 42.20 Python-side category defaults
@@ -84,8 +86,14 @@ tools/
 By default it scans the Steam Workshop `108600` directory and
 `~/Zomboid/Workshop` when present. Use `--workshop-root` to provide an explicit
 root. The GUI mod filter is populated by a metadata-only discovery pass; `All`
-is the default and selecting a discovered mod uses its stable ID. The CLI
-`--mod` option remains a substring filter for scripting and compatibility.
+is the default and selecting a discovered mod uses its stable ID. The GUI also
+has a `Category (scan)` scope (default `All categories`); `Food` is pruned
+before availability indexing and Lua evaluation, then checked again against
+the exact Lua category. Other category names remain exact output filters but
+currently retain the full candidate universe until their source signals are
+validated for safe pruning. The CLI `--mod` option remains a substring filter
+for scripting and compatibility, while `--category Food` provides the same
+bounded scope from the terminal.
 The default game-version ceiling is `42.20`. Versioned Workshop mods
 load `common` plus the highest installed version folder at or below that
 ceiling, matching PZ's `ZomboidFileSystem` selection rule. Override it with
@@ -120,7 +128,7 @@ choose Compare after a scan. It checks obtainable-item membership, raw tags,
 taxonomy headers, generated base prices, and generated base stock, and lets you
 save the complete mismatch report as JSON. `MS_Items` stores `basePrice`, not
 the final lazy `GetPriceDetails` price; the report calls that distinction out
-instead of treating the two stages as an error. When `MS_ItemsIndex.lua` is
+instead of treating the two stages as an error. When `MS_ItemsIndex.txt` is
 present, the verifier follows its indexed file list—the same list loaded by
 the runtime—and reports leftover unindexed text files as cache-hygiene issues.
 
@@ -161,10 +169,12 @@ item evaluation; cached rows are rehydrated into those views. Use
 restores an exact cache entry at startup without scanning, and its normal Scan
 button reuses that entry. `Refresh` explicitly invalidates/rebuilds the
 current entry; source/settings changes automatically produce a new cache key.
-The GUI scan is deliberately unfiltered: it caches all Workshop mods, Base
-items, and availability states in one master result. Its Availability, mod,
-Skip vanilla, and Max items controls are local view filters over those cached
-rows, so changing them does not invoke Workshop discovery or Lua again.
+The GUI scan defaults to all categories, but a selected category creates a
+smaller master result and avoids evaluating unrelated definitions. Its
+Availability, mod, Skip vanilla, and Max items controls are local view filters
+over that cached scope, so changing them does not invoke Workshop discovery or
+Lua again. Cache hits reuse the saved summary aggregates rather than scanning
+all rows a second time for GUI presentation.
 The Sandbox pricing tab also has `Audit definitions`, which reports live
 declaration/value drift, stale generated options, and Python-only category
 recommendations. Those recommendations are editable in

@@ -39,8 +39,13 @@ from marketsense_app.liquid_pricing import (
 )
 from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
+from marketsense_app.scan_scope import (
+    candidate_definitions,
+    normalize_category_filter,
+)
 from marketsense_app.runtime_comparison import compare_harness_to_runtime
 from marketsense_app.reporting import write_heuristic_gap_report, write_low_confidence_report
+from marketsense_app.recipe_parser import discover_yield_recipes
 from marketsense_app.preferences import load_preferences, normalize_preferences, save_preferences
 from marketsense_app.script_parser import parse_script
 from marketsense_app.sandbox import (
@@ -61,6 +66,20 @@ def main() -> int:
     assert pz_version_int("42") == 42000
     assert pz_version_int("42.1200") == 42999
     assert pz_version_int("not-a-version") == 0
+
+    scope_mod = WorkshopMod(Path("scope-fixture"), "scope", "Scope", "Scope", "fixture")
+    scope_food = ItemDefinition(
+        "Base.ScopeFood", "Base", {"displayCategory": "Cooking"}, scope_mod, "food.txt"
+    )
+    scope_weapon = ItemDefinition(
+        "Base.ScopeWeapon", "Base", {"displayCategory": "Weapon"}, scope_mod, "weapon.txt"
+    )
+    assert normalize_category_filter("all categories") == ""
+    assert [item.full_type for item in candidate_definitions(
+        [scope_food, scope_weapon], "Food"
+    )] == ["Base.ScopeFood"]
+    assert len(candidate_definitions([scope_food, scope_weapon], "Weapon")) == 2
+    assert len(candidate_definitions([scope_food, scope_weapon], "unknown")) == 2
 
     liquid_catalog = LiquidPricingCatalog(
         {
@@ -225,6 +244,24 @@ tileset {
             """module Base { craftRecipe MakeCrafted { outputs { item 1 Base.Crafted, } } }""",
             encoding="utf-8",
         )
+        (scripts_root / "generated" / "recipes" / "yield.txt").write_text(
+            """module Base {
+    craftRecipe OpenEggCarton {
+        inputs { item 1 Base.EggCarton flags[InheritFoodAge], }
+        outputs { item 12 Base.Egg, }
+    }
+    craftRecipe OpenChanceBox {
+        inputs { item 1 Base.ChanceBox, }
+        outputs { item 1 Base.Egg chance:0.5, }
+    }
+    craftRecipe OpenVariableBox {
+        inputs { item 1 Base.VariableBox, }
+        outputs { item variable[1:2] Base.Egg, }
+    }
+}
+""",
+            encoding="utf-8",
+        )
         availability_mod = WorkshopMod(media.parent, "base", "Base", "Base", "base")
         availability_definitions = {
             "Base.Looted": ItemDefinition("Base.Looted", "Base", {}, availability_mod, "looted.txt"),
@@ -236,6 +273,27 @@ tileset {
                 "Base.DebugThing", "Base", {"displayCategory": "Hidden"}, availability_mod, "debug.txt"
             ),
         }
+        yield_definitions = dict(availability_definitions)
+        for full_type in (
+            "Base.EggCarton", "Base.Egg", "Base.ChanceBox", "Base.VariableBox",
+        ):
+            yield_definitions[full_type] = ItemDefinition(
+                full_type, "Base", {}, availability_mod, "yield.txt"
+            )
+        yield_index, yield_stats = discover_yield_recipes(
+            scripts_root, (), "42.20", yield_definitions
+        )
+        assert yield_stats["recipeCount"] >= 1
+        egg_yield = yield_index["Base.EggCarton"][0]
+        assert egg_yield["recipe"] == "OpenEggCarton"
+        assert egg_yield["outputs"][0] == {
+            "fullType": "Base.Egg", "quantity": 12.0, "chance": 1.0,
+            "maxQuantity": 12.0, "outputFlags": [], "inheritFoodAge": True,
+            "resolution": "exact",
+            "inputFlags": ["InheritFoodAge"],
+        }
+        assert yield_index["Base.ChanceBox"][0]["resolution"] == "probabilistic"
+        assert yield_index["Base.VariableBox"][0]["resolution"] == "unresolved"
         availability_index = build_acquisition_index(
             availability_definitions.values(), scripts_root, (), "42.20"
         )
@@ -265,6 +323,29 @@ tileset {
             (media.parent,), scripts_root,
         )
         assert key_before != key_after
+        unscoped_options = ScanOptions(
+            workshop_roots=(media.parent,), category_filter="",
+        )
+        scoped_options = ScanOptions(
+            workshop_roots=(media.parent,), category_filter="Food",
+        )
+        lowercase_scoped_options = ScanOptions(
+            workshop_roots=(media.parent,), category_filter="food",
+        )
+        assert cache_key(
+            str(root / "marketsense.lua"), unscoped_options,
+            (media.parent,), scripts_root,
+        ) != cache_key(
+            str(root / "marketsense.lua"), scoped_options,
+            (media.parent,), scripts_root,
+        )
+        assert cache_key(
+            str(root / "marketsense.lua"), scoped_options,
+            (media.parent,), scripts_root,
+        ) == cache_key(
+            str(root / "marketsense.lua"), lowercase_scoped_options,
+            (media.parent,), scripts_root,
+        )
         progress_messages: list[str] = []
         no_root_options = ScanOptions(workshop_roots=(root / "missing",))
         assert load_cached_result(
@@ -350,6 +431,10 @@ tileset {
     })
     assert mismatch_status == "REVIEW" and "absent from expanded tags" in mismatch_reason
     assert review_row({"error": "bridge failed"})[0] == "ERROR"
+    assert review_row({
+        "category": "Food", "primary": "Food", "confidence": 0.9,
+        "yieldResolution": {"status": "probabilistic", "recipe": "OpenBox"},
+    }) == ("REVIEW", "yield probabilistic (OpenBox)")
 
     descriptor_row = {
         "expandedTags": [
@@ -585,7 +670,7 @@ Base.Shell|12|2|10
         assert comparison["status"] == "match"
         assert comparison["matches"] == 1 and not comparison["differences"]
 
-        (Path(temp_dir) / "MS_Items" / "MS_ItemsIndex.lua").write_text(
+        (Path(temp_dir) / "MS_Items" / "MS_ItemsIndex.txt").write_text(
             'return { files = { { path = "Weapon/Ranged/Ammo.txt" } } }\n',
             encoding="utf-8",
         )

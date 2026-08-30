@@ -44,6 +44,16 @@ local function tr(key, fallback)
     return fallback or TEXT_FALLBACKS[key] or key
 end
 
+local function trFormat(key, fallback, ...)
+    if type(getText) == "function" then
+        local ok, value = pcall(getText, key, ...)
+        if ok and value and value ~= key and value ~= "" then
+            return value
+        end
+    end
+    return string.format(fallback or TEXT_FALLBACKS[key] or key, ...)
+end
+
 local function lower(value)
     return string.lower(tostring(value or ""))
 end
@@ -216,6 +226,51 @@ local function rowSearchText(row)
         joinText(row.expandedTags, " "),
     }
     return lower(joinText(values, " "))
+end
+
+local function yieldSummary(details)
+    local yield = details and details.yieldResolution
+    if type(yield) ~= "table" then return nil end
+
+    local status = lower(yield.status)
+    local label = tr("UI_MarketSenseCatalog_YieldLabel", "Yield")
+    if status == "resolved" then
+        local outputs = {}
+        for _, output in ipairs(yield.outputs or {}) do
+            local quantity = tonumber(output.quantity) or 0
+            local fullType = tostring(output.fullType or "?")
+            outputs[#outputs + 1] = string.format("%g x %s", quantity, fullType)
+        end
+        if #outputs > 0 then
+            local recipe = tostring(yield.recipe or "recipe")
+            local suffix = yield.evaluation == "fallback" and " [fallback]" or ""
+            return string.format("%s: %s -> %s%s", label, recipe,
+                table.concat(outputs, ", "), suffix)
+        end
+    end
+
+    if status == "ambiguous" or status == "unresolved" then
+        local candidateNames = {}
+        for _, candidate in ipairs(yield.candidates or {}) do
+            local name = tostring(candidate.recipe or "")
+            if name ~= "" and #candidateNames < 3 then
+                candidateNames[#candidateNames + 1] = name
+            end
+        end
+        local suffix = #candidateNames > 0
+            and (": " .. table.concat(candidateNames, ", ")) or ""
+        return string.format("%s: %s (%d candidates)%s", label,
+            string.upper(status), tonumber(yield.candidateCount) or 0, suffix)
+    end
+
+    if status == "not_detected" then
+        return string.format("%s: NOT_DETECTED (%d recipes, %d sources indexed)",
+            label, tonumber(yield.recipeCount) or 0,
+            tonumber(yield.sourceCount) or 0)
+    end
+
+    return string.format("%s: %s", label,
+        status ~= "" and status or "not detected")
 end
 
 local function drawMarketItemRow(list, y, entry, alternate)
@@ -484,9 +539,9 @@ function MarketSenseItemCatalogDebugWindow:onGenerateRuntimeItems()
     self.runtimeGenerationBusy = false
 
     if not ok then
-        self.runtimeGenerationStatus = string.format(
-            tr("UI_MarketSenseCatalog_RuntimeGenerationFailed",
-                "MarketSense runtime catalog generation failed: %s"), tostring(result))
+        self.runtimeGenerationStatus = trFormat(
+            "UI_MarketSenseCatalog_RuntimeGenerationFailed",
+            "MarketSense runtime catalog generation failed: %s", tostring(result))
         return
     end
 
@@ -503,15 +558,15 @@ function MarketSenseItemCatalogDebugWindow:onGenerateRuntimeItems()
         and #result.files or 0
     if startedAt and finishedAt then
         local elapsed = math.max(0, math.floor(finishedAt - startedAt))
-        self.runtimeGenerationStatus = string.format(
-            tr("UI_MarketSenseCatalog_RuntimeGeneration",
-                "Generated %d MarketSense items across %d files in %d ms. Output: Zomboid/Lua/MS_Items"),
-            itemCount, fileCount, elapsed)
+        self.runtimeGenerationStatus = trFormat(
+            "UI_MarketSenseCatalog_RuntimeGeneration",
+            "Generated %s MarketSense items across %s files in %s ms. Output: Zomboid/Lua/MS_Items",
+            tostring(itemCount), tostring(fileCount), tostring(elapsed))
     else
-        self.runtimeGenerationStatus = string.format(
-            tr("UI_MarketSenseCatalog_RuntimeGenerationNoTiming",
-                "Generated %d MarketSense items across %d files. Output: Zomboid/Lua/MS_Items"),
-            itemCount, fileCount)
+        self.runtimeGenerationStatus = trFormat(
+            "UI_MarketSenseCatalog_RuntimeGenerationNoTiming",
+            "Generated %s MarketSense items across %s files. Output: Zomboid/Lua/MS_Items",
+            tostring(itemCount), tostring(fileCount))
     end
 end
 
@@ -549,10 +604,11 @@ function MarketSenseItemCatalogDebugWindow:render()
         tr("UI_MarketSenseCatalog_Heading", "AVAILABLE MARKET ITEMS"),
         rect.x, rect.y - Layout.Pixels(22, self.uiScale), rect.width, suffix)
 
-    local detailHeight = Layout.Pixels(52, self.uiScale)
+    local detailHeight = Layout.Pixels(64, self.uiScale)
     local detailY = self:getHeight() - detailHeight - Layout.Pixels(10, self.uiScale)
     UI.DrawSurface(self, rect.x, detailY, rect.width, detailHeight, true)
     local detailText
+    local detailSubtext
     if self.runtimeGenerationStatus then
         detailText = self.runtimeGenerationStatus
     elseif self.selectedItem then
@@ -564,6 +620,7 @@ function MarketSenseItemCatalogDebugWindow:render()
         detailText = string.format("%s  |  %s  |  $%d  |  %s",
             self.selectedItem.displayName or self.selectedItem.fullType,
             self.selectedItem.category or "Misc", math.floor(price), status)
+        detailSubtext = yieldSummary(details)
     elseif self.statusText then
         detailText = self.statusText
     else
@@ -573,8 +630,14 @@ function MarketSenseItemCatalogDebugWindow:render()
     local muted = Theme.colors.textMuted
     self:drawText(Layout.Ellipsize(detailText, UIFont.Small,
         math.max(40, rect.width - Layout.Pixels(20, self.uiScale))),
-        rect.x + Layout.Pixels(10, self.uiScale), detailY + Layout.Pixels(18, self.uiScale),
+        rect.x + Layout.Pixels(10, self.uiScale), detailY + Layout.Pixels(10, self.uiScale),
         muted.r, muted.g, muted.b, muted.a, UIFont.Small)
+    if detailSubtext then
+        self:drawText(Layout.Ellipsize(detailSubtext, UIFont.Small,
+            math.max(40, rect.width - Layout.Pixels(20, self.uiScale))),
+            rect.x + Layout.Pixels(10, self.uiScale), detailY + Layout.Pixels(34, self.uiScale),
+            muted.r, muted.g, muted.b, muted.a, UIFont.Small)
+    end
 end
 
 function MarketSenseItemCatalogDebugWindow:close()
@@ -590,6 +653,7 @@ end
 -- Kept public for lightweight catalog/UI smoke tests and other debug tools
 -- that need to preview the same taxonomy grouping without opening a window.
 MarketSenseItemCatalogDebugWindow.BuildCategoryPath = categoryPath
+MarketSenseItemCatalogDebugWindow.BuildYieldSummary = yieldSummary
 
 function MarketSenseItemCatalogDebugWindow.Open()
     if MarketSenseItemCatalogDebugWindow.instance then

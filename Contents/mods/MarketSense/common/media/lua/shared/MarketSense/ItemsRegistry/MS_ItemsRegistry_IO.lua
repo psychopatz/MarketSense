@@ -6,46 +6,161 @@ local Core = Shared.Core
 local TagUtils = Shared.TagUtils
 local Config = Shared.Config
 
+local function skipWhitespace(text, position)
+    while position <= #text do
+        local character = string.sub(text, position, position)
+        if character ~= " " and character ~= "\t" then break end
+        position = position + 1
+    end
+    return position
+end
+
+local function readQuoted(text, position)
+    position = skipWhitespace(text, position)
+    if string.sub(text, position, position) ~= '"' then
+        return nil, position
+    end
+
+    position = position + 1
+    local result = {}
+    while position <= #text do
+        local character = string.sub(text, position, position)
+        if character == '"' then
+            return table.concat(result), position + 1
+        end
+        if character == "\\" then
+            local escaped = string.sub(text, position + 1, position + 1)
+            if escaped == "n" then
+                result[#result + 1] = "\n"
+            elseif escaped == "r" then
+                result[#result + 1] = "\r"
+            elseif escaped == "t" then
+                result[#result + 1] = "\t"
+            else
+                result[#result + 1] = escaped
+            end
+            position = position + 2
+        else
+            result[#result + 1] = character
+            position = position + 1
+        end
+    end
+    return nil, position
+end
+
+local function readStringField(line, key)
+    local position = skipWhitespace(line, 1)
+    if string.sub(line, position, position + #key - 1) ~= key then
+        return nil
+    end
+    position = skipWhitespace(line, position + #key)
+    if string.sub(line, position, position) ~= "=" then
+        return nil
+    end
+    local value = readQuoted(line, position + 1)
+    return value
+end
+
+local function readFileEntry(line)
+    local position = skipWhitespace(line, 1)
+    if string.sub(line, position, position) ~= "{" then
+        return nil
+    end
+    position = position + 1
+
+    local entry = {}
+    local fields = { "root", "category", "subcategory", "leaf", "primaryPrefix", "path" }
+    for index, key in ipairs(fields) do
+        position = skipWhitespace(line, position)
+        if string.sub(line, position, position + #key - 1) ~= key then
+            return nil
+        end
+        position = skipWhitespace(line, position + #key)
+        if string.sub(line, position, position) ~= "=" then
+            return nil
+        end
+        local value
+        value, position = readQuoted(line, position + 1)
+        if value == nil then return nil end
+        entry[key] = value
+        position = skipWhitespace(line, position)
+        if index < #fields then
+            if string.sub(line, position, position) ~= "," then
+                return nil
+            end
+            position = position + 1
+        end
+    end
+    return entry
+end
+
+-- The runtime cache is written under Zomboid/Lua, where PZ deliberately does
+-- not expose load/loadstring.  Keep the existing .txt manifest shape for
+-- tooling compatibility, but parse only the fields emitted by serializeIndex
+-- instead of executing arbitrary file contents.
 function IO.parseLuaTableFile(path)
     local reader = getFileReader(path, false)
     if not reader then
         return nil
     end
 
-    local chunks = {}
+    local data = {
+        activeMods = {},
+        files = {},
+    }
+    local section = nil
     local line = reader:readLine()
     while line do
-        chunks[#chunks + 1] = line
+        local text = Shared.trim(line)
+        if text == "activeMods = {" then
+            section = "activeMods"
+        elseif text == "files = {" then
+            section = "files"
+        elseif section == "activeMods" then
+            if string.sub(text, 1, 1) == "}" then
+                section = nil
+            else
+                local value = readQuoted(text, 1)
+                if value ~= nil and value ~= "" then
+                    data.activeMods[#data.activeMods + 1] = value
+                end
+            end
+        elseif section == "files" then
+            if string.sub(text, 1, 1) == "}" then
+                section = nil
+            else
+                local entry = readFileEntry(text)
+                if entry ~= nil then
+                    data.files[#data.files + 1] = entry
+                end
+            end
+        else
+            local numericFields = {
+                "schemaVersion", "generatorVersion", "pricingHeuristicVersion",
+            }
+            for _, key in ipairs(numericFields) do
+                local value = string.match(text,
+                    "^" .. key .. "%s*=%s*([%d%.%-]+)")
+                if value ~= nil then data[key] = tonumber(value) end
+            end
+            local stringFields = {
+                "generatedAt", "activeModsHash", "signatureVersion",
+                "gameVersion", "sourceManifestHash",
+            }
+            for _, key in ipairs(stringFields) do
+                local value = readStringField(text, key)
+                if value ~= nil then data[key] = value end
+            end
+        end
         line = reader:readLine()
     end
     reader:close()
 
-    local source = table.concat(chunks, "\n")
-    if source == "" then
+    if data.schemaVersion == nil and #data.files == 0
+        and #data.activeMods == 0 then
         return nil
     end
-
-    local loader = loadstring or load
-    if type(loader) ~= "function" then
-        Shared.log("Warn", "No compatible Lua chunk loader is available for " .. tostring(path))
-        return nil
-    end
-
-    local okLoad, chunkOrErr, loadErr = pcall(loader, source)
-    local chunk = okLoad and chunkOrErr or nil
-    local err = okLoad and loadErr or chunkOrErr
-    if not chunk then
-        Shared.log("Warn", "Failed to parse " .. tostring(path) .. ": " .. tostring(err))
-        return nil
-    end
-
-    local ok, data = pcall(chunk)
-    if ok and type(data) == "table" then
-        return data
-    end
-
-    Shared.log("Warn", "Failed to execute parsed registry file " .. tostring(path))
-    return nil
+    return data
 end
 
 function IO.serializeIndex(indexData)

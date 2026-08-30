@@ -18,7 +18,13 @@ from .availability import (
 from .models import ItemDefinition
 from .heuristics import heuristic_coverage
 from .reporting import build_summary
+from .recipe_parser import discover_yield_recipes
 from .review import low_confidence_rows, review_row
+from .scan_scope import (
+    candidate_definitions,
+    normalize_category_filter,
+    row_matches_category,
+)
 from .sandbox import (
     effective_sandbox_settings,
     load_sandbox_option_specs,
@@ -43,6 +49,7 @@ class ScanOptions:
     confidence_threshold: float = 0.5
     sandbox_options: dict[str, int | float] = field(default_factory=dict)
     availability_filter: str = "obtainable"
+    category_filter: str = ""
 
 
 ProgressCallback = Callable[[str], None]
@@ -140,20 +147,28 @@ def _load_cached_result(cache: ResultCache) -> tuple[dict, list[dict]] | None:
     if not isinstance(items, list) or not all(isinstance(row, dict) for row in items):
         return None
     summary = dict(cached["summary"])
-    # Rebuild lightweight presentation data from cached rows so adding a GUI,
-    # review, or heuristic report does not require another Lua evaluation.
-    valid = [
-        row for row in items
-        if not row.get("error") and isinstance(row.get("price"), (int, float))
-    ]
-    threshold = float(summary.get("confidence_threshold", 0.5) or 0.5)
-    statuses = Counter(review_row(row)[0] for row in items)
-    summary["review_statuses"] = dict(statuses)
-    summary["review_count"] = sum(
-        count for status, count in statuses.items() if status != "OK"
-    )
-    summary["low_confidence_count"] = len(low_confidence_rows(items, threshold))
-    summary["heuristic_coverage"] = heuristic_coverage(valid)
+    # Current cache entries already contain these presentation aggregates.
+    # Recomputing them over thousands of verbose rows made GUI startup do a
+    # second full pass after JSON deserialization. Keep a compatibility path
+    # for older entries that predate one of the aggregate fields.
+    if (
+        "review_statuses" not in summary
+        or "review_count" not in summary
+        or "low_confidence_count" not in summary
+        or "heuristic_coverage" not in summary
+    ):
+        valid = [
+            row for row in items
+            if not row.get("error") and isinstance(row.get("price"), (int, float))
+        ]
+        threshold = float(summary.get("confidence_threshold", 0.5) or 0.5)
+        statuses = Counter(review_row(row)[0] for row in items)
+        summary["review_statuses"] = dict(statuses)
+        summary["review_count"] = sum(
+            count for status, count in statuses.items() if status != "OK"
+        )
+        summary["low_confidence_count"] = len(low_confidence_rows(items, threshold))
+        summary["heuristic_coverage"] = heuristic_coverage(valid)
     summary["cache"] = {"status": "hit", "path": str(cache.path)}
     return summary, items
 
@@ -219,25 +234,31 @@ def evaluate(
     ))
     merged_definitions = merge_scan_definitions(base_definitions, definitions_by_type)
     all_ordered = [merged_definitions[key] for key in sorted(merged_definitions)]
+    category_filter = normalize_category_filter(options.category_filter)
+    scoped_ordered = candidate_definitions(all_ordered, category_filter)
     _progress(progress, f"universe: merged {len(all_ordered):,} item definitions")
+    if category_filter:
+        _progress(progress, (
+            f"scope: {category_filter} candidates {len(scoped_ordered):,} / "
+            f"{len(all_ordered):,} definitions"
+        ))
     _progress(progress, "availability: building acquisition evidence index")
     availability_index = build_acquisition_index(
-        all_ordered,
+        scoped_ordered,
         scripts_root,
         (mod.root for mod in mods),
         options.game_version,
     )
-    availability_records = availability_index.records(all_ordered)
+    availability_records = availability_index.records(scoped_ordered)
     _progress(progress, (
         f"availability: indexed {len(availability_records):,} rows from "
         f"{availability_index.scanned_files:,} source files"
     ))
     selected_filter = normalize_availability_filter(options.availability_filter)
-    # The Lua mod is authoritative for market eligibility.  Evaluate the
-    # complete discovered universe first so the harness can compare the live
-    # Lua result with this independent source audit and expose mismatches.
-    # ``max_items`` is applied after that comparison, not before it.
-    ordered = all_ordered
+    # The Lua mod is authoritative for market eligibility and final category.
+    # Source hints only reduce the candidate universe; an exact category check
+    # below prevents a broad hint from leaking another root into the result.
+    ordered = scoped_ordered
     duplicate_count = max(0, definition_count - len(definitions_by_type))
     sandbox_specs = load_sandbox_option_specs(options.game_version)
     effective_sandbox = effective_sandbox_settings(options.sandbox_options, sandbox_specs)
@@ -246,11 +267,27 @@ def evaluate(
         (mod.root for mod in mods),
         options.game_version,
     )
+    yield_recipes, yield_stats = discover_yield_recipes(
+        scripts_root,
+        (mod.root for mod in mods),
+        options.game_version,
+        merged_definitions,
+    )
+    _progress(progress, (
+        f"recipes: indexed {yield_stats['recipeCount']:,} craft recipes and "
+        f"{yield_stats['sourceCount']:,} single-input yield sources"
+    ))
     bridge_definitions = emulate_pz_acquisition_flags(
-        ordered, availability_records, tile_properties
+        all_ordered, availability_records, tile_properties
     )
     _progress(progress, f"lua: evaluating {len(bridge_definitions):,} definitions")
-    bridge_result = run_lua_result(lua, bridge_definitions, effective_sandbox)
+    bridge_result = run_lua_result(
+        lua,
+        bridge_definitions,
+        effective_sandbox,
+        yield_recipes=yield_recipes,
+        emitted_types={definition.full_type for definition in ordered},
+    )
     _progress(progress, f"lua: returned {len(bridge_result.rows):,} rows")
     all_rows: list[dict] = []
     lua_availability_records: dict[str, dict] = {}
@@ -302,8 +339,13 @@ def evaluate(
                 "staticReason": static_availability.get("reason", ""),
             })
         all_rows.append(enriched)
-    runtime_eligible = [
+    category_rows = [
         row for row in all_rows
+        if row_matches_category(row, category_filter)
+    ]
+    category_omitted = max(0, len(all_rows) - len(category_rows))
+    runtime_eligible = [
+        row for row in category_rows
         if availability_matches(row.get("availability") or {}, selected_filter)
     ]
     rows = runtime_eligible
@@ -329,7 +371,7 @@ def evaluate(
         availability_records=lua_availability_records,
         runtime_evaluated=len(all_rows),
         availability_filter=selected_filter,
-        availability_candidates=len(all_ordered),
+        availability_candidates=len(category_rows),
         availability_eligible=len(runtime_eligible),
         max_items_omitted=max_items_omitted,
         availability_source_files=availability_index.scanned_files,
@@ -337,6 +379,16 @@ def evaluate(
         tile_definition_files=len(tile_source_files),
         tile_sprite_properties=len(tile_properties),
     )
+    summary["category_filter"] = category_filter or "all"
+    summary["category_scope"] = {
+        "requested": category_filter or "all",
+        "discovered_definitions": len(all_ordered),
+        "candidate_definitions": len(scoped_ordered),
+        "pruned_definitions": max(0, len(all_ordered) - len(scoped_ordered)),
+        "evaluated_candidates": len(all_rows),
+        "excluded_by_exact_category": category_omitted,
+    }
+    summary["yield_recipe_graph"] = dict(yield_stats)
     summary["availability_verification"] = {
         "authority": "MarketSense.ItemAvailability (Lua runtime)",
         "static_audit": "offline source scan (comparison only)",

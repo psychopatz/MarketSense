@@ -34,6 +34,11 @@ and Workshop items, merges matching Workshop definitions over their vanilla
 definition, and passes the complete discovered universe to the pricing
 evaluator/list. The GUI's `Skip vanilla`, mod, and availability controls are
 fast filters over that cached result; they do not create a Workshop-only scan.
+Use `--category Food` (or the GUI's `Category (scan)` control) to restrict the
+expensive availability/Lua pass to one top-level category. The Food source hint
+is conservative and the Lua result is checked exactly before it is returned;
+other category names remain exact output filters until their source signals are
+validated for safe pruning.
 
 ```bash
 ./tools/run.sh                 # Tk GUI
@@ -42,6 +47,7 @@ fast filters over that cached result; they do not create a Workshop-only scan.
 ./tools/run.sh --console --confidence-threshold 0.65 --low-confidence-out /tmp/marketsense-low.jsonl
 ./tools/run.sh --console --sandbox-config tools/.config/sandbox-settings.json --chunk-size 25
 ./tools/run.sh --console --availability all --availability-chunk 2 --chunk-size 25
+./tools/run.sh --console --category Food --availability all --chart none
 ./tools/run.sh --console --heuristic-gap-chunk 2 --chunk-size 25
 ./tools/run.sh --console --heuristic-gap-out /tmp/marketsense-gaps.json
 ```
@@ -51,13 +57,16 @@ categories, primary/expanded tags, descriptions, resolver sources, Workshop
 metadata, and definition lineage. Categories are native collapsible tree nodes;
 the review filter can be combined with search.
 The Scan settings mod filter is a combobox populated from detected Workshop
-metadata. It defaults to `All`. The first `Scan Workshop` builds one complete
-cached universe (all detected mods, Base items, and availability states); the
-mod filter, `Skip vanilla`, `Availability`, and `Max items` controls then
-filter that in-memory result instantly. Selecting a mod matches its stable
-ID emitted by the Lua bridge, so it does not trigger another Workshop/Lua
-scan. `Skip vanilla` remains an independent view control when `All` is
-selected.
+metadata. It defaults to `All`. `Category (scan)` defaults to `All categories`;
+selecting `Food` bounds the expensive evaluator candidate set and gets its own
+cache entry. Other category names still produce exact category-only output but
+conservatively keep the full candidate universe until their source signals are
+validated for pruning. The first scan builds the selected scope's cached
+universe; the mod filter, `Skip vanilla`, `Availability`, and `Max items`
+controls then filter that in-memory result instantly. Selecting a mod matches
+its stable ID emitted by the Lua bridge, so it does not trigger another
+Workshop/Lua scan. `Skip vanilla` remains an independent view control when
+`All` is selected.
 Selecting a leaf item opens the runtime evidence panel: the actual Lua
 detector result, resolver source, category path, context variables, evaluator
 provenance, and price balance audit are shown from the bridge output.
@@ -144,7 +153,7 @@ row in the console/context. Use the corresponding heuristic-gap options for
 the heuristic work queue.
 
 Completed master scans are cached in `tools/.cache/results` by default. The cache key
-includes scan settings, Workshop/base item scripts, the base/Workshop Lua
+includes scan settings (including category scope), Workshop/base item scripts, the base/Workshop Lua
 acquisition sources, MarketSense Lua source, and the inspector source, so
 changing inputs automatically invalidates stale results. The GUI attempts a
 cache-only restore at startup and normal `Scan Workshop` reuses an exact hit;

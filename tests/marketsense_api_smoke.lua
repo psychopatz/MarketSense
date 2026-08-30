@@ -28,8 +28,43 @@ function inventoryItem:getDescription() return "Canned preserved bean meal" end
 function inventoryItem:getActualWeight() return 0.5 end
 function inventoryItem:getCalories() return 180 end
 function inventoryItem:getConditionMax() return 99 end
+function inventoryItem:getAge() return 30 end
+function inventoryItem:isRotten() return false end
+function inventoryItem:isFrozen() return false end
+function inventoryItem:isCooked() return false end
+function inventoryItem:isBurnt() return false end
+function inventoryItem:getHeat() return 0 end
 function inventoryItem:isCannedFood() return true end
 function inventoryItem:Remove() end
+
+local beverageCategory = "Beverage"
+local liquidCategory = "Liquid"
+local fluidCategoryList = {}
+function fluidCategoryList:size() return 2 end
+function fluidCategoryList:get(index)
+    return index == 0 and beverageCategory or liquidCategory
+end
+_G.FluidCategory = {
+    getList = function() return fluidCategoryList end,
+}
+
+local beerFluid = {}
+function beerFluid:getFluidType() return "Beer" end
+function beerFluid:getFluidTypeString() return "Beer" end
+function beerFluid:isCategory(category)
+    return category == beverageCategory or category == liquidCategory
+end
+
+local beerContainer = {}
+function beerContainer:getContainerName() return "BeerCan" end
+function beerContainer:getAmount() return 12 end
+function beerContainer:getCapacity() return 12 end
+function beerContainer:getPrimaryFluidAmount() return 12 end
+function beerContainer:getFilledRatio() return 1 end
+function beerContainer:getPrimaryFluid() return beerFluid end
+function beerContainer:isEmpty() return false end
+function beerContainer:isMixture() return false end
+function inventoryItem:getFluidContainer() return beerContainer end
 
 _G.instanceof = function(_, className)
     return className == "Food" or className == "InventoryItem"
@@ -76,6 +111,17 @@ end
 
 local api = assert(require "MarketSense/MS_PublicAPI")
 T.equal(api, MarketSense, "canonical public API is MarketSense")
+local collectionLike = {}
+function collectionLike:toArray() return { "Beverage", "Liquid" } end
+local collectionValues = MarketSense.Core.listFromJavaCollection(collectionLike)
+T.equal(#collectionValues, 2, "Java collection adapter reads toArray values")
+T.equal(collectionValues[1], "Beverage", "Java collection adapter preserves values")
+local printedSet = setmetatable({}, {
+    __tostring = function() return "[Beverage]" end,
+})
+local printedSetValues = MarketSense.Core.listFromJavaCollection(printedSet)
+T.equal(#printedSetValues, 1, "Java Set adapter reads stable printed values")
+T.equal(printedSetValues[1], "Beverage", "Java Set adapter preserves printed value")
 MarketSense.Config.MasterList = {
     ["Base.HarnessRegistryItem"] = {
         fullType = "Base.HarnessRegistryItem",
@@ -114,6 +160,62 @@ T.equal(context.lvlSkillTrained, 3, "PZ Item.getLevelSkillTrained is read")
 T.equal(context.description, "Canned preserved bean meal", "inventory description is read")
 T.equal(context.weight, 0.5, "live weight overrides script weight")
 T.equal(context.conditionMax, 99, "live condition overrides script condition")
+T.equal(context.hungerChange, -0.2, "signed hunger change is preserved")
+T.equal(context.foodAge, 30, "live food age is read")
+T.equal(context.hasRuntimeFoodAge, true, "runtime food age evidence is marked")
+T.equal(context.fluidCategories[1], "Beverage", "fluid categories use the supported PZ category list")
+T.equal(context.fluidCategories[2], "Liquid", "fluid category membership is preserved")
+
+local function foodDetails()
+    return { category = "Food", primary = "Food", tags = { "Food" }, expandedTags = { "Food" } }
+end
+
+local function foodContext(age, rotten, extra)
+    local context = {
+        hungerChange = -0.3,
+        thirstChange = 0,
+        calories = 600,
+        weight = 0.5,
+        hasRuntimeFoodAge = true,
+        hasRuntimeFoodState = true,
+        foodAge = age,
+        foodDaysFresh = 2,
+        foodDaysRotten = 4,
+        isRotten = rotten == true,
+        isCantEat = false,
+    }
+    for key, value in pairs(extra or {}) do context[key] = value end
+    return context
+end
+
+local freshFood = MarketSense.FoodPricing.calculate(foodContext(0, false), foodDetails())
+local staleFood = MarketSense.FoodPricing.calculate(foodContext(3, false), foodDetails())
+local rottenFood = MarketSense.FoodPricing.calculate(foodContext(4, true), foodDetails())
+T.truthy(freshFood > staleFood, "stale food is cheaper than fresh food")
+T.truthy(staleFood > rottenFood, "rotten food is cheaper than stale food")
+
+local longShelfFood = MarketSense.FoodPricing.calculate(
+    foodContext(0, false, { foodDaysFresh = 20, foodDaysRotten = 40 }), foodDetails()
+)
+T.truthy(longShelfFood > freshFood, "longer shelf life raises food value modestly")
+
+local cookedFood = MarketSense.FoodPricing.calculate(
+    foodContext(0, false, { isCooked = true }), foodDetails()
+)
+local burntFood = MarketSense.FoodPricing.calculate(
+    foodContext(0, false, { isBurnt = true }), foodDetails()
+)
+T.truthy(cookedFood > freshFood, "cooked food receives one preparation benefit")
+T.truthy(freshFood > burntFood, "burnt food receives one preparation penalty")
+
+local beneficialFood = MarketSense.FoodPricing.calculate(
+    foodContext(0, false, { unhappyChange = -10 }), foodDetails()
+)
+local harmfulFood = MarketSense.FoodPricing.calculate(
+    foodContext(0, false, { hungerChange = 0.3, unhappyChange = 10 }), foodDetails()
+)
+T.truthy(freshFood > harmfulFood, "harmful signed changes lower food value")
+T.truthy(beneficialFood > freshFood, "beneficial mood change raises food value")
 
 local details = assert(api.GetPriceDetails(scriptItem.fullName, true))
 T.equal(details.category, "Food", "food root")
@@ -126,10 +228,14 @@ T.equal(type(details.balanceAudit), "table", "audit is present")
 local debugDetails = assert(api.DebugItem(scriptItem.fullName, false))
 T.equal(debugDetails.availability.status, "uncertain", "debug exposes Lua availability")
 T.equal(debugDetails.marketEligible, false, "uncertain item is not market eligible")
+T.equal(type(debugDetails.yieldResolution), "table", "debug exposes yield resolution")
 
 local tags = api.GetTags(scriptItem.fullName)
 T.equal(tags.primary, details.primary, "public tag primary")
 T.equal(tags.category, details.category, "public tag category")
+local yieldResolution = api.GetYieldResolution(scriptItem.fullName)
+T.equal(type(yieldResolution), "table", "public yield resolver")
+T.equal(yieldResolution.status, "not_detected", "public yield resolver status")
 
 api.ClearRuntimeCache()
 local withoutAudit = assert(api.GetPriceDetails(scriptItem.fullName, false))

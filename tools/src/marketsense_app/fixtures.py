@@ -32,18 +32,30 @@ def mock_definitions() -> list[ItemDefinition]:
     return [
         make("FoodLow", {
             "itemType": "Food", "displayCategory": "Food", "foodType": "Meat",
-            "hungerChange": -0.05, "calories": 50, "daysFresh": 1, "daysRotten": 2,
+            "hungerChange": -5, "calories": 50, "daysFresh": 1, "daysRotten": 2,
             "actualWeight": 0.2, "description": "a small portion of meat",
             "canSpawnAsLoot": True,
         }),
         make("FoodHigh", {
             "itemType": "Food", "displayCategory": "Food", "foodType": "Meat",
-            "hungerChange": -0.8, "calories": 800, "daysFresh": 10, "daysRotten": 20,
+            "hungerChange": -80, "calories": 800, "daysFresh": 10, "daysRotten": 20,
             "actualWeight": 0.2, "description": "a large portion of meat",
             "canSpawnAsLoot": True,
         }),
+        make("FoodUnit", {
+            "itemType": "Food", "displayCategory": "Food", "foodType": "Meat",
+            "hungerChange": -10, "calories": 100, "daysFresh": 5, "daysRotten": 10,
+            "actualWeight": 0.2, "description": "a single unpacked food unit",
+            "canSpawnAsLoot": True,
+        }),
+        make("FoodCarton", {
+            "itemType": "Food", "displayCategory": "Food", "cantEat": True,
+            "doubleClickRecipe": "OpenFoodCarton",
+            "description": "a carton containing several food units",
+            "canSpawnAsLoot": True,
+        }),
         make("CannedMeal", {
-            "itemType": "Food", "displayCategory": "Food", "hungerChange": -0.2,
+            "itemType": "Food", "displayCategory": "Food", "hungerChange": -20,
             "calories": 250, "daysFresh": 20, "daysRotten": 40, "actualWeight": 0.5,
             "description": "Canned preserved bean meal", "isCraftRecipeProduct": True,
         }),
@@ -102,7 +114,7 @@ def mock_definitions() -> list[ItemDefinition]:
         make("NamespacedFood", {
             "itemType": "base:normal", "displayCategory": "General",
             "foodType": "Meat", "tags": ["base:meat"],
-            "hungerChange": -0.25, "calories": 300, "daysFresh": 2,
+            "hungerChange": -25, "calories": 300, "daysFresh": 2,
             "daysRotten": 4, "actualWeight": 0.4,
             "description": "a portion of meat", "canSpawnAsLoot": True,
         }),
@@ -653,14 +665,14 @@ def mock_definitions() -> list[ItemDefinition]:
         }),
         make("FoodMix", {
             "itemType": "base:food", "displayCategory": "Food",
-            "isCraftRecipeProduct": True, "calories": 10, "hungerChange": -0.05,
+            "isCraftRecipeProduct": True, "calories": 10, "hungerChange": -5,
             "description": "GravyMix ingredient", "canSpawnAsLoot": True,
         }),
         ItemDefinition(
             full_type="MarketSenseFixture.ModFoodRecipe", module="MarketSenseFixture",
             props={
                 "itemType": "base:food", "displayCategory": "Food",
-                "isCraftRecipeProduct": True, "calories": 10, "hungerChange": -0.05,
+                "isCraftRecipeProduct": True, "calories": 10, "hungerChange": -5,
                 "description": "a workshop recipe food product",
                 "canSpawnAsLoot": True,
             }, mod=fixture_mod, script_path="<offline-fixture>",
@@ -672,8 +684,31 @@ def mock_definitions() -> list[ItemDefinition]:
     ]
 
 
+def mock_yield_recipes() -> dict[str, list[dict[str, Any]]]:
+    return {
+        "MarketSenseFixture.FoodCarton": [{
+            "recipe": "OpenFoodCarton",
+            "source": "offline_recipe_graph",
+            "sourceFullType": "MarketSenseFixture.FoodCarton",
+            "inputAmount": 1.0,
+            "inputCount": 1,
+            "outputs": [{
+                "fullType": "MarketSenseFixture.FoodUnit",
+                "quantity": 4,
+                "chance": 1.0,
+                "inputFlags": [],
+                "outputFlags": [],
+                "inheritFoodAge": False,
+            }],
+            "resolution": "exact",
+            "nameHeuristic": True,
+            "candidateMethod": "explicit_property",
+        }],
+    }
+
+
 def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
-    rows = run_lua(lua, mock_definitions())
+    rows = run_lua(lua, mock_definitions(), yield_recipes=mock_yield_recipes())
     by_type = {row.get("fullType"): row for row in rows}
     checks: list[dict[str, Any]] = []
 
@@ -682,6 +717,7 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
 
     expected_types = {
         "MarketSenseFixture.FoodLow", "MarketSenseFixture.FoodHigh",
+        "MarketSenseFixture.FoodUnit", "MarketSenseFixture.FoodCarton",
         "MarketSenseFixture.CannedMeal", "MarketSenseFixture.VanillaReceipt",
         "MarketSenseFixture.NarcoticsSeedPacket", "MarketSenseFixture.Bandage",
         "Base.Flier_Nolans",
@@ -762,6 +798,8 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
     expected_categories = {
         "MarketSenseFixture.FoodLow": "Food",
         "MarketSenseFixture.FoodHigh": "Food",
+        "MarketSenseFixture.FoodUnit": "Food",
+        "MarketSenseFixture.FoodCarton": "Food",
         "MarketSenseFixture.CannedMeal": "Food",
         "MarketSenseFixture.VanillaReceipt": "Literature",
         "MarketSenseFixture.NarcoticsSeedPacket": "Building",
@@ -1366,6 +1404,34 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "price responds to food stats",
         high.get("price", 0) > low.get("price", 0),
         f"FoodLow={low.get('price', '?')} FoodHigh={high.get('price', '?')}",
+    )
+    food_unit = by_type.get("MarketSenseFixture.FoodUnit", {})
+    food_carton = by_type.get("MarketSenseFixture.FoodCarton", {})
+    carton_resolution = food_carton.get("yieldResolution") or {}
+    carton_heuristic = food_carton.get("priceHeuristic") or {}
+    check(
+        "food bundle pricing uses individualized output value",
+        (
+            carton_resolution.get("status") == "resolved"
+            and carton_resolution.get("candidateMethod") == "explicit_property"
+            and carton_resolution.get("outputs", [{}])[0].get("quantity") == 4
+            and carton_heuristic.get("mode") == "bundle"
+            and food_carton.get("price", 0) >= food_unit.get("price", 0) * 4
+            and "resolved" in food_carton.get("yieldResolver", "")
+        ),
+        f"unit={food_unit.get('price', '?')} carton={food_carton.get('price', '?')} "
+        f"resolver={food_carton.get('yieldResolver', '?')}",
+    )
+    low_context = low.get("context") or {}
+    low_heuristic = low.get("priceHeuristic") or {}
+    check(
+        "food pricing uses native signed runtime units",
+        (
+            low_context.get("hungerChange") == -0.05
+            and low_heuristic.get("model") == "food_v2"
+            and low_heuristic.get("hungerChange") == -0.05
+        ),
+        f"hungerChange={low_context.get('hungerChange', '?')} model={low_heuristic.get('model', '?')}",
     )
     check(
         "description reaches context",

@@ -123,7 +123,6 @@ DB.registerTag("Ammo", {
     minRatio = 0.20
 })
 DB.registerTag("FoodNonPerishableCanned", {
-    add = 24,
     stockMultiplier = 1.15
 })
 DB.registerTag("ContainerWearable", {

@@ -108,6 +108,26 @@ def build_summary(
     review_statuses = Counter(review_row(row)[0] for row in rows)
     low_confidence = low_confidence_rows(rows, confidence_threshold)
     heuristic_summary = heuristic_coverage(valid)
+    yield_statuses: Counter[str] = Counter()
+    yield_methods: Counter[str] = Counter()
+    yield_review_items = 0
+    for row in rows:
+        resolution = row.get("yieldResolution")
+        if not isinstance(resolution, dict):
+            heuristic = row.get("priceHeuristic")
+            resolution = (
+                heuristic.get("yieldResolution")
+                if isinstance(heuristic, dict) else {}
+            )
+        status = str(resolution.get("status") or "not_detected")
+        yield_statuses[status] += 1
+        method = str(resolution.get("candidateMethod") or "none")
+        yield_methods[method] += 1
+        if (
+            status in {"ambiguous", "unresolved", "probabilistic"}
+            or method == "recipe_name"
+        ):
+            yield_review_items += 1
     vanilla_items = sum(1 for row in rows if str(row.get("workshopMod") or "") == "Base")
     availability_records = availability_records or {}
     availability_status_counts = Counter(
@@ -144,6 +164,12 @@ def build_summary(
             count for status, count in review_statuses.items() if status != "OK"
         ),
         "review_statuses": dict(review_statuses),
+        "yield_resolution": {
+            "statuses": dict(yield_statuses),
+            "candidate_methods": dict(yield_methods),
+            "resolved_items": yield_statuses.get("resolved", 0),
+            "review_items": yield_review_items,
+        },
         "vanilla_items": vanilla_items,
         "workshop_items": len(rows) - vanilla_items,
         "runtime_evaluated": runtime_count,
@@ -208,7 +234,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "availabilityStatus", "availabilityConfidence", "availabilityChannels",
         "availabilityReason", "availabilityReferences", "availabilityExclusions",
         "reviewStatus", "reviewReason", "heuristicKind", "heuristicBucket",
-        "heuristicReason",
+        "heuristicReason", "yieldResolver", "yieldResolution",
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh",
         "daysRotten", "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity",
         "workshopMod", "workshopName", "workshopId", "workshopVersion", "scriptPath",
@@ -244,6 +270,9 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             output["priceHeuristic"] = json.dumps(row.get("priceHeuristic") or {}, sort_keys=True)
             output["context"] = json.dumps(row.get("context") or {}, sort_keys=True)
             output["detection"] = json.dumps(row.get("detection") or {}, sort_keys=True)
+            output["yieldResolution"] = json.dumps(
+                row.get("yieldResolution") or {}, sort_keys=True
+            )
             writer.writerow(output)
 
 

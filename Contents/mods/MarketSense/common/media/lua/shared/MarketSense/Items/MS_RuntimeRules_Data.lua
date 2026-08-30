@@ -1,5 +1,5 @@
 -- MarketSense Runtime Rules Data
--- Edited by MarketSense Inspector on 2026-08-30T05:20:58+00:00
+-- Edited by MarketSense Inspector on 2026-08-30T12:02:43+00:00
 -- Standalone MarketSense runtime contract.
 -- Changes made here are consumed by the MarketSense Lua mod.
 
@@ -31,7 +31,8 @@ return {
         "Base.Bag_MoneyBag",
         "Base.Briefcase_Money",
         "Base.MoneyBundle",
-        "Base.Money"
+        "Base.Money",
+        "Base.TestHotDrink"
     },
     ["blacklistPatterns"] = {},
     ["overrides"] = {},

@@ -79,6 +79,7 @@ def normalize_preferences(payload: dict[str, Any]) -> dict[str, Any]:
         "gameRoot": _safe_string(payload.get("gameRoot")),
         "sandboxConfig": _safe_string(payload.get("sandboxConfig")),
         "modFilters": _safe_string(payload.get("modFilters")),
+        "categoryFilter": _safe_string(payload.get("categoryFilter")),
         "gameVersion": _safe_string(payload.get("gameVersion")),
         "maxItems": _safe_nonnegative_int(payload.get("maxItems") or 0),
         "skipVanilla": _safe_bool(payload.get("skipVanilla"), False),

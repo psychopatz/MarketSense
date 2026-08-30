@@ -61,6 +61,25 @@ local function isSentinelSpoilage(value)
     return (tonumber(value) or 0) >= 365000
 end
 
+local function readFluidCategories(fluid)
+    local categories = {}
+    if fluid == nil or FluidCategory == nil then
+        return categories
+    end
+
+    -- Fluid:getCategories() returns a Guava ImmutableSet. Kahlua cannot
+    -- safely enumerate that implementation, while the public PZ API gives
+    -- us a stable category list and the supported isCategory predicate.
+    local categoryList = FluidCategory.getList()
+    for index = 0, categoryList:size() - 1 do
+        local category = categoryList:get(index)
+        if fluid:isCategory(category) then
+            categories[#categories + 1] = tostring(category)
+        end
+    end
+    return categories
+end
+
 function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     if type(scriptItemOrFullType) == "table" and scriptItemOrFullType.fullType and scriptItemOrFullType.item ~= nil then
         return scriptItemOrFullType
@@ -128,6 +147,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local putInSound  = Core.safeString(scriptItem, "getPutInSound", "")
     local pourType    = Core.safeString(scriptItem, "getPourType", "")
     local doubleClickRecipe = Core.safeString(scriptItem, "getDoubleClickRecipe", "")
+    local openingRecipe = Core.safeString(scriptItem, "getOpeningRecipe", "")
     local replaceOnDeplete  = Core.safeString(scriptItem, "getReplaceOnDeplete", "")
     local replaceOnUse      = Core.safeString(scriptItem, "getReplaceOnUse", "")
     local replaceOnCooked   = Core.safeString(scriptItem, "getReplaceOnCooked", "")
@@ -163,17 +183,24 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local instanceEatType = Core.safeString(instance, "getEatType", "")
     if instanceEatType ~= "" then eatType = instanceEatType end
 
-    local hunger = positiveMagnitude(preferNumber(instance, scriptItem, "getHungerChange", 0))
-    local thirst = positiveMagnitude(preferNumber(instance, scriptItem, "getThirstChange", 0))
+    -- Preserve native signed changes for valuation. The magnitude fields
+    -- remain below for classifier compatibility.
+    local hungerChange = preferNumber(instance, scriptItem, { "getHungChange", "getHungerChange" }, 0)
+    local thirstChange = preferNumber(instance, scriptItem, { "getThirstChangeUnmodified", "getThirstChange" }, 0)
+    local unhappyChange = preferNumber(instance, scriptItem, { "getUnhappyChangeUnmodified", "getUnhappyChange", "getUnhappy" }, 0)
+    local boredomChange = preferNumber(instance, scriptItem, { "getBoredomChangeUnmodified", "getBoredomChange", "getBoredom" }, 0)
+    local stressChange = preferNumber(instance, scriptItem, { "getStressChangeUnmodified", "getStressChange", "getStress" }, 0)
+    local hunger = positiveMagnitude(hungerChange)
+    local thirst = positiveMagnitude(thirstChange)
     local calories = math.max(0, preferNumber(instance, scriptItem, "getCalories", 0))
     local carbohydrates = math.max(0, preferNumber(instance, scriptItem, "getCarbohydrates", 0))
     local lipids = math.max(0, preferNumber(instance, scriptItem, "getLipids", 0))
     local proteins = math.max(0, preferNumber(instance, scriptItem, "getProteins", 0))
     local daysFresh = math.max(0, preferNumber(instance, scriptItem, "getDaysFresh", 0))
     local daysRotten = math.max(0, preferNumber(instance, scriptItem, "getDaysTotallyRotten", 0))
-    local unhappy = positiveMagnitude(preferNumber(instance, scriptItem, { "getUnhappyChange", "getUnhappy" }, 0))
-    local boredom = positiveMagnitude(preferNumber(instance, scriptItem, { "getBoredomChange", "getBoredom" }, 0))
-    local stress = positiveMagnitude(preferNumber(instance, scriptItem, { "getStressChange", "getStress" }, 0))
+    local unhappy = positiveMagnitude(unhappyChange)
+    local boredom = positiveMagnitude(boredomChange)
+    local stress = positiveMagnitude(stressChange)
     local customEatSound = preferString(instance, scriptItem, "getCustomEatSound", "")
     local conditionMax = math.max(0, preferNumber(instance, scriptItem, "getConditionMax", 0))
     local currentCondition = conditionMax
@@ -194,13 +221,31 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local isTwoHandWeapon = Core.safeBoolean(
         instance, "isTwoHandWeapon", Core.safeBoolean(scriptItem, "isTwoHandWeapon", false)
     )
+    local foodAge = nil
+    local hasRuntimeFoodAge = false
+    local hasRuntimeFoodState = false
+    local isRotten = false
+    local isFrozen = false
+    local isCooked = false
+    local isBurnt = false
+    local heat = 0
+    if hasRuntimeState then
+        foodAge = readNumber(inventoryItem, "getAge")
+        hasRuntimeFoodAge = foodAge ~= nil
+        hasRuntimeFoodState = true
+        isRotten = Core.safeBoolean(inventoryItem, { "isRotten", "IsRotten" }, false)
+        isFrozen = Core.safeBoolean(inventoryItem, "isFrozen", false)
+        isCooked = Core.safeBoolean(inventoryItem, "isCooked", false)
+        isBurnt = Core.safeBoolean(inventoryItem, "isBurnt", false)
+        heat = readNumber(inventoryItem, "getHeat") or 0
+    end
     local foodDaysFresh = isSentinelSpoilage(daysFresh) and 0 or daysFresh
     local foodDaysRotten = isSentinelSpoilage(daysRotten) and 0 or daysRotten
     local hasFoodNutritionEvidence = hunger > 0 or thirst > 0 or calories > 0
         or carbohydrates > 0 or lipids > 0 or proteins > 0
     local hasFoodSpoilageEvidence = foodDaysFresh > 0 or foodDaysRotten > 0
     local hasFoodRecipeEvidence = evolvedRecipe ~= "" or evolvedRecipeName ~= ""
-        or doubleClickRecipe ~= "" or customEatSound ~= ""
+        or doubleClickRecipe ~= "" or openingRecipe ~= "" or customEatSound ~= ""
     local isDung = Core.safeBoolean(instance or scriptItem, { "isDung", "getIsDung" }, false)
 
     local fluidContainer = Core.safeCall(instance or scriptItem, "getFluidContainer", nil)
@@ -228,11 +273,8 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         fluidIsMixture = Core.safeBoolean(fluidContainer, "isMixture", false)
         if fluid then
             fluidType       = tostring(Core.safeCall(fluid, "getFluidType", ""))
-            fluidCategory   = tostring(Core.safeCall(fluid, "getFluidCategory", ""))
             fluidTypeString = Core.safeString(fluid, "getFluidTypeString", "")
-            fluidCategories = Core.listFromJavaCollection(
-                Core.safeCall(fluid, "getCategories", nil)
-            )
+            fluidCategories = readFluidCategories(fluid)
         end
     end
     local fluidCategoriesLower = {}
@@ -286,6 +328,8 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         weight = math.max(0, preferNumber(instance, scriptItem, { "getActualWeight", "getWeight" }, 0)),
         hunger = hunger,
         thirst = thirst,
+        hungerChange = hungerChange,
+        thirstChange = thirstChange,
         calories = calories,
         carbohydrates = carbohydrates,
         lipids = lipids,
@@ -297,6 +341,17 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         unhappy = unhappy,
         boredom = boredom,
         stress = stress,
+        unhappyChange = unhappyChange,
+        boredomChange = boredomChange,
+        stressChange = stressChange,
+        foodAge = foodAge,
+        hasRuntimeFoodAge = hasRuntimeFoodAge,
+        hasRuntimeFoodState = hasRuntimeFoodState,
+        isRotten = isRotten,
+        isFrozen = isFrozen,
+        isCooked = isCooked,
+        isBurnt = isBurnt,
+        heat = heat,
         minDamage = math.max(0, preferNumber(instance, scriptItem, "getMinDamage", 0)),
         maxDamage = math.max(0, preferNumber(instance, scriptItem, "getMaxDamage", 0)),
         maxRange = math.max(0, preferNumber(instance, scriptItem, "getMaxRange", 0)),
@@ -337,6 +392,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         pourType = pourType, eatType = eatType, eatTypeLower = Core.lower(eatType),
         foodType = foodType, foodTypeLower = Core.lower(foodType), foodTypeToken = normalizeToken(foodType),
         doubleClickRecipe = doubleClickRecipe, doubleClickRecipeLower = Core.lower(doubleClickRecipe),
+        openingRecipe = openingRecipe, openingRecipeLower = Core.lower(openingRecipe),
         replaceOnDeplete = replaceOnDeplete, replaceOnDepleteLower = Core.lower(replaceOnDeplete),
         replaceOnUse = replaceOnUse, replaceOnUseLower = Core.lower(replaceOnUse),
         replaceOnCooked = replaceOnCooked, replaceOnCookedLower = Core.lower(replaceOnCooked),
@@ -413,12 +469,24 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
             foodType = foodType,
             hunger = hunger,
             thirst = thirst,
+            hungerChange = hungerChange,
+            thirstChange = thirstChange,
             calories = calories,
             carbohydrates = carbohydrates,
             lipids = lipids,
             proteins = proteins,
+            unhappyChange = unhappyChange,
+            boredomChange = boredomChange,
+            stressChange = stressChange,
             daysFresh = foodDaysFresh,
             daysRotten = foodDaysRotten,
+            foodAge = foodAge,
+            hasRuntimeFoodAge = hasRuntimeFoodAge,
+            isRotten = isRotten,
+            isFrozen = isFrozen,
+            isCooked = isCooked,
+            isBurnt = isBurnt,
+            heat = heat,
             isCantEat = Core.safeBoolean(scriptItem, "isCantEat", false),
             isCookable = Core.safeBoolean(scriptItem, "isCookable", false),
             isDung = isDung,
@@ -433,6 +501,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
             lootType = lootType,
             eatType = eatType,
             doubleClickRecipe = doubleClickRecipe,
+            openingRecipe = openingRecipe,
             replaceOnUse = replaceOnUse,
             onCooked = onCooked,
             isCannedFood = Core.safeBoolean(instance or scriptItem, { "isCannedFood", "getCannedFood" }, false),
@@ -442,6 +511,14 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
             hasFoodRecipeEvidence = hasFoodRecipeEvidence,
             foodDaysFresh = foodDaysFresh,
             foodDaysRotten = foodDaysRotten,
+            foodAge = foodAge,
+            hasRuntimeFoodAge = hasRuntimeFoodAge,
+            hasRuntimeFoodState = hasRuntimeFoodState,
+            isRotten = isRotten,
+            isFrozen = isFrozen,
+            isCooked = isCooked,
+            isBurnt = isBurnt,
+            heat = heat,
             isDung = isDung,
         },
     }

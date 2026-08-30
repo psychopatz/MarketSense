@@ -23,6 +23,7 @@ from .preferences import load_preferences, normalize_preferences, save_preferenc
 from .reporting import write_csv, write_heuristic_gap_report, write_low_confidence_report
 from .review import low_confidence_rows, review_count, review_row
 from .gui_filters import filter_rows, view_summary
+from .scan_scope import category_scope_label, normalize_category_filter
 from .workshop import discover_mods
 from .workshop_paths import default_roots, game_scripts_root
 
@@ -83,6 +84,29 @@ class ControllerMixin:
         return tuple(self.mod_filter_options.get(
             self.mod_filter_var.get(), self.initial_mod_filters
         ))
+
+    def _category_filter(self) -> str:
+        return normalize_category_filter(self.category_scope_var.get())
+
+    def _on_category_scope_selected(self) -> None:
+        """Explain that category is a scan scope, not a local view filter."""
+
+        if not hasattr(self, "status_var"):
+            return
+        selected = category_scope_label(self.category_scope_var.get())
+        if not self.master_summary:
+            self.status_var.set(
+                f"{selected} selected; choose Scan selected scope / cache to build it."
+            )
+            return
+        current = category_scope_label(self.master_summary.get("category_filter"))
+        if current == selected:
+            self._set_view_status()
+            return
+        self.status_var.set(
+            f"Scan scope changed from {current} to {selected}; choose "
+            "Scan selected scope / cache to rebuild the result."
+        )
 
     def _mod_filter_label(self, mod: Any, duplicate: bool = False) -> str:
         name = str(mod.name or mod.mod_id or mod.root.name).strip()
@@ -150,11 +174,11 @@ class ControllerMixin:
         if not self.master_summary:
             if selection == ALL_MODS_LABEL:
                 self.status_var.set(
-                    "All detected Workshop mods selected; choose Scan all / cache once."
+                    "All detected Workshop mods selected; choose Scan selected scope / cache once."
                 )
             else:
                 self.status_var.set(
-                    f"{selection} selected; choose Scan all / cache once to build the cache."
+                    f"{selection} selected; choose Scan selected scope / cache once to build the cache."
                 )
         else:
             self._apply_view_filters()
@@ -180,6 +204,7 @@ class ControllerMixin:
             "gameRoot": "" if self._game_root_is_auto else self.game_root_var.get().strip(),
             "sandboxConfig": str(self.sandbox_path),
             "modFilters": ", ".join(self._selected_mod_filters()),
+            "categoryFilter": self._category_filter(),
             "gameVersion": self.version_var.get().strip(),
             "maxItems": max_items,
             "skipVanilla": self.no_base_var.get(),
@@ -261,7 +286,7 @@ class ControllerMixin:
         if self.busy or not self.use_cache_var.get():
             if not self.use_cache_var.get():
                 self.status_var.set(
-                    "Cache disabled — choose Scan all / cache to evaluate."
+                    "Cache disabled — choose Scan selected scope / cache to evaluate."
                 )
             return
         try:
@@ -271,7 +296,7 @@ class ControllerMixin:
             return
         if options.refresh_cache:
             self.status_var.set(
-                "Refresh enabled — choose Scan all / cache to rebuild the cache."
+                "Refresh enabled — choose Scan selected scope / cache to rebuild the cache."
             )
             return
         self._start("load-cache", options)
@@ -279,9 +304,8 @@ class ControllerMixin:
     def _options(self) -> ScanOptions:
         confidence_threshold = self._confidence_threshold()
         game_root = self.game_root_var.get().strip()
-        # The GUI owns one expensive master scan.  Its controls below are
-        # deliberately unfiltered so changing Availability, Workshop mod,
-        # vanilla visibility, or Max items only rebuilds the local view.
+        # Category is an evaluator scope. Availability, Workshop mod, vanilla
+        # visibility, and Max items remain local view filters over that scope.
         return ScanOptions(
             workshop_roots=self._workshop_roots(),
             filters=(),
@@ -299,6 +323,7 @@ class ControllerMixin:
             confidence_threshold=confidence_threshold,
             sandbox_options=dict(self.sandbox_overrides),
             availability_filter="all",
+            category_filter=self._category_filter(),
         )
 
     def scan(self) -> None:
@@ -329,7 +354,7 @@ class ControllerMixin:
         self.status_var.set(
             "Loading exact cached result…"
             if operation == "load-cache"
-            else "Running real MarketSense Lua evaluator…"
+            else "Running real MarketSense Lua evaluator for the selected scope…"
         )
         threading.Thread(
             target=self._worker,
@@ -397,12 +422,12 @@ class ControllerMixin:
     def _show_no_cached_result(self) -> None:
         self._finish()
         self.status_var.set(
-            "No exact cached result for these settings/paths — choose "
-            "Scan all / cache to create one."
+            "No exact cached result for this scope/settings — choose "
+            "Scan selected scope / cache to create one."
         )
         self._append_log(
-            "No exact cached result was found. Scan all / cache will create a cache "
-            "entry; future scans reuse it until inputs or settings change."
+            "No exact cached result was found. Scan selected scope / cache will "
+            "create an entry; future scans reuse it until inputs or settings change."
         )
 
     def _show_results(
@@ -438,6 +463,7 @@ class ControllerMixin:
             "cache": cache,
             "view": {
                 "mod": self.mod_filter_var.get() or ALL_MODS_LABEL,
+                "category": view.get("category_filter", "all"),
                 "availability": view.get("availability_filter", "obtainable"),
                 "skipVanilla": self.no_base_var.get(),
                 "maxShown": self.max_items_var.get().strip() or "0",
@@ -504,9 +530,12 @@ class ControllerMixin:
         master_count = len(self.master_rows)
         view_count = len(self.rows)
         selected_mod = self.mod_filter_var.get() or ALL_MODS_LABEL
+        selected_category = category_scope_label(
+            master.get("category_filter") or self.category_scope_var.get()
+        )
         view_filter = summary.get("availability_filter", "obtainable")
         view_note = (
-            f"View: {selected_mod}, {view_filter}, "
+            f"Scope: {selected_category}; view: {selected_mod}, {view_filter}, "
             f"{'no vanilla' if self.no_base_var.get() else 'vanilla included'}"
         )
         self.status_var.set(
@@ -525,7 +554,7 @@ class ControllerMixin:
             f"{(summary.get('availability_counts') or {}).get('excluded', 0):,} "
             f"excluded). Cache: {cache_status} ({cache_path}). "
             f"Version ceiling: {master.get('workshop_script_selection', '-')}. "
-            "View filters are local; Scan all / cache is only needed after source/settings changes."
+            "View filters are local; change the scan scope and run Scan selected scope / cache to rebuild."
         )
 
     def _fill_trees(self) -> None:

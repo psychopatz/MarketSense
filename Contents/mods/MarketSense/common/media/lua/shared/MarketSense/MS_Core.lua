@@ -14,7 +14,15 @@ function Core.safeCall(obj, methodName, defaultValue, ...)
         return defaultValue
     end
 
-    local method = obj[methodName]
+    -- Keep optional, version-dependent metadata reads non-throwing. Known
+    -- Project Zomboid collection APIs are handled directly below instead of
+    -- probing them through this wrapper.
+    local lookupOk, method = pcall(function()
+        return obj[methodName]
+    end)
+    if not lookupOk then
+        return defaultValue
+    end
     if type(method) ~= "function" then
         return defaultValue
     end
@@ -240,29 +248,119 @@ function Core.releaseTemporaryInstance(instance)
     end
 end
 
-function Core.listFromJavaCollection(collection)
-    local result = {}
-    if collection == nil then
-        return result
+function Core.forEachCollection(collection, callback)
+    if collection == nil or type(callback) ~= "function" then
+        return
     end
 
-    local size = Core.safeNumber(collection, "size", 0)
-    if size > 0 and collection.get then
-        for index = 0, size - 1 do
-            local ok, value = pcall(collection.get, collection, index)
-            if ok and value ~= nil then
-                result[#result + 1] = tostring(value)
+    -- Lua fixtures and Kahlua tables are already directly iterable.  A
+    -- fixture may also expose a Java-shaped toArray() method, so keep that
+    -- compatibility path after the safe representations below.
+    if type(collection) == "table" then
+        local size = collection.size
+        local get = collection.get
+        if type(size) == "function" and type(get) == "function" then
+            local count = tonumber(collection:size()) or 0
+            for index = 0, count - 1 do
+                local value = collection:get(index)
+                if value ~= nil then callback(value, index + 1) end
+            end
+            return
+        end
+        local count = 0
+        for index, value in ipairs(collection) do
+            if value ~= nil then
+                count = count + 1
+                callback(value, index)
             end
         end
-        return result
+        if count > 0 then return end
+
+        -- Some Kahlua Java Set proxies are represented as tables whose only
+        -- reliable representation is their bracketed string form.  Do this
+        -- before trying toArray(): a few Set implementations expose a
+        -- zero-argument bridge that throws when invoked from Lua.
+        local printed = tostring(collection)
+        if string.sub(printed, 1, 1) == "["
+            and string.sub(printed, -1) == "]" then
+            local inner = string.sub(printed, 2, -2)
+            local index = 0
+            for value in string.gmatch(inner, "[^,%s]+") do
+                index = index + 1
+                callback(value, index)
+            end
+            return
+        end
+
+        local toArray = collection.toArray
+        if type(toArray) == "function" then
+            local array = collection:toArray()
+            for index, value in ipairs(array) do
+                if value ~= nil then callback(value, index) end
+            end
+        end
+        return
     end
 
-    if type(collection) == "table" then
-        for _, value in ipairs(collection) do
-            result[#result + 1] = tostring(value)
+    -- ArrayList-like values are exposed by PZ with size()/get().  Use those
+    -- methods directly; probing an unsupported method through pcall still
+    -- causes the PZ debugger to stop on the underlying Java exception.
+    local size = collection.size
+    local get = collection.get
+    if type(size) == "function" and type(get) == "function" then
+        local count = tonumber(collection:size()) or 0
+        for index = 0, count - 1 do
+            local value = collection:get(index)
+            if value ~= nil then callback(value, index + 1) end
+        end
+        return
+    end
+
+    -- Set-like values (notably Item.getTags()) may expose iterator() but not
+    -- get() or a zero-argument toArray().
+    local iteratorFactory = collection.iterator
+    if type(iteratorFactory) == "function" then
+        local iterator = collection:iterator()
+        local hasNext = iterator and iterator.hasNext
+        local nextValue = iterator and iterator.next
+        if type(hasNext) == "function" and type(nextValue) == "function" then
+            local index = 0
+            while iterator:hasNext() do
+                index = index + 1
+                local value = iterator:next()
+                if value ~= nil then callback(value, index) end
+            end
+            return
         end
     end
 
+    -- Kahlua can expose a Java Set only through its stable string form (for
+    -- example "[Beverage]") while leaving the zero-argument toArray bridge
+    -- unusable.  This is sufficient for ItemTag/enum sets and, importantly,
+    -- avoids calling a method that would stop the PZ debugger.
+    local printed = tostring(collection)
+    if string.sub(printed, 1, 1) == "["
+        and string.sub(printed, -1) == "]" then
+        local inner = string.sub(printed, 2, -2)
+        local index = 0
+        for value in string.gmatch(inner, "[^,%s]+") do
+            index = index + 1
+            callback(value, index)
+        end
+        return
+    end
+
+    -- Do not call toArray() on an opaque Java object here.  PZ's Java Set
+    -- proxies can advertise that method but throw for the zero-argument Lua
+    -- bridge; the safe size/get, iterator, and printed forms above cover the
+    -- collections used by item and recipe metadata.
+end
+
+function Core.listFromJavaCollection(collection)
+    local result = {}
+    Core.forEachCollection(collection, function(value)
+        result[#result + 1] = tostring(value)
+    end)
     return result
 end
 

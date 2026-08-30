@@ -10,7 +10,7 @@ from typing import Any, Iterable
 
 
 DESCRIPTOR_ROOTS = {"Quality", "Origin", "Rarity", "Theme"}
-RUNTIME_INDEX_NAME = "MS_ItemsIndex.lua"
+RUNTIME_INDEX_NAME = "MS_ItemsIndex.txt"
 
 
 def _number(value: Any) -> int | float | None:
@@ -57,12 +57,18 @@ def _header_value(headers: dict[str, str], key: str, default: str = "") -> str:
 def _runtime_files(root: Path) -> tuple[list[Path], dict[str, Any], list[dict[str, Any]]]:
     """Select the text files that the PZ runtime actually loads.
 
-    ``MS_ItemsIndex.lua`` is the runtime manifest.  Falling back to discovered
+    ``MS_ItemsIndex.txt`` is the runtime manifest.  Falling back to discovered
     text files keeps the reader useful for older/manual fixtures that predate
     the manifest, while an existing manifest is treated as authoritative.
     """
 
-    discovered = sorted(root.rglob("*.txt"), key=lambda path: str(path).casefold())
+    discovered = sorted(
+        (
+            path for path in root.rglob("*.txt")
+            if path.relative_to(root).as_posix() != RUNTIME_INDEX_NAME
+        ),
+        key=lambda path: str(path).casefold(),
+    )
     discovered_by_relative = {
         path.relative_to(root).as_posix(): path for path in discovered
     }
@@ -426,7 +432,7 @@ def compare_harness_to_runtime(
             "fields": ["index"],
             "expected": None,
             "actual": {
-                "message": "Text files exist below MS_Items but are not referenced by MS_ItemsIndex.lua.",
+                "message": "Text files exist below MS_Items but are not referenced by MS_ItemsIndex.txt.",
                 "files": unindexed_files,
             },
         })

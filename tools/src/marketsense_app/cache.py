@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .config import DEFAULT_CACHE_DIR, MOD_ROOT, TOOLS_ROOT
+from .scan_scope import normalize_category_filter
 
 
 # Bumped when the result row universe or exposed runtime evidence changes.
-CACHE_FORMAT_VERSION = 9
+CACHE_FORMAT_VERSION = 11
 
 # Presentation changes (GUI, terminal formatting, exports, and heuristic
 # reports) must not force the expensive Workshop/Lua evaluation to run again.
@@ -22,32 +23,56 @@ EVALUATOR_FILES = (
     "config.py", "evaluation.py", "models.py", "sandbox.py",
     "sandbox_defaults.json",
     "script_fields.py", "script_parser.py", "tile_parser.py", "workshop.py",
-    "workshop_paths.py",
+    "workshop_paths.py", "scan_scope.py", "recipe_parser.py",
 )
 
 
 def _file_manifest(roots: Iterable[Path], suffixes: tuple[str, ...]) -> list[dict[str, Any]]:
+    """Collect source metadata with one directory walk per root.
+
+    The previous implementation ran ``Path.rglob`` once per suffix and
+    resolved every match during each pass.  Cache lookup is on the GUI startup
+    path, so keep the same invalidation data while doing one traversal and one
+    suffix check per file.
+    """
+
     entries: list[dict[str, Any]] = []
     seen: set[Path] = set()
-    for root in roots:
-        if not root or not root.is_dir():
-            continue
-        for suffix in suffixes:
-            for path in root.rglob(f"*{suffix}"):
-                path = path.resolve()
-                if path in seen:
-                    continue
-                seen.add(path)
+    wanted_suffixes = set(suffixes)
+
+    def visit(directory: str) -> None:
+        try:
+            children = os.scandir(directory)
+        except OSError:
+            return
+        with children:
+            for child in children:
+                child_path = Path(child.path)
                 try:
-                    stat = path.stat()
+                    if child.is_dir(follow_symlinks=False):
+                        visit(child.path)
+                        continue
                 except OSError:
-                    entries.append({"path": str(path), "missing": True})
+                    continue
+                if child_path.suffix not in wanted_suffixes:
+                    continue
+                if child_path in seen:
+                    continue
+                seen.add(child_path)
+                try:
+                    stat = child.stat(follow_symlinks=True)
+                except OSError:
+                    entries.append({"path": str(child_path), "missing": True})
                     continue
                 entries.append({
-                    "path": str(path),
+                    "path": str(child_path),
                     "size": stat.st_size,
                     "mtime_ns": stat.st_mtime_ns,
                 })
+
+    for root in roots:
+        if root and root.is_dir():
+            visit(str(root))
     return sorted(entries, key=lambda entry: entry["path"])
 
 
@@ -86,6 +111,9 @@ def cache_key(lua: str, options: Any, roots: Iterable[Path], scripts_root: Path 
             "confidence_threshold": options.confidence_threshold,
             "sandbox_options": sorted(options.sandbox_options.items()),
             "availability_filter": getattr(options, "availability_filter", "obtainable"),
+            "category_filter": normalize_category_filter(
+                getattr(options, "category_filter", "")
+            ),
         },
         "inputs": {
             # Lua distribution/recipe/foraging data is part of the strict
@@ -113,6 +141,8 @@ class ResultCache:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return None
+        if not isinstance(payload, dict):
+            return None
         if payload.get("format") != CACHE_FORMAT_VERSION or payload.get("key") != self.key:
             return None
         result = payload.get("result")
@@ -126,7 +156,10 @@ class ResultCache:
             "result": {"summary": summary, "items": rows},
         }
         temporary = self.directory / f".{self.key}.{os.getpid()}.tmp"
-        temporary.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        temporary.write_text(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
         temporary.replace(self.path)
         self._prune()
 

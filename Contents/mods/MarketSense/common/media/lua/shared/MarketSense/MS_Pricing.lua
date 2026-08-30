@@ -1,5 +1,7 @@
 require "MarketSense/MS_Stock"
 require "MarketSense/Pricing/MS_FluidPricing"
+require "MarketSense/Pricing/MS_FoodPricing"
+require "MarketSense/Pricing/MS_YieldResolver"
 
 MarketSense = MarketSense or {}
 MarketSense.Pricing = MarketSense.Pricing or {}
@@ -10,9 +12,11 @@ local TagUtils = MarketSense.TagUtils
 local DB       = MarketSense.HeuristicsDB
 local Config   = MarketSense.ItemRuntimeConfig
 local FluidPricing = MarketSense.FluidPricing
+local FoodPricing = MarketSense.FoodPricing
+local YieldResolver = MarketSense.YieldResolver
 
 local CATEGORY_BASE_SCORES = {
-    Food = 7, Beverage = 8, Medical = 18, Weapon = 18, Tool = 14,
+    Medical = 18, Weapon = 18, Tool = 14,
     Container = 14, Clothing = 4, Electronics = 14, Resource = 7,
     Building = 5, Liquid = 0, Misc = 2,
 }
@@ -85,6 +89,10 @@ local function hasTag(details, tag)
     return TagUtils.hasTag(details.expandedTags or details.tags or {}, tag)
 end
 
+local function isFoodCategory(category)
+    return category == "Food" or category == "Beverage"
+end
+
 local function clampAndRound(value)
     return Core.round(Core.priceClamp(value))
 end
@@ -96,27 +104,8 @@ function Pricing.calculateRawScore(ctx, details)
     local weightPenalty = (ctx.weight or 0) * (cc.weight_penalty or 2.4)
     local score = base
 
-    if category == "Food" then
-        if hasTag(details, "Beverage") then
-            score = base + ((ctx.thirst or 0) * (cc.thirst_weight or 90)) - weightPenalty
-            if hasTag(details, "BeverageAlcohol") then score = score + (cc.alcohol_bonus or 12) end
-        else
-            local shelfLifeDays = math.max(ctx.daysFresh or 0, ctx.daysRotten or 0)
-            local moodPenalty = ((ctx.unhappy or 0) + (ctx.boredom or 0) + ((ctx.stress or 0) * 2))
-                                * ((cc.mood_penalty_weight or 40.0) / 100.0)
-            score = base
-                + ((ctx.hunger  or 0) * (cc.hunger_weight  or 160))
-                + ((ctx.thirst  or 0) * (cc.thirst_weight  or 90))
-                + ((ctx.calories or 0) * (cc.calorie_weight or 0.025))
-                + (shelfLifeDays * (cc.shelf_life_weight or 1.35))
-                - moodPenalty - weightPenalty
-            if hasTag(details, "FoodNonPerishableCanned") then score = score + (cc.canned_bonus or 24) end
-            if hasTag(details, "FoodNonPerishable")       then score = score + (cc.packaged_bonus or 10) end
-        end
-
-    elseif category == "Beverage" then
-        score = base + ((ctx.thirst or 0) * (cc.thirst_weight or 90)) - weightPenalty
-        if hasTag(details, "BeverageAlcohol") then score = score + (cc.alcohol_bonus or 12) end
+    if isFoodCategory(category) then
+        score = FoodPricing.calculate(ctx, details)
 
     elseif category == "Liquid" then
         -- The vessel is deliberately excluded.  Only the primary fluid's
@@ -242,6 +231,10 @@ end
 function Pricing.applyBalances(ctx, details, audit)
     local working = tonumber(details.rawScore or 0) or 0
     addAudit(audit, "raw score", working, working)
+    if details.yieldResolution then
+        addAudit(audit, "yield resolution", working, working,
+            details.yieldResolution)
+    end
     if details.priceHeuristic then
         addAudit(audit, tostring(details.priceHeuristic.model or "content") .. " heuristic",
             details.priceHeuristic.preConditionScore or working, working, {
@@ -257,7 +250,7 @@ function Pricing.applyBalances(ctx, details, audit)
 
     local beforeSandbox = working
     local sandboxAdd = Config.pricing.globalValue or 0
-    if Config.getSandboxTagMultiplier then
+    if Config.getSandboxTagMultiplier and not isFoodCategory(details.category) then
         local tags = { details.primary }
         -- Liquid content has its own per-litre anchor.  Do not inherit
         -- generic item descriptor additions (for example Rarity.Common),
@@ -281,11 +274,16 @@ function Pricing.applyBalances(ctx, details, audit)
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
 
-    if details.category ~= "Liquid" then
+    if details.category ~= "Liquid" and not isFoodCategory(details.category) then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or details.tags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
         end
+    elseif isFoodCategory(details.category) then
+        addAudit(audit, "food v2 balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Food valuation is feature/profile driven.",
+        })
     else
         addAudit(audit, "liquid vessel-neutral balance", working, working, {
             fluidType = details.priceHeuristic and details.priceHeuristic.fluidType,
@@ -350,7 +348,7 @@ local function applyTagOverrideIfPresent(ctx, details)
     return itemEntry
 end
 
-function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem)
+function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, internal)
     local ctx
     if type(fullTypeOrContext) == "table" and fullTypeOrContext.fullType and inventoryItem == nil then
         ctx = fullTypeOrContext
@@ -370,6 +368,14 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem)
         weaponEvidence = Core.deepCopy((tagInfo.details or {}).weaponEvidence),
         confidence = tagInfo.confidence, rawScore = 0, price = 0, stock = nil, source = "lazy",
     }
+
+    local yieldPath = {}
+    for key, value in pairs(internal and internal.yieldPath or {}) do
+        yieldPath[key] = value
+    end
+    yieldPath[ctx.fullType] = true
+    details._yieldPath = yieldPath
+    details.yieldResolution = YieldResolver.resolve(ctx)
 
     local audit = withAudit and {} or nil
     applyTagOverrideIfPresent(ctx, details)
@@ -404,7 +410,7 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
 
     local beforeSandbox = working
     local sandboxAdd = Config.pricing.globalValue or 0
-    if Config.getSandboxTagMultiplier then
+    if Config.getSandboxTagMultiplier and not isFoodCategory(details.category) then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -418,9 +424,16 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
 
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeSandbox, working)
-    working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
-    for _, tag in ipairs(details.expandedTags or {}) do
-        working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
+    if not isFoodCategory(details.category) then
+        working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
+        for _, tag in ipairs(details.expandedTags or {}) do
+            working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
+        end
+    else
+        addAudit(audit, "food v2 balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Food valuation is feature/profile driven.",
+        })
     end
     working = applyAdjustment(working, DB.getModule(ctx.moduleName), "module:" .. tostring(ctx.moduleName), audit)
     working = applyAdjustment(working, itemEntry, "item:" .. tostring(ctx.fullType), audit)

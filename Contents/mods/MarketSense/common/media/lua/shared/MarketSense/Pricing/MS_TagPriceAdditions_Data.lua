@@ -4,8 +4,6 @@
 return {
     tagAdditions = {
         -- Root categories
-        ["Food"]           = 194,
-        ["Beverage"]       = 60,
         -- Liquid price comes from the dedicated per-litre fluid data table;
         -- keep the taxonomy root neutral so it cannot charge for the vessel.
         ["Liquid"]         = 0,
@@ -19,24 +17,6 @@ return {
         ["Literature"]     = 50,
         ["Building"]       = 14,
         ["Misc"]           = 2,
-        -- Food
-        ["FoodNonPerishable"]         = 15,
-        ["FoodNonPerishableBoxed"]    = 20,
-        ["FoodNonPerishableCanned"]   = 24,
-        ["FoodPerishable"]            = 5,
-        ["FoodPreserved"]             = 18,
-        ["FoodPreservedPickled"]      = 16,
-        -- Beverage subtypes
-        ["BeverageAlcohol"]  = 12,
-        ["BeverageWater"]    = 2,
-        ["BeverageBeer"]     = 6,
-        ["BeverageWine"]     = 14,
-        ["BeverageCoffee"]   = 5,
-        ["BeverageTea"]      = 4,
-        ["BeverageSoda"]     = 3,
-        ["BeverageDairy"]    = 5,
-        ["BeverageMilk"]     = 5,
-        ["BeverageJuice"]    = 4,
         -- Weapon subtypes
         ["Firearm"]          = 65,
         ["FirearmHandgun"]   = 20,

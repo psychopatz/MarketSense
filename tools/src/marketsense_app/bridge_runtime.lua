@@ -4,6 +4,7 @@ _G.unpack = _G.unpack or table.unpack
 
 local specs = __MARKETSENSE_SPEC_LITERAL__
 local sandboxOptions = __MARKETSENSE_SANDBOX_LITERAL__
+local yieldRecipes = __MARKETSENSE_YIELD_LITERAL__
 local byFullType = {}
 local items = {}
 
@@ -78,6 +79,7 @@ function methods.getCloseSound(self) return property(self, "closeSound", "") end
 function methods.getPutInSound(self) return property(self, "putInSound", "") end
 function methods.getPourType(self) return property(self, "pourType", "") end
 function methods.getDoubleClickRecipe(self) return property(self, "doubleClickRecipe", "") end
+function methods.getOpeningRecipe(self) return property(self, "openingRecipe", "") end
 function methods.getReplaceOnDeplete(self) return property(self, "replaceOnDeplete", "") end
 function methods.getReplaceOnUse(self) return property(self, "replaceOnUse", "") end
 function methods.getReplaceOnCooked(self) return property(self, "replaceOnCooked", "") end
@@ -166,7 +168,11 @@ end
 
 local numberMethods = {
     getActualWeight="actualWeight", getWeight="actualWeight", getHungerChange="hungerChange",
-    getThirstChange="thirstChange", getCalories="calories", getCarbohydrates="carbohydrates",
+    getHungChange="hungerChange", getThirstChange="thirstChange",
+    getThirstChangeUnmodified="thirstChange", getUnhappyChangeUnmodified="unhappyChange",
+    getBoredomChangeUnmodified="boredomChange", getStressChangeUnmodified="stressChange",
+    getUnhappyChange="unhappyChange", getBoredomChange="boredomChange",
+    getStressChange="stressChange", getCalories="calories", getCarbohydrates="carbohydrates",
     getLipids="lipids", getProteins="proteins", getDaysFresh="daysFresh",
     getDaysTotallyRotten="daysRotten", getMinDamage="minDamage", getMaxDamage="maxDamage",
     getMaxRange="maxRange", getMaxHitCount="maxHitCount", getConditionMax="conditionMax",
@@ -176,7 +182,7 @@ local numberMethods = {
     getWindresist="windResistance", getWindresistance="windResistance",
     getWindResistance="windResistance", getAlcoholPower="alcoholPower", getFatigueChange="fatigueChange",
     getReduceInfectionPower="reduceInfectionPower", getBandagePower="bandagePower",
-    getMechanicType="mechanicType", getCondition="condition",
+    getMechanicType="mechanicType", getCondition="condition", getAge="age", getHeat="heat",
 }
 for methodName, propertyName in pairs(numberMethods) do
     methods[methodName] = function(self) return property(self, propertyName, 0) end
@@ -189,7 +195,8 @@ local boolMethods = {
     getCannedFood="cannedFood", isPackaged="packaged", getPackaged="packaged",
     isFishingLure="fishingLure", getFishingLure="fishingLure", isDangerousUncooked="dangerousUncooked",
     getDangerousUncooked="dangerousUncooked", isGoodHot="goodHot", getGoodHot="goodHot",
-    isDung="dung", getIsDung="dung",
+    isDung="dung", getIsDung="dung", isRotten="rotten", IsRotten="rotten",
+    isFrozen="frozen", isCooked="cooked", isBurnt="burnt",
 }
 for methodName, propertyName in pairs(boolMethods) do
     methods[methodName] = function(self) return property(self, propertyName, false) end
@@ -207,12 +214,43 @@ function methods.getSourceMod(self) return property(self, "modId", "") end
 function methods.getModName(self) return property(self, "modName", "") end
 function methods.Remove(self) end
 
+local function runtimeProperties(spec, instance)
+    local source = spec.props or {}
+    if not instance then return source end
+
+    -- Item scripts store Food hunger/thirst changes as hundredths, while the
+    -- runtime Food object exposes native values after Item.createItem divides
+    -- them by 100.  Keep script objects raw and mirror that conversion only
+    -- on temporary/runtime instances used by PropertyReader.
+    local itemType = string.lower(tostring(source.itemType or source.type or ""))
+    local isFood = itemType:find("food", 1, true) ~= nil
+        or source.foodType ~= nil
+        or source.cantEat ~= nil
+        or source.calories ~= nil
+    if not isFood and source.stressChange == nil then return source end
+
+    local result = {}
+    for key, value in pairs(source) do result[key] = value end
+    if isFood then
+        if result.hungerChange ~= nil then
+            result.hungerChange = (tonumber(result.hungerChange) or 0) / 100.0
+        end
+        if result.thirstChange ~= nil then
+            result.thirstChange = (tonumber(result.thirstChange) or 0) / 100.0
+        end
+    end
+    if result.stressChange ~= nil then
+        result.stressChange = (tonumber(result.stressChange) or 0) / 100.0
+    end
+    return result
+end
+
 local function makeItem(spec, instance)
     local fullType = spec.fullType
     local moduleName, typeName = string.match(fullType, "^([^%.]+)%.(.+)$")
     local item = {
         _fullType = fullType, _module = moduleName or spec.module, _name = typeName or fullType,
-        _props = spec.props or {}, _tags = spec.tags or {}, _instance = instance == true,
+        _props = runtimeProperties(spec, instance == true), _tags = spec.tags or {}, _instance = instance == true,
     }
     return setmetatable(item, { __index = methods })
 end
@@ -322,6 +360,9 @@ end
 SandboxVars = { MarketSense = sandboxOptions }
 
 local api = require "MarketSense/MS_PublicAPI"
+if MarketSense.YieldResolver and MarketSense.YieldResolver.setRecipeIndex then
+    MarketSense.YieldResolver.setRecipeIndex(yieldRecipes)
+end
 
 local function jsonEscape(value)
     local text = tostring(value or "")
@@ -501,6 +542,18 @@ local function hierarchySnapshot(primary, category)
     return hierarchy
 end
 
+local function yieldResolverLabel(resolution)
+    if type(resolution) ~= "table" then return "" end
+    local status = tostring(resolution.status or "not_detected")
+    if status == "not_detected" then return "none" end
+    local method = tostring(resolution.candidateMethod or resolution.resolution or "unknown")
+    local recipe = tostring(resolution.recipe or "")
+    if recipe ~= "" then
+        return status .. " · " .. method .. " · " .. recipe
+    end
+    return status .. " · " .. method
+end
+
 local function rowJson(row)
     local fields = {}
     local ordered = { "fullType", "category", "primary", "mechanicalClass", "mechanicalFamily", "marketRole",
@@ -512,7 +565,7 @@ local function rowJson(row)
         "workshopId", "workshopVersion", "scriptPath", "description", "subcategory", "leaf",
         "primaryPrefix", "categoryPath", "detector", "resolver", "marketEligible", "availabilityStatus",
         "fluidType", "fluidTypeString", "fluidAmount", "fluidCapacity", "fluidPrimaryAmount",
-        "fluidFilledRatio", "isActualLiquid", "fluidIsMixture" }
+        "fluidFilledRatio", "isActualLiquid", "fluidIsMixture", "yieldResolver" }
     for _, key in ipairs(ordered) do
         local value = row[key]
         fields[#fields + 1] = jsonString(key) .. ":" .. jsonField(value)
@@ -528,6 +581,7 @@ local function rowJson(row)
     fields[#fields + 1] = jsonString("context") .. ":" .. jsonValue(row.context)
     fields[#fields + 1] = jsonString("priceAudit") .. ":" .. jsonValue(row.priceAudit)
     fields[#fields + 1] = jsonString("priceHeuristic") .. ":" .. jsonValue(row.priceHeuristic)
+    fields[#fields + 1] = jsonString("yieldResolution") .. ":" .. jsonValue(row.yieldResolution)
     fields[#fields + 1] = jsonString("evaluator") .. ":" .. jsonValue(row.evaluator)
     fields[#fields + 1] = jsonString("availability") .. ":" .. jsonValue(row.availability)
     if row.error then fields[#fields + 1] = jsonString("error") .. ":" .. jsonString(row.error) end
@@ -537,6 +591,7 @@ end
 printRuntimeMetadata()
 
 for _, spec in ipairs(specs) do
+    if spec.emit ~= false then
     local ok, details = pcall(api.GetPriceDetails, spec.fullType, true)
     local row = {
         fullType = spec.fullType, workshopMod = spec.workshopMod, workshopName = spec.workshopName,
@@ -612,6 +667,8 @@ for _, spec in ipairs(specs) do
         row.context = contextSnapshot(context)
         row.priceAudit = details.balanceAudit
         row.priceHeuristic = details.priceHeuristic
+        row.yieldResolution = details.yieldResolution
+        row.yieldResolver = yieldResolverLabel(details.yieldResolution)
         row.evaluator = {
             api = "MarketSense.GetPriceDetails",
             withAudit = true,
@@ -624,4 +681,5 @@ for _, spec in ipairs(specs) do
         row.tags, row.expandedTags = {}, {}
     end
     print("MSROW\t" .. rowJson(row))
+    end
 end

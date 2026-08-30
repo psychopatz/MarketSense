@@ -23,10 +23,14 @@ local Mapping = MarketSense.TagMapper
 Registry.SCHEMA_VERSION = 4
 Registry.FILE_SCHEMA = "MS_ITEMS_V1"
 Registry.GENERATOR_VERSION = 2
-Registry.PRICING_HEURISTIC_VERSION = 4
-Registry.SIGNATURE_VERSION = "market-sense-v17-melee-evidence-runtime"
+-- Bump when pricing inputs or runtime resolver semantics change so an old
+-- materialized cache cannot hide the corrected bundle values.
+Registry.PRICING_HEURISTIC_VERSION = 8
+Registry.SIGNATURE_VERSION = "market-sense-v20-food-pricing-v2"
 Registry.ROOT_FOLDER = "MS_Items"
-Registry.INDEX_PATH = Registry.ROOT_FOLDER .. "/MS_ItemsIndex.lua"
+-- PZ's getFileWriter only permits data extensions such as .txt/.json. The
+-- index is a safe, line-parsed manifest persisted as .txt.
+Registry.INDEX_PATH = Registry.ROOT_FOLDER .. "/MS_ItemsIndex.txt"
 Registry.REQUEST_PATH = Registry.ROOT_FOLDER .. "/MS_RebuildRequest.json"
 Registry.AUDIT_PATH = Registry.ROOT_FOLDER .. "/MS_PrebuildAudit.json"
 Registry.OUTPUT_HINT = "Zomboid/Lua/MS_Items/"
@@ -37,6 +41,7 @@ Registry.state = Registry.state or {
     catalog = nil,
     lastIndex = nil,
     lastRequestKey = nil,
+    deferredRebuild = false,
 }
 
 Shared.CATEGORY_ORDER = {

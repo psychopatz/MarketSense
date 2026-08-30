@@ -48,6 +48,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Only scan mods whose id, name, or Workshop id contains this value.",
     )
     parser.add_argument(
+        "--category",
+        default="",
+        help=(
+            "Audit one top-level category (for example Food) instead of the "
+            "complete catalog; unknown categories fall back to a full scan."
+        ),
+    )
+    parser.add_argument(
         "--max-items",
         type=int,
         default=0,
@@ -218,6 +226,7 @@ def main(argv: list[str] | None = None) -> int:
                 confidence_threshold=args.confidence_threshold,
                 sandbox_options=sandbox_options,
                 availability_filter=args.availability,
+                category_filter=args.category,
             ),
         )
     except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:

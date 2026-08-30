@@ -69,6 +69,16 @@ function API.GetTags(fullType)
     }
 end
 
+-- Expose recipe-yield evidence separately from price details so tooling can
+-- inspect exact, heuristic, ambiguous, and unresolved bundle matches.
+function API.GetYieldResolution(fullType)
+    if type(fullType) ~= "string" or fullType == "" then
+        return nil
+    end
+    local context = PropReader.buildContext(fullType)
+    return MarketSense.YieldResolver and MarketSense.YieldResolver.resolve(context) or nil
+end
+
 function API.RegenerateItemRegistry()
     if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.regenerate then
         return MarketSense.ItemsRegistry.regenerate()

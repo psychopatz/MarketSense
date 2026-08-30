@@ -25,6 +25,7 @@ from .sandbox import (
     load_sandbox_option_specs,
     load_sandbox_settings,
 )
+from .scan_scope import CATEGORY_SCOPE_CHOICES, category_scope_label
 from .workshop_paths import default_roots, game_scripts_root
 
 
@@ -125,6 +126,14 @@ class MarketSenseGui(
         # terms to a discovered label (or falls back to All).
         self.mod_filter_var = self.tk.StringVar(value="")
         self.mod_filter_count_var = self.tk.StringVar(value="0 mods detected")
+        configured_category = (
+            getattr(args, "category", None)
+            or self.preferences.get("categoryFilter")
+            or ""
+        )
+        self.category_scope_var = self.tk.StringVar(
+            value=category_scope_label(configured_category)
+        )
         self.version_var = self.tk.StringVar(
             value=str(
                 self.preferences.get("gameVersion")
@@ -239,7 +248,25 @@ class MarketSenseGui(
         self.ttk.Button(
             controls, text="Browse…", command=self._browse_game_root
         ).grid(row=1, column=2, padx=(6, 12), sticky="w")
-        self._entry(controls, 2, 0, "Max shown (view)", self.max_items_var, 12)
+        self.ttk.Label(controls, text="Category (scan)").grid(
+            row=2, column=0, sticky="w", padx=(0, 6), pady=2
+        )
+        category_choices = list(CATEGORY_SCOPE_CHOICES)
+        selected_category = self.category_scope_var.get()
+        if selected_category not in category_choices:
+            category_choices.append(selected_category)
+        self.category_scope_combo = self.ttk.Combobox(
+            controls,
+            textvariable=self.category_scope_var,
+            values=tuple(category_choices),
+            state="readonly",
+            width=18,
+        )
+        self.category_scope_combo.grid(row=2, column=1, sticky="w", pady=2)
+        self.category_scope_combo.bind(
+            "<<ComboboxSelected>>",
+            lambda _event: self._on_category_scope_selected(),
+        )
         cache_options = self.ttk.Frame(controls)
         cache_options.grid(row=2, column=3, columnspan=2, sticky="w")
         self.ttk.Checkbutton(
@@ -251,8 +278,9 @@ class MarketSenseGui(
         self.ttk.Checkbutton(
             cache_options, text="Refresh", variable=self.refresh_cache_var
         ).pack(side="left", padx=(10, 0))
+        self._entry(controls, 3, 0, "Max shown (view)", self.max_items_var, 12)
         self.ttk.Label(controls, text="Availability (view)").grid(
-            row=3, column=0, sticky="w", padx=(0, 6), pady=2
+            row=4, column=0, sticky="w", padx=(0, 6), pady=2
         )
         self.availability_combo = self.ttk.Combobox(
             controls,
@@ -270,16 +298,16 @@ class MarketSenseGui(
             state="readonly",
             width=18,
         )
-        self.availability_combo.grid(row=3, column=1, sticky="w", pady=2)
+        self.availability_combo.grid(row=4, column=1, sticky="w", pady=2)
         self.availability_combo.bind(
             "<<ComboboxSelected>>",
             lambda _event: self._apply_view_filters(),
         )
 
         buttons = self.ttk.Frame(controls)
-        buttons.grid(row=4, column=0, columnspan=5, sticky="w", pady=(8, 0))
+        buttons.grid(row=5, column=0, columnspan=5, sticky="w", pady=(8, 0))
         self.scan_button = self.ttk.Button(
-            buttons, text="Scan all / cache", command=self.scan
+            buttons, text="Scan selected scope / cache", command=self.scan
         )
         self.scan_button.pack(side="left")
         self.test_button = self.ttk.Button(
@@ -327,7 +355,7 @@ class MarketSenseGui(
         self.notebook.add(self.log, text="Diagnostics")
         self._append_log(self._sandbox_audit_log())
         self.status_var = self.tk.StringVar(
-            value="Ready — choose Scan all / cache to begin."
+            value="Ready — choose Scan selected scope / cache to begin."
         )
         self.ttk.Label(root, textvariable=self.status_var, anchor="w").grid(
             row=2, column=0, sticky="ew", padx=10, pady=(2, 8)
@@ -336,6 +364,7 @@ class MarketSenseGui(
         for variable in (
             self.workshop_var,
             self.mod_filter_var,
+            self.category_scope_var,
             self.version_var,
             self.game_root_var,
             self.max_items_var,

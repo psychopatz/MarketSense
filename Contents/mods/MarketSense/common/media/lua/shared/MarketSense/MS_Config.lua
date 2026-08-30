@@ -25,6 +25,7 @@ local defaults = {
         baseMultiplier = 1.0,
         openedPenalty = 0.72,
     },
+    foodPricing = {},
     stock = {
         ultralightMax = 50,
         lightMax = 25,
@@ -78,6 +79,7 @@ function MarketSense.Config.reloadExported()
             runtime.stock.defaultMinRatio = exported.global.stock_default_min_ratio or runtime.stock.defaultMinRatio
         end
         runtime.categories = exported.categories or {}
+        runtime.foodPricing = exported.food_pricing or runtime.foodPricing or {}
         runtime.rarityAdditions = exported.rarity_additions or {}
         runtime.qualityAdditions = exported.quality_additions or {}
         runtime.themeAdditions = exported.theme_additions or {}

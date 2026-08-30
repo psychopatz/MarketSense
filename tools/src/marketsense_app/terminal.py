@@ -44,6 +44,11 @@ def print_terminal(
         f"review flags: {summary.get('review_count', 0)} | "
         f"duplicate definitions: {summary['duplicate_definitions']}"
     )
+    yield_summary = summary.get("yield_resolution") or {}
+    print(
+        f"Yield resolver: {yield_summary.get('resolved_items', 0):,} resolved bundles | "
+        f"{yield_summary.get('review_items', 0):,} yield reviews"
+    )
     availability = summary.get("availability_counts") or {}
     print(
         f"Availability gate: {summary.get('availability_filter', 'obtainable')} | "

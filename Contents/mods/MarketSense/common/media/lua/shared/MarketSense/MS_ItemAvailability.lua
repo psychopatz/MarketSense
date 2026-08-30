@@ -232,21 +232,7 @@ end
 
 local function eachValue(collection, callback)
     if collection == nil or type(callback) ~= "function" then return end
-
-    local size = callValue(collection, "size")
-    if tonumber(size) ~= nil and type(collection.get) == "function" then
-        for index = 0, tonumber(size) - 1 do
-            local ok, value = pcall(collection.get, collection, index)
-            if ok and value ~= nil then callback(value, index) end
-        end
-        return
-    end
-
-    if type(collection) == "table" then
-        for index, value in ipairs(collection) do
-            callback(value, index)
-        end
-    end
+    Core.forEachCollection(collection, callback)
 end
 
 local function scanRegularRecipes(manager)

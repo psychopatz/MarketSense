@@ -112,6 +112,13 @@ function Runtime.rebuildCache(reason)
         runtimeRules.loaded = false
     end
 
+    -- A registry rebuild can be the first evaluation after PZ finishes
+    -- loading craft recipes.  Never let a resolver index built during an
+    -- earlier, partially initialized phase survive into this pass.
+    if MarketSense.YieldResolver and type(MarketSense.YieldResolver.clear) == "function" then
+        MarketSense.YieldResolver.clear()
+    end
+
     local activeState = Shared.buildActiveModState()
     local previousIndex = IO.loadIndex()
     local rebuildReason = tostring(reason or "rebuild")
@@ -123,8 +130,17 @@ function Runtime.rebuildCache(reason)
         Shared.log("Warn", "Runtime cache rebuild produced no live items. Falling back to the previous cache if available.")
         IO.writeRebuildRequest(rebuildReason, activeState, previousIndex, "Runtime rebuild produced no items and kept the previous MS_Items cache if one was available.")
         if previousIndex and type(previousIndex.files) == "table" and #previousIndex.files > 0 then
-            return populateMasterList(previousIndex, activeState)
+            local fallback = populateMasterList(previousIndex, activeState)
+            -- This is a temporary view, not a successful rebuild.  PZ can
+            -- call the registry before getAllItems() is ready; keeping the
+            -- loaded flag set here would make Refresh catalog reuse the old
+            -- cache forever and require the manual Generate button.
+            Registry.state.loaded = false
+            Registry.state.deferredRebuild = true
+            return fallback
         end
+        Registry.state.loaded = false
+        Registry.state.deferredRebuild = true
         return Shared.buildEmptyCatalog(activeState, "runtime-rebuild-empty")
     end
 
@@ -155,6 +171,7 @@ function Runtime.rebuildCache(reason)
     end
 
     Registry.state.lastRequestKey = nil
+    Registry.state.deferredRebuild = false
     Shared.log("Info", "Rebuilt MS_Items runtime cache with " .. tostring(#indexData.files) .. " files for " .. tostring(activeState.activeModsHash) .. ".")
     return populateMasterList(indexData, activeState)
 end
@@ -162,6 +179,7 @@ end
 function Runtime.ensureLoaded(forceRebuild)
     local activeState = Shared.buildActiveModState()
     if not forceRebuild
+        and not Registry.state.deferredRebuild
         and Registry.state.loaded
         and Registry.state.activeModsHash == activeState.activeModsHash
         and type(Registry.state.catalog) == "table" then
@@ -170,9 +188,11 @@ function Runtime.ensureLoaded(forceRebuild)
 
     local indexData = IO.loadIndex()
     local valid, reason = IO.validateIndex(indexData, activeState)
-    if forceRebuild or not valid then
+    if forceRebuild or Registry.state.deferredRebuild or not valid then
         if forceRebuild then
             Shared.log("Info", "Forced MS_Items runtime rebuild requested.")
+        elseif Registry.state.deferredRebuild then
+            Shared.log("Info", "Retrying deferred MS_Items runtime rebuild now that live item data may be ready.")
         else
             if reason == "mods" then
                 local addedMods, removedMods = Shared.diffActiveMods(indexData and indexData.activeMods or {}, activeState.activeMods)
@@ -189,7 +209,10 @@ function Runtime.ensureLoaded(forceRebuild)
                 Shared.log("Warn", "MS_Items cache invalidated (" .. tostring(reason) .. "); regenerating " .. Registry.OUTPUT_HINT)
             end
         end
-        return Runtime.rebuildCache(forceRebuild and "forced" or reason)
+        local rebuildReason = forceRebuild and "forced"
+            or Registry.state.deferredRebuild and "deferred"
+            or reason
+        return Runtime.rebuildCache(rebuildReason)
     end
 
     Shared.debugLog("MS_Items cache already valid; loading from " .. Registry.OUTPUT_HINT)

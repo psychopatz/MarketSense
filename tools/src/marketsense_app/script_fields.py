@@ -17,6 +17,7 @@ FIELD_ALIASES = {
     "worldobjectsprite": "worldObjectSprite", "bloodclothingtype": "bloodClothingType",
     "opensound": "openSound", "closesound": "closeSound", "putinsound": "putInSound",
     "pourtype": "pourType", "doubleclickrecipe": "doubleClickRecipe",
+    "openingrecipe": "openingRecipe",
     "replaceondeplete": "replaceOnDeplete", "replaceonuse": "replaceOnUse",
     "replaceoncooked": "replaceOnCooked", "oncooked": "onCooked",
     "evolvedrecipe": "evolvedRecipe", "evolvedrecipename": "evolvedRecipeName",

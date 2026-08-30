@@ -11,6 +11,7 @@ local Cache       = MarketSense.RuntimeCache
 local Catalog     = MarketSense.StaticCatalog
 local AutoTag     = MarketSense.AutoTag
 local Pricing     = MarketSense.Pricing
+local YieldResolver = MarketSense.YieldResolver
 local Availability = MarketSense.ItemAvailability
 local function safeLog(...)
     if MarketSense.IsItemRuntimeDebugEnabled and MarketSense.IsItemRuntimeDebugEnabled()
@@ -33,6 +34,9 @@ function Debug.inspectItem(fullType, withAudit)
         rawScore = details.rawScore,
         weaponEvidence = details.weaponEvidence,
         priceHeuristic = details.priceHeuristic,
+        yieldResolution = details.yieldResolution,
+        yieldResolverStats = YieldResolver and YieldResolver.getStats
+            and YieldResolver.getStats() or nil,
         stock    = details.stock,
         source   = details.source,
         confidence = details.confidence,

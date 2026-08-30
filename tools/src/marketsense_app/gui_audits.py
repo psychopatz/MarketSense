@@ -60,7 +60,7 @@ class AuditMixin:
             toolbar, text="Save JSON…", command=self._save_runtime_comparison_json
         ).pack(side="left")
         self.runtime_verify_status_var = self.tk.StringVar(
-            value="Run a complete harness scan, then compare it with the PZ MarketSense output."
+            value="Run a harness scan for the selected scope, then compare it with the PZ MarketSense output."
         )
         self.ttk.Label(
             frame, textvariable=self.runtime_verify_status_var
@@ -101,7 +101,7 @@ class AuditMixin:
         if not self.master_rows:
             self.messagebox.showinfo(
                 "Runtime verification",
-                "Run Scan all / cache before comparing the MarketSense runtime output.",
+                "Run Scan selected scope / cache before comparing the MarketSense runtime output.",
             )
             return
         try:

@@ -8,10 +8,11 @@
  "UI_MarketSenseCatalog_Refresh": "Refresh catalog",
  "UI_MarketSenseCatalog_Generate": "Generate MarketSense catalog",
  "UI_MarketSenseCatalog_RuntimeGenerating": "Generating MarketSense runtime catalog...",
- "UI_MarketSenseCatalog_RuntimeGeneration": "Generated %d MarketSense items across %d files in %d ms. Output: Zomboid/Lua/MS_Items",
- "UI_MarketSenseCatalog_RuntimeGenerationNoTiming": "Generated %d MarketSense items across %d files. Output: Zomboid/Lua/MS_Items",
+ "UI_MarketSenseCatalog_RuntimeGeneration": "Generated %s MarketSense items across %s files in %s ms. Output: Zomboid/Lua/MS_Items",
+ "UI_MarketSenseCatalog_RuntimeGenerationNoTiming": "Generated %s MarketSense items across %s files. Output: Zomboid/Lua/MS_Items",
  "UI_MarketSenseCatalog_RuntimeGenerationFailed": "MarketSense runtime catalog generation failed: %s",
     "UI_MarketSenseCatalog_SelectItem": "Select an item to run the MarketSense debug evaluator.",
     "UI_MarketSenseCatalog_Ready": "READY",
-    "UI_MarketSenseCatalog_NotEligible": "NOT ELIGIBLE"
+    "UI_MarketSenseCatalog_NotEligible": "NOT ELIGIBLE",
+    "UI_MarketSenseCatalog_YieldLabel": "Yield"
 }

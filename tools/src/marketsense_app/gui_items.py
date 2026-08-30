@@ -30,6 +30,7 @@ _ITEM_COLUMN_SPECS = (
     ("reason", 320),
     ("detector", 140),
     ("resolver", 160),
+    ("yield", 240),
     ("confidence", 90),
     ("mod", 170),
     ("description", 300),
@@ -132,7 +133,9 @@ class ItemsMixin:
             text=(
                 "Hierarchy: main category → subcategory → primary tag → item. "
                 "Use Expand Food to inspect every food row; review flags are triage hints, "
-                "not confirmed false positives. The default list requires authoritative "
+                "not confirmed false positives. The yield column shows bundle/recipe "
+                "resolution and name-based candidates are flagged for review. The "
+                "default list requires authoritative "
                 "loot/crafting/foraging/farming/fishing/animal evidence; change Availability "
                 "to inspect uncertain or excluded definitions."
             ),
@@ -447,6 +450,7 @@ class ItemsMixin:
             reason,
             row.get("detector", ""),
             row.get("resolver", ""),
+            row.get("yieldResolver", ""),
             row.get("confidence", ""),
             row.get("workshopMod", ""),
             row.get("description", ""),
@@ -533,7 +537,7 @@ class ItemsMixin:
                 open=False,
                 values=(
                     "", "", "", f"{category_count:,} items",
-                    "", "", "", "", "", "", "", "",
+                    "", "", "", "", "", "", "", "", "",
                 ),
             )
             self.item_category_nodes[category] = category_id
@@ -548,7 +552,7 @@ class ItemsMixin:
                     open=False,
                     values=(
                         "", "", "", f"{subcategory_count:,} items",
-                        "", "", "", "", "", "", "", "",
+                        "", "", "", "", "", "", "", "", "",
                     ),
                 )
                 for primary, primary_rows in sorted(primaries.items()):
@@ -569,7 +573,7 @@ class ItemsMixin:
                         open=False,
                         values=(
                             "", "", "", f"{primary_count:,} items",
-                            "", "", "", "", "", "", "", "",
+                            "", "", "", "", "", "", "", "", "",
                         ),
                     )
                     for row, status, reason in primary_rows:

@@ -1190,16 +1190,6 @@ option MarketSense.StockElectronicsTransmitterMult
     translation = MarketSense.StockElectronicsTransmitterMult,
 }
 
-option MarketSense.PriceFoodValue
-{
-    type = integer,
-    default = 194,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseFood,
-    translation = MarketSense.PriceFoodValue,
-}
-
 option MarketSense.StockFoodMult
 {
     type = double,
@@ -1210,16 +1200,6 @@ option MarketSense.StockFoodMult
     translation = MarketSense.StockFoodMult,
 }
 
-option MarketSense.PriceFoodMediumNutritionValue
-{
-    type = integer,
-    default = 15,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseFood,
-    translation = MarketSense.PriceFoodMediumNutritionValue,
-}
-
 option MarketSense.StockFoodMediumNutritionMult
 {
     type = double,
@@ -1228,16 +1208,6 @@ option MarketSense.StockFoodMediumNutritionMult
     max = 100.0,
     page = MarketSenseFood,
     translation = MarketSense.StockFoodMediumNutritionMult,
-}
-
-option MarketSense.PriceFoodNonPerishableValue
-{
-    type = integer,
-    default = 30,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseFood,
-    translation = MarketSense.PriceFoodNonPerishableValue,
 }
 
 option MarketSense.StockFoodNonPerishableMult

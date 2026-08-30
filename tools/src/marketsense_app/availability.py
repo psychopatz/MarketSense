@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 import re
 from typing import Any, Iterable
@@ -235,24 +236,56 @@ def _selected_media_roots(mod_root: Path, game_version: str | None) -> list[Path
 
 
 def _runtime_source_files(media_root: Path) -> list[Path]:
+    """Return server-relevant source files with one scandir walk per media root."""
+
     paths: list[Path] = []
     seen: set[Path] = set()
-    for source_root in (media_root / "scripts", media_root / "lua"):
-        if not source_root.is_dir():
-            continue
-        for path in source_root.rglob("*"):
-            if path.suffix.casefold() not in {".lua", ".txt"}:
-                continue
-            if source_root.name.casefold() == "lua":
-                relative_parts = {
-                    part.casefold() for part in path.relative_to(source_root).parts[:-1]
-                }
-                if "client" in relative_parts:
+    wanted_suffixes = {".lua", ".txt"}
+
+    def visit(directory: str, source_name: str, relative_parts: tuple[str, ...]) -> None:
+        try:
+            children = os.scandir(directory)
+        except OSError:
+            return
+        with children:
+            for child in children:
+                child_path = Path(child.path)
+                try:
+                    if child.is_dir(follow_symlinks=False):
+                        if source_name == "lua" and child.name.casefold() == "client":
+                            continue
+                        visit(
+                            child.path,
+                            source_name,
+                            relative_parts + (child.name,),
+                        )
+                        continue
+                except OSError:
                     continue
-            resolved = path.resolve()
-            if resolved not in seen:
+                if child_path.suffix.casefold() not in wanted_suffixes:
+                    continue
+                # Keep resolving file links so duplicate media references retain
+                # the old de-duplication behavior of Path.rglob + resolve().
+                resolved = child_path.resolve()
+                if resolved in seen:
+                    continue
                 seen.add(resolved)
                 paths.append(resolved)
+
+    media_root = media_root.expanduser().resolve()
+    try:
+        children = os.scandir(media_root)
+    except OSError:
+        return []
+    with children:
+        for child in children:
+            if child.name.casefold() not in {"scripts", "lua"}:
+                continue
+            try:
+                if child.is_dir(follow_symlinks=False):
+                    visit(child.path, child.name.casefold(), (child.name,))
+            except OSError:
+                continue
     return sorted(paths)
 
 

@@ -67,6 +67,36 @@ def review_row(row: dict[str, Any]) -> tuple[str, str]:
         if expanded and category.casefold() not in expanded:
             reasons.append("category is absent from expanded tags")
 
+    yield_resolution = row.get("yieldResolution")
+    if not isinstance(yield_resolution, dict):
+        heuristic = row.get("priceHeuristic")
+        yield_resolution = (
+            heuristic.get("yieldResolution")
+            if isinstance(heuristic, dict) else {}
+        )
+    if isinstance(yield_resolution, dict):
+        yield_status = _text(yield_resolution.get("status")).casefold()
+        yield_method = _text(yield_resolution.get("candidateMethod")).casefold()
+        recipe = _text(yield_resolution.get("recipe"))
+        if yield_status in {"ambiguous", "unresolved", "probabilistic"}:
+            reasons.append(
+                f"yield {yield_status}"
+                + (f" ({recipe})" if recipe else "")
+            )
+        elif yield_status == "resolved" and yield_method == "recipe_name":
+            reasons.append(
+                "yield uses recipe-name heuristic"
+                + (f" ({recipe})" if recipe else "")
+            )
+        if yield_resolution.get("evaluation") == "fallback":
+            reasons.append(
+                "yield evaluation fell back"
+                + (
+                    f": {_text(yield_resolution.get('fallbackReason'))}"
+                    if yield_resolution.get("fallbackReason") else ""
+                )
+            )
+
     if reasons:
         return "REVIEW", "; ".join(reasons)
     return "OK", "classification has no automatic review flags"
@@ -89,6 +119,8 @@ def searchable_text(row: dict[str, Any]) -> str:
         _sequence_text(row.get("tags")), _sequence_text(row.get("expandedTags")),
         _sequence_text(row.get("definitionSources")), status, reason,
         gap.get("kind"), gap.get("bucket"), gap.get("reason"),
+        row.get("yieldResolver"),
+        _sequence_text(row.get("yieldResolution")),
     )
     availability = row.get("availability")
     if isinstance(availability, dict):

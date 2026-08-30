@@ -66,6 +66,28 @@ T.equal(path({
     category = "Container", primary = "ContainerBag",
     expandedTags = { "ContainerBag", "Container" },
 }), "Container/Bag", "container category path")
+local yieldText = Window.BuildYieldSummary({
+    yieldResolution = {
+        status = "resolved",
+        recipe = "OpenEggCarton",
+        outputs = {{ fullType = "Base.Egg", quantity = 12 }},
+    },
+})
+T.equal(yieldText, "Yield: OpenEggCarton -> 12 x Base.Egg",
+    "catalog displays resolved bundle output")
+local ambiguousYieldText = Window.BuildYieldSummary({
+    yieldResolution = {
+        status = "ambiguous", candidateCount = 2,
+        candidates = {{ recipe = "OpenBoxOne" }, { recipe = "OpenBoxTwo" }},
+    },
+})
+T.equal(ambiguousYieldText, "Yield: AMBIGUOUS (2 candidates): OpenBoxOne, OpenBoxTwo",
+    "catalog displays ambiguous bundle candidates")
+local missingYieldText = Window.BuildYieldSummary({
+    yieldResolution = { status = "not_detected", recipeCount = 4326, sourceCount = 1875 },
+})
+T.equal(missingYieldText, "Yield: NOT_DETECTED (4326 recipes, 1875 sources indexed)",
+    "catalog displays missing-yield index diagnostics")
 T.equal(PsychopatzCore.DebugHub.testTool.id, "marketsense.itemCatalog",
     "catalog debug tool registration")
 local generatedWindow = {

@@ -48,6 +48,8 @@ def lua_value(value: Any) -> str:
 def bridge_source(
     definitions: list[ItemDefinition],
     sandbox_options: dict[str, int | float] | None = None,
+    yield_recipes: dict[str, list[dict[str, Any]]] | None = None,
+    emitted_types: set[str] | None = None,
 ) -> str:
     specs = []
     for definition in definitions:
@@ -65,13 +67,16 @@ def bridge_source(
             "workshopVersion": definition.mod.script_version,
             "scriptPath": definition.script_path,
             "definitionSources": definition.sources or [definition.script_path],
+            "emit": emitted_types is None or definition.full_type in emitted_types,
         })
     safe_sandbox = {
         str(key): value for key, value in (sandbox_options or {}).items()
         if isinstance(value, (int, float)) and not isinstance(value, bool)
         and math.isfinite(float(value))
     }
-    return render_bridge(lua_value(specs), lua_value(safe_sandbox))
+    return render_bridge(
+        lua_value(specs), lua_value(safe_sandbox), lua_value(yield_recipes or {})
+    )
 
 
 def find_lua(explicit: str | None) -> str:
@@ -100,8 +105,12 @@ def run_lua_result(
     lua: str,
     definitions: list[ItemDefinition],
     sandbox_options: dict[str, int | float] | None = None,
+    yield_recipes: dict[str, list[dict[str, Any]]] | None = None,
+    emitted_types: set[str] | None = None,
 ) -> BridgeResult:
-    bridge = bridge_source(definitions, sandbox_options)
+    bridge = bridge_source(
+        definitions, sandbox_options, yield_recipes, emitted_types
+    )
     with tempfile.TemporaryDirectory(prefix="marketsense-offline-") as temp_dir:
         bridge_path = Path(temp_dir) / "bridge.lua"
         bridge_path.write_text(bridge, encoding="utf-8")
@@ -142,7 +151,11 @@ def run_lua(
     lua: str,
     definitions: list[ItemDefinition],
     sandbox_options: dict[str, int | float] | None = None,
+    yield_recipes: dict[str, list[dict[str, Any]]] | None = None,
+    emitted_types: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Backward-compatible row-only wrapper around the metadata-aware bridge."""
 
-    return run_lua_result(lua, definitions, sandbox_options).rows
+    return run_lua_result(
+        lua, definitions, sandbox_options, yield_recipes, emitted_types
+    ).rows
