@@ -170,6 +170,10 @@ class ControllerMixin:
             "All items": "all",
             "Uncertain only": "uncertain",
             "Excluded only": "excluded",
+            "Changed only": "changed",
+            "Blacklisted only": "blacklisted",
+            "Whitelisted only": "whitelisted",
+            "Overridden only": "overridden",
         }.get(self.availability_var.get(), "obtainable")
         return {
             "workshopRoots": roots,
@@ -182,6 +186,11 @@ class ControllerMixin:
             "useCache": self.use_cache_var.get(),
             "refreshCache": False,
             "availability": availability,
+            "itemColumns": (
+                self._item_column_preferences()
+                if hasattr(self, "_item_column_preferences")
+                else {}
+            ),
         }
 
     def _persist_preferences(self) -> None:
@@ -302,25 +311,6 @@ class ControllerMixin:
         self._persist_preferences()
         self._start("scan", options)
 
-    def _rescan_after_rule_edit(self, item_id: str) -> None:
-        """Re-evaluate the master result after the Lua rule file changes."""
-
-        if self.busy:
-            self.status_var.set(
-                f"Rule for {item_id} was saved; finish the current scan before refreshing."
-            )
-            return
-        try:
-            options = self._options()
-        except ValueError as error:
-            self.messagebox.showerror("Invalid settings", str(error))
-            return
-        self._persist_preferences()
-        # The MarketSense Lua file is part of the cache key.  evaluate() will
-        # therefore reject the old result and create a new one using the rule
-        # just written, while preserving the normal background-worker UX.
-        self._start("rule-edit", options)
-
     def self_test(self) -> None:
         self._start("self-test", None)
 
@@ -420,6 +410,7 @@ class ControllerMixin:
     ) -> None:
         self._finish()
         self.master_summary, self.master_rows = summary, rows
+        self._sync_runtime_rules()
         self._clear_runtime_verification()
         self._apply_view_filters()
         self.save_button.configure(state="normal")
@@ -481,6 +472,7 @@ class ControllerMixin:
             mod_filters=self._selected_mod_filters(),
             skip_vanilla=self.no_base_var.get(),
             max_items=max_items,
+            rule_state_by_id=getattr(self, "item_rule_state_by_id", {}),
         )
         self.summary = view_summary(
             self.master_summary,
@@ -558,6 +550,7 @@ class ControllerMixin:
                 data["unique"],
             ))
         self._refresh_item_tree()
+        self._refresh_availability_overview()
         self._refresh_low_confidence()
         self._refresh_heuristic_gaps()
         flagged_rows = [

@@ -396,6 +396,17 @@ end
 
 local function jsonArray(values) return jsonValue(values or {}) end
 
+local function descriptorValue(tags, prefix)
+    local marker = tostring(prefix or "") .. "."
+    for _, tag in ipairs(tags or {}) do
+        local text = tostring(tag or "")
+        if string.sub(text, 1, #marker) == marker then
+            return string.sub(text, #marker + 1)
+        end
+    end
+    return ""
+end
+
 local function printRuntimeMetadata()
     local runtime = MarketSense.ItemRuntimeConfig or {}
     local pricing = runtime.pricing or {}
@@ -494,7 +505,9 @@ local function rowJson(row)
     local fields = {}
     local ordered = { "fullType", "category", "primary", "mechanicalClass", "mechanicalFamily", "marketRole",
         "price", "basePrice", "rawScore", "confidence", "source",
-        "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh", "daysRotten",
+        "moduleName", "typeName", "displayName", "displayCategory", "itemType",
+        "sourceModId", "sourceModName", "quality", "rarity", "theme", "origin",
+        "weight", "hunger", "thirst", "calories", "daysFresh", "daysRotten",
         "minDamage", "maxDamage", "maxRange", "conditionMax", "capacity", "workshopMod", "workshopName",
         "workshopId", "workshopVersion", "scriptPath", "description", "subcategory", "leaf",
         "primaryPrefix", "categoryPath", "detector", "resolver", "marketEligible", "availabilityStatus",
@@ -507,6 +520,7 @@ local function rowJson(row)
     fields[#fields + 1] = jsonString("tags") .. ":" .. jsonArray(row.tags)
     fields[#fields + 1] = jsonString("expandedTags") .. ":" .. jsonArray(row.expandedTags)
     fields[#fields + 1] = jsonString("definitionSources") .. ":" .. jsonArray(row.definitionSources)
+    fields[#fields + 1] = jsonString("metadata") .. ":" .. jsonValue(row.metadata)
     fields[#fields + 1] = jsonString("stock") .. ":" .. jsonValue(row.stock)
     fields[#fields + 1] = jsonString("baseStock") .. ":" .. jsonValue(row.baseStock)
     fields[#fields + 1] = jsonString("hierarchy") .. ":" .. jsonValue(row.hierarchy)
@@ -550,6 +564,10 @@ for _, spec in ipairs(specs) do
             max = baseMax,
         }
         row.category, row.primary, row.price = details.category, details.primary, details.price
+        row.displayName = context.displayName
+        row.displayCategory = context.displayCategory
+        row.itemType = context.itemType
+        row.sourceModId, row.sourceModName = context.sourceModId, context.sourceModName
         local weaponDetails = (detection.final and detection.final.details) or {}
         local weaponEvidence = weaponDetails.weaponEvidence or {}
         row.mechanicalClass = weaponDetails.mechanicalClass or weaponEvidence.mechanicalClass
@@ -559,6 +577,16 @@ for _, spec in ipairs(specs) do
         row.rawScore, row.confidence, row.source = details.rawScore, details.confidence, details.source
         row.moduleName, row.typeName = details.moduleName, details.typeName
         row.tags, row.expandedTags = details.tags, details.expandedTags
+        row.quality = descriptorValue(row.expandedTags, "Quality")
+        row.rarity = descriptorValue(row.expandedTags, "Rarity")
+        row.theme = descriptorValue(row.expandedTags, "Theme")
+        row.origin = descriptorValue(row.expandedTags, "Origin")
+        row.metadata = {
+            quality = row.quality,
+            rarity = row.rarity,
+            theme = row.theme,
+            origin = row.origin,
+        }
         row.weight, row.hunger, row.thirst = context.weight, context.hunger, context.thirst
         row.calories, row.daysFresh, row.daysRotten = context.calories, context.daysFresh, context.daysRotten
         row.minDamage, row.maxDamage, row.maxRange = context.minDamage, context.maxDamage, context.maxRange

@@ -80,6 +80,8 @@ def searchable_text(row: dict[str, Any]) -> str:
     fields = (
         row.get("fullType"), row.get("category"), row.get("primary"),
         row.get("mechanicalClass"), row.get("mechanicalFamily"), row.get("marketRole"),
+        row.get("displayName"), row.get("displayCategory"), row.get("itemType"),
+        row.get("quality"), row.get("rarity"), row.get("theme"), row.get("origin"),
         row.get("subcategory"), row.get("leaf"), row.get("primaryPrefix"),
         row.get("categoryPath"), row.get("detector"), row.get("resolver"),
         row.get("source"), row.get("workshopMod"), row.get("workshopName"),

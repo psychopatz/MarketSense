@@ -21,6 +21,8 @@ from marketsense_app.availability import (
 from marketsense_app.evaluation import ScanOptions, load_cached_result, merge_scan_definitions
 from marketsense_app.heuristics import heuristic_coverage, heuristic_gap
 from marketsense_app.gui_filters import filter_rows, view_summary
+from marketsense_app.gui_items import ItemsMixin, category_metadata, metadata_label
+from marketsense_app.gui_overview import OverviewMixin
 from marketsense_app.lua_rules import (
     load_rules,
     remove_all_item_rules,
@@ -349,6 +351,33 @@ tileset {
     assert mismatch_status == "REVIEW" and "absent from expanded tags" in mismatch_reason
     assert review_row({"error": "bridge failed"})[0] == "ERROR"
 
+    descriptor_row = {
+        "expandedTags": [
+            "Weapon", "Quality.Standard", "Rarity.Rare",
+            "Theme.Combat", "Origin.Vanilla",
+        ],
+    }
+    assert category_metadata(descriptor_row) == {
+        "quality": "Standard", "rarity": "Rare",
+        "theme": "Combat", "origin": "Vanilla",
+    }
+    assert "Theme=Combat" in metadata_label(descriptor_row)
+    assert ItemsMixin._item_rule_prefix({"membership": "blacklist", "override": {}}) == "(Blacklisted)"
+    assert ItemsMixin._item_rule_prefix({"membership": "whitelist", "override": {"price": 10}}) == "(Whitelisted) (Overridden)"
+    assert OverviewMixin._availability_filter_matches(
+        "changed", "obtainable", {"membership": "blacklist", "override": {}}
+    )
+    assert OverviewMixin._availability_filter_matches(
+        "overridden", "excluded", {"membership": None, "override": {"price": 99}}
+    )
+    assert not OverviewMixin._availability_filter_matches(
+        "whitelisted", "obtainable", {"membership": "blacklist", "override": {}}
+    )
+    rule_state = {
+        "Base.VanillaThing": {"membership": "blacklist", "override": {}},
+        "Narcotics.CraftedThing": {"membership": None, "override": {"price": 99}},
+    }
+
     cached_view_rows = [
         {
             "fullType": "Base.VanillaThing", "workshopMod": "Base",
@@ -379,6 +408,12 @@ tileset {
     assert len(filter_rows(cached_view_rows, "All items", ("Narcotics",))) == 2
     assert len(filter_rows(cached_view_rows, "Obtainable only", ("Narcotics",))) == 1
     assert len(filter_rows(cached_view_rows, "All items", (), True)) == 3
+    assert [row["fullType"] for row in filter_rows(
+        cached_view_rows, "Changed only", (), False, 0, rule_state
+    )] == ["Base.VanillaThing", "Narcotics.CraftedThing"]
+    assert [row["fullType"] for row in filter_rows(
+        cached_view_rows, "Blacklisted only", (), False, 0, rule_state
+    )] == ["Base.VanillaThing"]
     assert [row["fullType"] for row in filter_rows(
         cached_view_rows, "All items", (), False, 2
     )] == ["Base.VanillaThing", "Narcotics.CraftedThing"]
@@ -460,6 +495,17 @@ tileset {
         loaded = normalize_preferences(load_preferences(settings_path))
         assert loaded["workshopRoots"] == ["/tmp/workshop"]
         assert loaded["gameRoot"] == "/tmp/game" and loaded["maxItems"] == 12
+        assert loaded["itemColumns"] == {"order": [], "visible": []}
+        saved = save_preferences(settings_path, {
+            "itemColumns": {
+                "order": ["stock", "price"],
+                "visible": ["stock"],
+            },
+        })
+        loaded = normalize_preferences(load_preferences(settings_path))
+        assert loaded["itemColumns"] == {
+            "order": ["stock", "price"], "visible": ["stock"]
+        }
 
     with TemporaryDirectory(prefix="marketsense-settings-") as temp_dir:
         settings_path = Path(temp_dir) / "settings.json"

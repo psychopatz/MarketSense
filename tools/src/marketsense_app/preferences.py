@@ -49,6 +49,24 @@ def _safe_nonnegative_int(value: Any) -> int:
         return 0
 
 
+def _safe_column_preferences(value: Any) -> dict[str, list[str]]:
+    """Keep the optional item-tree layout JSON-safe and list-shaped."""
+
+    if not isinstance(value, dict):
+        return {"order": [], "visible": []}
+    result: dict[str, list[str]] = {}
+    for key in ("order", "visible"):
+        values = value.get(key)
+        result[key] = (
+            [
+                item.strip() for item in values
+                if isinstance(item, str) and item.strip()
+            ]
+            if isinstance(values, list) else []
+        )
+    return result
+
+
 def normalize_preferences(payload: dict[str, Any]) -> dict[str, Any]:
     """Keep only known, serializable GUI settings from a preferences payload."""
 
@@ -67,6 +85,7 @@ def normalize_preferences(payload: dict[str, Any]) -> dict[str, Any]:
         "useCache": _safe_bool(payload.get("useCache"), True),
         "refreshCache": _safe_bool(payload.get("refreshCache"), False),
         "availability": _safe_string(payload.get("availability")),
+        "itemColumns": _safe_column_preferences(payload.get("itemColumns")),
     }
     return normalized
 

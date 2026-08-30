@@ -746,6 +746,18 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         set(by_type) == expected_types and all(not row.get("error") for row in rows),
         f"{len(rows)}/{len(expected_types)} rows, errors={sum(1 for row in rows if row.get('error'))}",
     )
+    food_low = by_type.get("MarketSenseFixture.FoodLow", {})
+    check(
+        "descriptor metadata is emitted",
+        (
+            food_low.get("quality") == "Standard"
+            and food_low.get("rarity") == "Common"
+            and food_low.get("origin") == "MarketSenseFixture"
+            and isinstance(food_low.get("metadata"), dict)
+        ),
+        f"quality={food_low.get('quality', '?')} rarity={food_low.get('rarity', '?')} "
+        f"origin={food_low.get('origin', '?')}",
+    )
 
     expected_categories = {
         "MarketSenseFixture.FoodLow": "Food",

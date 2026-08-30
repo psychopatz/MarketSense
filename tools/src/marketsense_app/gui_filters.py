@@ -26,6 +26,14 @@ AVAILABILITY_FILTERS = {
     "uncertain": "uncertain",
     "excluded only": "excluded",
     "excluded": "excluded",
+    "changed only": "changed",
+    "changed": "changed",
+    "blacklisted only": "blacklisted",
+    "blacklisted": "blacklisted",
+    "whitelisted only": "whitelisted",
+    "whitelisted": "whitelisted",
+    "overridden only": "overridden",
+    "overridden": "overridden",
 }
 
 
@@ -56,6 +64,29 @@ def row_availability(row: dict[str, Any]) -> str:
     return "uncertain"
 
 
+def row_rule_matches(
+    row: dict[str, Any],
+    selected: str,
+    rule_state_by_id: dict[str, dict[str, Any]] | None,
+) -> bool:
+    """Match a local GUI rule-state filter without evaluating the catalog."""
+
+    if selected not in {"changed", "blacklisted", "whitelisted", "overridden"}:
+        return True
+    state = (rule_state_by_id or {}).get(str(row.get("fullType") or ""), {})
+    if not isinstance(state, dict):
+        state = {}
+    membership = state.get("membership")
+    overridden = bool(state.get("override"))
+    if selected == "changed":
+        return bool(membership or overridden)
+    if selected == "blacklisted":
+        return membership == "blacklist"
+    if selected == "whitelisted":
+        return membership == "whitelist"
+    return overridden
+
+
 def _matches_mod(row: dict[str, Any], terms: tuple[str, ...]) -> bool:
     if not terms:
         return True
@@ -76,6 +107,7 @@ def filter_rows(
     mod_filters: tuple[str, ...] = (),
     skip_vanilla: bool = False,
     max_items: int = 0,
+    rule_state_by_id: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Filter cached rows without evaluating or rediscovering anything.
 
@@ -93,10 +125,9 @@ def filter_rows(
                 continue
         elif skip_vanilla and is_vanilla_row(row):
             continue
-        if (
-            selected_availability != "all"
-            and row_availability(row) != selected_availability
-        ):
+        if selected_availability in {"obtainable", "uncertain", "excluded"} and row_availability(row) != selected_availability:
+            continue
+        if not row_rule_matches(row, selected_availability, rule_state_by_id):
             continue
         visible.append(row)
     if max_items > 0:

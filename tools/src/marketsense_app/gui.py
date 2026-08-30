@@ -163,6 +163,10 @@ class MarketSenseGui(
             "all": "All items",
             "uncertain": "Uncertain only",
             "excluded": "Excluded only",
+            "changed": "Changed only",
+            "blacklisted": "Blacklisted only",
+            "whitelisted": "Whitelisted only",
+            "overridden": "Overridden only",
         }
         self.availability_var = self.tk.StringVar(
             value=availability_labels.get(
@@ -258,6 +262,10 @@ class MarketSenseGui(
                 "All items",
                 "Uncertain only",
                 "Excluded only",
+                "Changed only",
+                "Blacklisted only",
+                "Whitelisted only",
+                "Overridden only",
             ),
             state="readonly",
             width=18,
@@ -305,6 +313,7 @@ class MarketSenseGui(
         self.notebook.grid(row=1, column=0, sticky="nsew", padx=8, pady=4)
         self._build_overview()
         self._build_items()
+        self._build_availability_overview()
         self._build_review()
         self._build_runtime_verification()
         self._build_low_confidence()
