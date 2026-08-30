@@ -93,8 +93,6 @@ return {
     ["PriceThemeWinterValue"] = 15.0,
     ["PriceToolCookwareValue"] = 9.0,
     ["PriceToolValue"] = 0.0,
-    ["PriceWeaponExplosiveValue"] = 17.0,
-    ["PriceWeaponValue"] = 13.0,
     ["StockBuildingFixtureApplianceMult"] = 1.0,
     ["StockBuildingFixtureMult"] = 1.0,
     ["StockBuildingFixturePlumbingMult"] = 1.0,

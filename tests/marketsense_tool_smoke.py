@@ -520,7 +520,8 @@ tileset {
     assert len(specs) >= 3
     assert next(spec for spec in specs if spec.key == "PriceMultiplier").default == 1.0
     assert next(spec for spec in specs if spec.key == "PriceLiteratureMediaValue").default == 7
-    assert next(spec for spec in specs if spec.key == "PriceWeaponSpearValue").default == 8
+    assert not any(spec.key == "PriceWeaponValue" for spec in specs)
+    assert not any(spec.key == "PriceWeaponExplosiveValue" for spec in specs)
     assert next(spec for spec in specs if spec.key == "StockWeaponSpearMult").default == 1.0
     recommendations = recommended_sandbox_settings(specs)
     assert recommendations["PriceLiteratureMediaValue"] == 7
@@ -536,7 +537,7 @@ tileset {
     effective = effective_sandbox_settings({"PriceGlobalValue": 123}, specs)
     assert effective["PriceGlobalValue"] == 123
     assert effective["PriceMultiplier"] == 1.0
-    assert effective["PriceWeaponSpearValue"] == 8
+    assert "PriceWeaponSpearValue" not in effective
 
     with TemporaryDirectory(prefix="marketsense-result-cache-") as temp_dir:
         cache = ResultCache(Path(temp_dir), "fixture-key")

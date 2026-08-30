@@ -25,7 +25,7 @@ Registry.FILE_SCHEMA = "MS_ITEMS_V1"
 Registry.GENERATOR_VERSION = 2
 -- Bump when pricing inputs or runtime resolver semantics change so an old
 -- materialized cache cannot hide the corrected bundle values.
-Registry.PRICING_HEURISTIC_VERSION = 8
+Registry.PRICING_HEURISTIC_VERSION = 9
 Registry.SIGNATURE_VERSION = "market-sense-v20-food-pricing-v2"
 Registry.ROOT_FOLDER = "MS_Items"
 -- PZ's getFileWriter only permits data extensions such as .txt/.json. The

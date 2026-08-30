@@ -113,12 +113,10 @@ DB.registerTag("Quality.Sterile", {
 
 -- Flat token specific overrides
 DB.registerTag("Firearm", {
-    add = 65,
     stockMultiplier = 0.55,
     minRatio = 0
 })
 DB.registerTag("Ammo", {
-    add = 10,
     stockMultiplier = 1.50,
     minRatio = 0.20
 })

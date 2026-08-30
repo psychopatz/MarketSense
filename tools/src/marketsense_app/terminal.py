@@ -94,26 +94,24 @@ def print_terminal(
         print("  WARNING: no item definitions matched the selected Workshop roots/filters.")
     print()
 
-    melee_rows = [
+    weapon_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "weapon_melee_v1"
+        if (row.get("priceHeuristic") or {}).get("model") == "weapon_v2_pending"
     ]
-    if melee_rows:
-        print("MELEE PRICE HEURISTIC SAMPLE")
-        print("  item | mechanical class | condition | subtype x | state x | price")
-        for row in sorted(melee_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+    if weapon_rows:
+        print("WEAPON PRICING STATUS")
+        print("  item | mechanical class | market role | status | price")
+        for row in sorted(weapon_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
             heuristic = row.get("priceHeuristic") or {}
-            condition = heuristic.get("conditionRatio")
             print(
                 f"  {row.get('fullType', '-'):<36} | "
                 f"{row.get('mechanicalClass', '-'):<18} | "
-                f"{format_number(condition) if condition is not None else '-':>9} | "
-                f"{format_number(heuristic.get('subtypeMultiplier')):>8} | "
-                f"{format_number(heuristic.get('conditionMultiplier')):>7} | "
+                f"{str(heuristic.get('marketRole') or row.get('marketRole') or '-'):<12} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
                 f"{format_number(row.get('price')):>5}"
             )
-        if len(melee_rows) > top:
-            print(f"  ... {len(melee_rows) - top:,} more melee rows are in JSON/CSV output")
+        if len(weapon_rows) > top:
+            print(f"  ... {len(weapon_rows) - top:,} more weapon rows are in JSON/CSV output")
         print()
 
     liquid_rows = [row for row in rows if row.get("category") == "Liquid"]

@@ -1660,16 +1660,6 @@ option MarketSense.StockToolCookwareMult
     translation = MarketSense.StockToolCookwareMult,
 }
 
-option MarketSense.PriceWeaponValue
-{
-    type = integer,
-    default = 13,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseWeapon,
-    translation = MarketSense.PriceWeaponValue,
-}
-
 option MarketSense.StockWeaponMult
 {
     type = double,
@@ -1678,16 +1668,6 @@ option MarketSense.StockWeaponMult
     max = 100.0,
     page = MarketSenseWeapon,
     translation = MarketSense.StockWeaponMult,
-}
-
-option MarketSense.PriceWeaponExplosiveValue
-{
-    type = integer,
-    default = 17,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseWeapon,
-    translation = MarketSense.PriceWeaponExplosiveValue,
 }
 
 option MarketSense.StockWeaponExplosiveMult

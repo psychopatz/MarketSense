@@ -21,43 +21,6 @@ local CATEGORY_BASE_SCORES = {
     Building = 5, Liquid = 0, Misc = 2,
 }
 
--- Melee is intentionally anchored by mechanical family before any future
--- market-role overlay is applied. These are relative multipliers, not hard
--- coded prices: damage, reach, hit count, durability, weight, and sandbox
--- settings still determine the final result.
-local DEFAULT_MELEE_SUBTYPE_MULTIPLIERS = {
-    WeaponImprovised = 0.72,
-    WeaponCrafted    = 0.72, -- legacy token accepted for existing overrides
-    WeaponUnarmed    = 0.35,
-    WeaponSmallBlade = 0.86,
-    WeaponSmallBlunt = 0.92,
-    WeaponBlunt      = 1.00,
-    WeaponSpear      = 1.03,
-    WeaponAxe        = 1.08,
-    WeaponLongBlade  = 1.22,
-}
-
-local function clamp(value, minimum, maximum)
-    return math.max(minimum, math.min(maximum, value))
-end
-
-local function configuredMeleeMultiplier(cc, subtype)
-    local configured = cc.melee_subtype_multipliers
-    local value = type(configured) == "table" and configured[subtype] or nil
-    if value == nil then value = DEFAULT_MELEE_SUBTYPE_MULTIPLIERS[subtype] end
-    return clamp(tonumber(value) or 1.0, 0.35, 1.50)
-end
-
-local function conditionMultiplier(ctx, cc)
-    if ctx.hasRuntimeState ~= true or ctx.hasRuntimeCondition ~= true
-        or ctx.conditionRatio == nil then
-        return 1.0
-    end
-    local floor = clamp(tonumber(cc.condition_floor) or 0.35, 0.10, 0.80)
-    local curve = math.max(0.10, tonumber(cc.condition_curve) or 0.65)
-    return clamp(floor + ((1.0 - floor) * (ctx.conditionRatio ^ curve)), floor, 1.0)
-end
-
 local function addAudit(audit, label, before, after, extra)
     if not audit then return end
     audit[#audit + 1] = { label = label, before = before, after = after, extra = extra }
@@ -118,59 +81,48 @@ function Pricing.calculateRawScore(ctx, details)
         if hasTag(details, "Bandage")   then score = score + 8  end
 
     elseif category == "Weapon" then
-        local avgDamage = ((ctx.minDamage or 0) + (ctx.maxDamage or 0)) * 0.5
-        local mechanicalClass = details.weaponEvidence and details.weaponEvidence.mechanicalClass
-            or details.primary or "Weapon"
-        local meleeMultiplier = configuredMeleeMultiplier(cc, mechanicalClass)
-        local isMelee = DEFAULT_MELEE_SUBTYPE_MULTIPLIERS[mechanicalClass] ~= nil
-        score = base
-            + (avgDamage * (cc.damage_weight or 28))
-            + ((ctx.maxRange  or 0) * (cc.range_weight      or 4))
-            + ((ctx.maxHit    or 1) * (cc.multi_hit_weight  or 10))
-            + ((ctx.conditionMax or 0) * (cc.durability_weight or 2.2))
-            - weightPenalty
-        local preStateScore = score
-        if isMelee then
-            score = score * meleeMultiplier
-            if ctx.isTwoHandWeapon == true then
-                score = score + (cc.two_handed_bonus or 12)
-            end
-        end
-        if hasTag(details, "Ammo") then
-            score = base + ((ctx.conditionMax or 0) * (cc.reliability_weight or 0.6)) + (cc.ammo_base or 10)
-        elseif hasTag(details, "Firearm") then
-            score = score + (cc.firearm_bonus or 65)
-        elseif hasTag(details, "Explosive") then
-            score = score + (cc.explosive_bonus or 45)
-        elseif hasTag(details, "WeaponPart") then
-            score = score + 20
-        end
-
-        local stateMult = isMelee and conditionMultiplier(ctx, cc) or 1.0
-        local preConditionScore = score
-        if isMelee then score = score * stateMult end
+        -- The old weapon score mixed raw engine values with flat bonuses. It
+        -- is intentionally retired until the evidence-based weapon model is
+        -- implemented. Keep a visible neutral result so the catalog cannot
+        -- mistake a generic fallback for a completed weapon valuation.
+        local weaponEvidence = details.weaponEvidence or {}
         details.priceHeuristic = {
-            model = isMelee and "weapon_melee_v1" or "weapon_v1",
-            mechanicalClass = mechanicalClass,
-            mechanicalFamily = isMelee and "Melee" or "Weapon",
-            averageDamage = avgDamage,
-            range = ctx.maxRange or 0,
-            maxHitCount = ctx.maxHit or 1,
-            conditionMax = ctx.conditionMax or 0,
+            model = "weapon_v2_pending",
+            status = "pending",
+            reason = "Legacy weapon scoring removed; awaiting calibrated weapon anchors.",
+            mechanicalClass = weaponEvidence.mechanicalClass or details.primary or "Weapon",
+            mechanicalFamily = weaponEvidence.mechanicalFamily,
+            marketRole = weaponEvidence.marketRole,
+            nativeCategories = weaponEvidence.nativeCategories,
+            conditionMax = ctx.conditionMax,
             condition = ctx.condition,
             conditionRatio = ctx.conditionRatio,
             hasRuntimeState = ctx.hasRuntimeState == true,
             hasRuntimeCondition = ctx.hasRuntimeCondition == true,
-            subtypeMultiplier = isMelee and meleeMultiplier or 1.0,
-            conditionMultiplier = stateMult,
             twoHanded = ctx.isTwoHandWeapon == true,
-            preStateScore = preStateScore,
-            preConditionScore = preConditionScore,
-            score = score,
-            unavailableRuntimeMetrics = {
-                "swingTime", "criticalChance", "knockdown", "pushback",
+            staticMetricsAvailable = {
+                minDamage = ctx.minDamage ~= nil,
+                maxDamage = ctx.maxDamage ~= nil,
+                maxRange = ctx.maxRange ~= nil,
+                maxHitCount = ctx.maxHit ~= nil,
+                conditionMax = ctx.conditionMax ~= nil,
+                weight = ctx.weight ~= nil,
+                twoHandWeapon = ctx.isTwoHandWeapon ~= nil,
+            },
+            plannedPositiveAnchors = {
+                "effective damage throughput",
+                "reach and target coverage",
+                "reliability and durability",
+                "ammunition compatibility or yield",
+            },
+            plannedNegativeAnchors = {
+                "weight relative to performance",
+                "condition and broken state",
+                "hand occupancy and handling cost",
+                "scarcity or compatibility gaps",
             },
         }
+        score = base
 
     elseif category == "Tool" then
         local durabilityWeight = (ctx.conditionMax or 0) * (ctx.useDelta and ctx.useDelta > 0 and 18 or 8)
@@ -237,11 +189,11 @@ function Pricing.applyBalances(ctx, details, audit)
     end
     if details.priceHeuristic then
         addAudit(audit, tostring(details.priceHeuristic.model or "content") .. " heuristic",
-            details.priceHeuristic.preConditionScore or working, working, {
+            working, working, {
                 model = details.priceHeuristic.model,
+                status = details.priceHeuristic.status,
                 mechanicalClass = details.priceHeuristic.mechanicalClass,
-                subtypeMultiplier = details.priceHeuristic.subtypeMultiplier,
-                conditionMultiplier = details.priceHeuristic.conditionMultiplier,
+                role = details.priceHeuristic.role,
                 pricePerLiter = details.priceHeuristic.pricePerLiter,
                 volume = details.priceHeuristic.volume,
                 contentValue = details.priceHeuristic.contentValue,
@@ -250,7 +202,8 @@ function Pricing.applyBalances(ctx, details, audit)
 
     local beforeSandbox = working
     local sandboxAdd = Config.pricing.globalValue or 0
-    if Config.getSandboxTagMultiplier and not isFoodCategory(details.category) then
+    if Config.getSandboxTagMultiplier and details.category ~= "Weapon"
+        and not isFoodCategory(details.category) then
         local tags = { details.primary }
         -- Liquid content has its own per-litre anchor.  Do not inherit
         -- generic item descriptor additions (for example Rarity.Common),
@@ -274,7 +227,8 @@ function Pricing.applyBalances(ctx, details, audit)
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
 
-    if details.category ~= "Liquid" and not isFoodCategory(details.category) then
+    if details.category ~= "Liquid" and details.category ~= "Weapon"
+        and not isFoodCategory(details.category) then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or details.tags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -283,6 +237,11 @@ function Pricing.applyBalances(ctx, details, audit)
         addAudit(audit, "food v2 balances", working, working, {
             legacyTagAdditions = false,
             reason = "Food valuation is feature/profile driven.",
+        })
+    elseif details.category == "Weapon" then
+        addAudit(audit, "weapon v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Weapon valuation is intentionally neutral pending calibration.",
         })
     else
         addAudit(audit, "liquid vessel-neutral balance", working, working, {
@@ -404,13 +363,24 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     details.rawScore    = tonumber(details.rawScore) or tonumber(details.price) or Config.pricing.minPrice
 
     local itemEntry = applyTagOverrideIfPresent(ctx, details)
-    local working   = tonumber(staticDetails and staticDetails.price or details.price or details.rawScore) or details.rawScore
+    local working
+    if details.category == "Weapon" then
+        -- A cached pre-v2 detail may still contain the retired weapon score.
+        -- Rebuild the neutral pending score after tag overrides so the cache
+        -- cannot preserve legacy weapon dollars across a catalog refresh.
+        details.priceHeuristic = nil
+        details.rawScore = Pricing.calculateRawScore(ctx, details)
+        working = details.rawScore
+    else
+        working = tonumber(staticDetails and staticDetails.price or details.price or details.rawScore) or details.rawScore
+    end
 
     addAudit(audit, "static baseline", working, working)
 
     local beforeSandbox = working
     local sandboxAdd = Config.pricing.globalValue or 0
-    if Config.getSandboxTagMultiplier and not isFoodCategory(details.category) then
+    if Config.getSandboxTagMultiplier and details.category ~= "Weapon"
+        and not isFoodCategory(details.category) then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -424,11 +394,16 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
 
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeSandbox, working)
-    if not isFoodCategory(details.category) then
+    if not isFoodCategory(details.category) and details.category ~= "Weapon" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
         end
+    elseif details.category == "Weapon" then
+        addAudit(audit, "weapon v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Weapon valuation is intentionally neutral pending calibration.",
+        })
     else
         addAudit(audit, "food v2 balances", working, working, {
             legacyTagAdditions = false,

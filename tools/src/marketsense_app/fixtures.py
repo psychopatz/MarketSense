@@ -1509,7 +1509,7 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         "Python sandbox recommendations reach Lua pricing",
         (
             recommended_by_type.get("MarketSenseFixture.Spear", {}).get("price", 0)
-            == by_type.get("MarketSenseFixture.Spear", {}).get("price", 0) + 24
+            == by_type.get("MarketSenseFixture.Spear", {}).get("price", 0)
             and recommended.metadata.get("requested", {}).get("StockWeaponSpearMult") == 1.0
         ),
         f"spear={by_type.get('MarketSenseFixture.Spear', {}).get('price', '?')} -> "

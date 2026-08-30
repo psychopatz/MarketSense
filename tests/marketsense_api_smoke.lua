@@ -257,11 +257,24 @@ local brokenCondition = assert(api.GetPriceDetailsForInstance(
 ))
 T.equal(fullCondition.primary, "WeaponSpear", "instance pricing keeps spear leaf")
 T.equal(fullCondition.weaponEvidence.mechanicalClass, "WeaponSpear", "instance exposes melee evidence")
-T.equal(fullCondition.priceHeuristic.model, "weapon_melee_v1", "melee pricing model is exposed")
-T.truthy(fullCondition.price > halfCondition.price, "condition curve lowers half-condition price")
-T.truthy(halfCondition.price > brokenCondition.price, "condition curve lowers broken price")
+T.equal(fullCondition.priceHeuristic.model, "weapon_v2_pending", "weapon pricing reset is exposed")
+T.equal(fullCondition.priceHeuristic.status, "pending", "weapon pricing reset is marked pending")
+T.equal(fullCondition.price, halfCondition.price, "pending weapon pricing ignores legacy condition score")
+T.equal(halfCondition.price, brokenCondition.price, "pending weapon pricing remains neutral")
 T.equal(fullCondition.priceHeuristic.conditionRatio, 1, "full condition ratio is visible")
 T.equal(halfCondition.priceHeuristic.conditionRatio, 0.5, "half condition ratio is visible")
+
+local staleWeapon = MarketSense.Pricing.applyOverridesOnly(weaponScriptItem.fullName, {
+    fullType = weaponScriptItem.fullName,
+    category = "Weapon",
+    primary = "WeaponSpear",
+    tags = { "WeaponSpear" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleWeapon.priceHeuristic.model, "weapon_v2_pending",
+    "cached legacy weapon score is rebuilt")
+T.truthy(staleWeapon.price < 999, "cached legacy weapon dollars are discarded")
 
 registry.state.catalog = {
     items = {
