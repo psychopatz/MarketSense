@@ -231,6 +231,22 @@ local function hasRecipeEvidence(ctx)
     return ctx.hasFoodRecipeEvidence == true
 end
 
+local function hasNamedFoodEvidence(ctx)
+    local text = table.concat({
+        ctx.idLower or "", ctx.displayNameLower or "", ctx.descriptionLower or "",
+        ctx.iconLower or "", ctx.tooltipLower or "",
+    }, " ")
+    if containsAny(text, {
+        "animalmilkpowder", "bitters", "gravymix", "hopsdried", "pancakemix",
+    }) then
+        return true
+    end
+    local moduleName = string.lower(tostring(ctx.moduleName or ""))
+    return moduleName ~= "" and moduleName ~= "base"
+        and ctx.isCraftRecipeProduct == true
+        and (ctx.displayCategoryToken or "") == "food"
+end
+
 local function buildAdmission(ctx)
     local vetoHits = {}
     local signalHits = {}
@@ -262,7 +278,8 @@ local function buildAdmission(ctx)
     if (ctx.displayCategoryToken or "") == "explosives" or (ctx.lootTypeLower or "") == "weapon" then
         push(vetoHits, "weapon_like")
     end
-    if ctx.isDrainable == true and not ctx.isFoodInstance and not hasPackagingEvidence(ctx) then
+    if ctx.isDrainable == true and not ctx.isFoodInstance
+        and not hasPackagingEvidence(ctx) and not hasNamedFoodEvidence(ctx) then
         push(vetoHits, "drainable_non_food")
     end
     if (ctx.displayCategoryToken or "") == "medical" or (ctx.displayCategoryToken or "") == "firstaid"
@@ -303,6 +320,9 @@ local function buildAdmission(ctx)
     if hasAnyFoodTag(ctx) then
         push(signalHits, "food_tag")
     end
+    if hasNamedFoodEvidence(ctx) then
+        push(signalHits, "named_food")
+    end
 
     local accepted = false
     if #vetoHits == 0 then
@@ -311,6 +331,7 @@ local function buildAdmission(ctx)
             or hasRecipeEvidence(ctx)
             or hasPackagingEvidence(ctx)
             or hasAnyFoodTag(ctx)
+            or hasNamedFoodEvidence(ctx)
             or (ctx.foodTypeToken or "") ~= ""
             or (ctx.eatTypeLower or "") ~= ""
 
@@ -469,6 +490,33 @@ local function exactStage(ctx, prefix, admission)
     return nil
 end
 
+local function namedStage(ctx, admission)
+    local text = table.concat({
+        ctx.idLower or "", ctx.displayNameLower or "", ctx.descriptionLower or "",
+        ctx.iconLower or "", ctx.tooltipLower or "",
+    }, " ")
+    if containsAny(text, { "animalmilkpowder", "milkpowder" }) then
+        return makeResult("FoodNonPerishableDairy", 0.88, "name", "food_name_dairy", admissionDetails(admission))
+    end
+    if contains(text, "bitters") then
+        return makeResult("FoodNonPerishableBeverage", 0.84, "name", "food_name_bitter_beverage", admissionDetails(admission))
+    end
+    if contains(text, "gravymix") then
+        return makeResult("FoodNonPerishableSauce", 0.87, "name", "food_name_sauce_mix", admissionDetails(admission))
+    end
+    if contains(text, "hopsdried") then
+        return makeResult("FoodHerb", 0.86, "name", "food_name_dried_herb", admissionDetails(admission))
+    end
+    if contains(text, "pancakemix") then
+        return makeResult("FoodNonPerishableBaking", 0.88, "name", "food_name_baking_mix", admissionDetails(admission))
+    end
+    local moduleName = string.lower(tostring(ctx.moduleName or ""))
+    if moduleName ~= "" and moduleName ~= "base" and ctx.isCraftRecipeProduct == true then
+        return makeResult("FoodModSpecific", 0.80, "name", "food_mod_recipe_product", admissionDetails(admission))
+    end
+    return nil
+end
+
 local function recipeStage(ctx)
     local recipe = ctx.evolvedRecipeLower or ""
     local recipeName = ctx.evolvedRecipeNameLower or ""
@@ -584,6 +632,11 @@ function Signature.match(ctx)
     end
 
     result = exactStage(ctx, prefix, admission)
+    if result and result.matched then
+        return result
+    end
+
+    result = namedStage(ctx, admission)
     if result and result.matched then
         return result
     end

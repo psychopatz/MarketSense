@@ -297,6 +297,14 @@ tileset {
     status, reason = review_row(flagged)
     assert status == "REVIEW"
     assert "fallback resolver" in reason and "low confidence" in reason
+    assert review_row({
+        "category": "Misc", "primary": "Memento", "confidence": 0.9,
+        "expandedTags": ["Misc", "Memento"],
+    })[0] == "OK"
+    assert review_row({
+        "category": "Misc", "primary": "Junk", "confidence": 0.9,
+        "expandedTags": ["Misc", "Junk"],
+    })[0] == "OK"
     assert review_count([flagged, {
         "category": "Tool", "primary": "ToolCraft", "confidence": 0.9,
         "expandedTags": ["Tool", "ToolCraft"],

@@ -62,8 +62,6 @@ function Signature.match(ctx)
     if weaponCatIs(ctx, "Unarmed") then
         return TagMapper.makeResult("WeaponUnarmed", 0.96, { source = "weapon_melee_unarmed" })
     end
-    if hasTag(ctx, "nomaintenancexp") then return { matched = false, confidence = 0 } end
-
     -- Firearm
     if hasTag(ctx, "firearm") then
         local ammoLower = ctx.ammoTypeLower or ""
@@ -98,6 +96,12 @@ function Signature.match(ctx)
         end
         return TagMapper.makeResult(cat, 0.96, { source = "weapon_melee" })
     end
+
+    -- Native weapon categories are authoritative even when PZ suppresses
+    -- maintenance XP (common for improvised or specialty weapons).  The
+    -- material-root gate handles MaterialWeapon stock before this signature;
+    -- this guard only rejects uncategorized weapon-shaped definitions.
+    if hasTag(ctx, "nomaintenancexp") then return { matched = false, confidence = 0 } end
 
     -- Some Workshop weapons omit Categories but retain a strong spear signal.
     -- Keep this below authoritative categories so a mod can use a custom

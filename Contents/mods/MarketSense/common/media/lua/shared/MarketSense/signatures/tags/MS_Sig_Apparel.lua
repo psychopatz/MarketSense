@@ -51,6 +51,7 @@ local BLTOK_TO_CAT = {
     elbowleft="AccessoryArms", elbowright="AccessoryArms",
     shoulderpadleft="AccessoryArms", shoulderparleft="AccessoryArms", shoulderpadright="AccessoryArms",
     sportsshoulderpad="AccessoryArms", sportsshoulderpadontop="AccessoryArms",
+    sportshoulderpad="AccessoryArms", sportshoulderpadontop="AccessoryArms",
     leftringfinger="AccessoryHands", leftmiddlefinger="AccessoryHands",
     rightmiddlefinger="AccessoryHands", rightringfinger="AccessoryHands",
     ankleholster="AccessoryLegs", calfleft="AccessoryLegs",

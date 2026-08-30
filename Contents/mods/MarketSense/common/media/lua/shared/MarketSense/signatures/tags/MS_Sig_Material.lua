@@ -13,7 +13,10 @@ local TagEvidence = MarketSense.TagEvidence
 local MAT_TAG_MAP = {
     charcoal="MaterialFireSource",
     ingot="MaterialMetalworking", ironmaterial="MaterialMetalworking",
+    barstock="MaterialMetalworking", barstockhalf="MaterialMetalworking",
+    toolhead="MaterialMetalworking",
     metalpiece="MaterialMetalworking", piercedingot="MaterialMetalworking",
+    hammerstone="MaterialStone",
     smeltableironlarge="MaterialMetalworking", smeltableironmedium="MaterialMetalworking",
     smeltableironsmall="MaterialMetalworking", smeltablesteellarge="MaterialMetalworking",
     smeltablesteelmedium="MaterialMetalworking", smeltablesteelsmall="MaterialMetalworking",
@@ -94,7 +97,9 @@ function Signature.match(ctx)
         return materialResult("ResourceFuel", 0.96, "material_fluid_category")
     end
 
-    if (ctx.lootTypeLower or "") ~= "material" and displayCategory ~= "material" then
+    if (ctx.lootTypeLower or "") ~= "material"
+        and displayCategory ~= "material"
+        and displayCategory ~= "materialweapon" then
         return { matched = false, confidence = 0 }
     end
 

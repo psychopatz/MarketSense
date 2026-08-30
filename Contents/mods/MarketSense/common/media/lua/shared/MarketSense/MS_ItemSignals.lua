@@ -126,8 +126,24 @@ function Signals.electronicsToken(ctx)
     if containsAny(text, { "transmitter" }) then
         return { token = "ElectronicsTransmitter", confidence = 0.95, source = "electronics_transmitter" }
     end
+    if containsAny(text, { "hairdryer", "hair_dryer", "hairiron", "hair_iron", "flatiron" }) then
+        return { token = "ElectronicsPersonal", confidence = 0.93, source = "electronics_personal_appliance_name" }
+    end
+    if containsAny(text, {
+        "remote", "timer", "trigger", "motionsensor", "motion_sensor",
+        "homealarm", "home_alarm", "scanner", "keyduplicator",
+    }) then
+        return { token = "ElectronicsControl", confidence = 0.93, source = "electronics_control_name" }
+    end
+    if containsAny(text, { "electricwire", "electric_wire", "electronicsscrap", "powerbar" }) then
+        return { token = "ElectronicsPower", confidence = 0.91, source = "electronics_power_component_name" }
+    end
     if displayCategory == "electronics" and containsAny(text, { "lightbulb", "light_bulb", "bulb" }) then
         return { token = "ElectronicsLight", confidence = 0.96, source = "electronics_lightbulb" }
+    end
+
+    if containsAny(text, { "videogame", "video_game", "arcade", "jukebox", "pinball" }) then
+        return { token = "ElectronicsEntertainment", confidence = 0.91, source = "electronics_entertainment_name" }
     end
 
     -- TVs are often declared as base:radio by the PZ scripts. Require a
@@ -139,13 +155,20 @@ function Signals.electronicsToken(ctx)
     if containsAny(text, {
         "hamradio", "manpackradio", "walkietalkie", "walkie_talkie",
         "twoway", "two_way", "cordlessphone", "telephone", "cellphone",
-        "pager",
+        "pager", "phone",
     }) then
         return { token = "ElectronicsCommunicator", confidence = 0.91, source = "electronics_communicator" }
     end
 
     if itemType == "radio" or displayCategory == "communications" then
         return { token = "ElectronicsRadio", confidence = 0.92, source = "electronics_radio_type" }
+    end
+
+    if containsAny(text, {
+        "amplifier", "earbuds", "headphone", "microphone", "speaker",
+        "radioreceiver", "receiver",
+    }) then
+        return { token = "ElectronicsAudio", confidence = 0.91, source = "electronics_audio_name" }
     end
 
     return { token = "Electronics", confidence = 0.82, source = "electronics_display_or_runtime" }
@@ -241,6 +264,51 @@ function Signals.buildingToken(ctx)
         return { token = "BuildingFurnitureTable", confidence = 0.99, source = "building_world_table" }
     end
 
+    -- Moveable definitions frequently expose only a sprite and a broad
+    -- Furniture display category.  These names are stable object identities,
+    -- so they refine the generic Moveable result without inventing a new
+    -- world capability.
+    if containsAny(visual, { "arcade", "jukebox", "pinball", "popcornmachine" }) then
+        return { token = "BuildingRecreation", confidence = 0.90, source = "building_moveable_recreation_name" }
+    end
+    if containsAny(visual, {
+        "vendingmachine", "hotdogmachine", "sodamachine", "waterdispenser",
+        "napkindispenser", "toweldispenser",
+    }) then
+        return { token = "BuildingFixtureAppliance", confidence = 0.88, source = "building_moveable_appliance_name" }
+    end
+    if containsAny(visual, { "firehydrant", "turnstile", "mailbox", "publicmailbox" }) then
+        return { token = "BuildingInfrastructureTraffic", confidence = 0.88, source = "building_moveable_infrastructure_name" }
+    end
+    if containsAny(visual, { "doghouse", "birdbath", "planter", "plantbed" }) then
+        return { token = "BuildingGardenDecor", confidence = 0.88, source = "building_moveable_garden_name" }
+    end
+    if containsAny(visual, {
+        "securityterminal", "securitywallmonitor", "microscope", "cashregister",
+        "scalemedical",
+    }) then
+        return { token = "BuildingDisplay", confidence = 0.84, source = "building_moveable_display_name" }
+    end
+    if containsAny(visual, {
+        "garbagebin", "garbage_bin", "recyclebin", "publicgarbagebin",
+        "wheeliebin", "shelving", "shelves", "shoppingbasket", "standingvault",
+        "comicsshop", "oakshelves",
+    }) then
+        return { token = "BuildingFurnitureStorage", confidence = 0.88, source = "building_moveable_storage_name" }
+    end
+    if containsAny(visual, { "clothesstand", "pegboard" }) then
+        return { token = "BuildingFurnitureStorage", confidence = 0.86, source = "building_moveable_storage_fixture" }
+    end
+    if containsAny(visual, { "counter", "cashregister" }) then
+        return { token = "BuildingFurnitureCounter", confidence = 0.86, source = "building_moveable_counter_name" }
+    end
+    if contains(visual, "keyduplicator") then
+        return { token = "BuildingCrafting", confidence = 0.82, source = "building_moveable_crafting_name" }
+    end
+    if containsAny(visual, { "gravearched", "graveround", "gravesquare", "graveworn", "mirror" }) then
+        return { token = "BuildingFurnitureDecor", confidence = 0.86, source = "building_moveable_decor_name" }
+    end
+
     if containsAny(visual, { "mattress", "gymnmat", "gymmat" })
         or contains(text, "tooltip_item_mattress") then
         return { token = "BuildingFurnitureBed", confidence = 0.95, source = "building_furniture_bedding" }
@@ -274,7 +342,7 @@ function Signals.buildingToken(ctx)
         return { token = "BuildingFixtureAppliance", confidence = 0.92, source = "building_fixture_appliance" }
     end
     if containsAny(text, {
-        "locker", "cabinet", "cupboard", "shelf", "bookcase", "dresser",
+        "locker", "cabinet", "cupboard", "shelf", "shelves", "shelving", "bookcase", "dresser",
         "wardrobe", "storage", "chest", "binround", "cardboardbox", "crate",
     }) then
         return { token = "BuildingFurnitureStorage", confidence = 0.90, source = "building_furniture_storage" }

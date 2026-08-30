@@ -322,7 +322,7 @@ function Resolver.correct(ctx, result)
 
     hits = {}
     if containsAny(text, { "umbrella" }, hits) then
-        addCandidate(candidates, "Misc", 110, 0.96, "reroute_root", "label_misc_item", hits)
+        addCandidate(candidates, "MiscHousehold", 110, 0.96, "reroute_root", "label_misc_household", hits)
     end
 
     hits = {}
@@ -360,7 +360,7 @@ function Resolver.correct(ctx, result)
         end
     end
 
-    if foodLike and admittedFood then
+    if foodLike and admittedFood and tostring(result.primary or "") ~= "FoodModSpecific" then
         local currentPrimary = tostring(result.primary or "")
 
         if containsAny(ctx.doubleClickRecipeLower or "", { "openboxofwine", "openpackofbeer" }, hits) then

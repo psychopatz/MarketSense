@@ -65,6 +65,44 @@ function Signature.match(ctx)
     if not isSeedPacket(ctx) then
         return { matched = false, confidence = 0 }
     end
+    local itemId = ctx.idLower or ""
+    local displayName = ctx.displayNameLower or ""
+
+    if containsAny(itemId, { "gardeningspray", "pestcontrol", "insecticide", "molluscide" })
+        or containsAny(displayName, { "garden spray", "pest control", "insecticide" }) then
+        return TagMapper.makeResult("GardeningPestControl", 0.94, {
+            source = "gardening_spray_name",
+        })
+    end
+    if containsAny(itemId, { "animalfeed", "feedbag" })
+        or hasTag(ctx, "farmingloot") and contains(itemId, "feed") then
+        return TagMapper.makeResult("BuildingAgricultureLivestock", 0.94, {
+            source = "gardening_livestock_feed_name_or_tag",
+        })
+    end
+    if contains(itemId, "grassbag") or hasTag(ctx, "farmingloot") and contains(itemId, "grass") then
+        return TagMapper.makeResult("GardeningCompostable", 0.88, {
+            source = "gardening_grass_bag_name_or_tag",
+        })
+    end
+    if containsAny(itemId, { "raisedplantbed", "brickplanter", "planter" }) then
+        return TagMapper.makeResult("BuildingGardenPlanter", 0.92, {
+            source = "gardening_planter_name",
+        })
+    end
+    if containsAny(itemId, {
+        "bonsaitree", "cactus", "castironplant", "chineseevergreen", "dragontree",
+        "fern", "ficus", "snakeplant", "violetflowers", "birdbath",
+    }) then
+        return TagMapper.makeResult("BuildingGardenDecor", 0.90, {
+            source = "gardening_plant_decor_name",
+        })
+    end
+    if containsAny(itemId, { "poppypods", "sunflowerheaddried" }) then
+        return TagMapper.makeResult("GardeningHarvest", 0.88, {
+            source = "gardening_harvest_name",
+        })
+    end
     if hasTag(ctx, "iscompostable") or hasTag(ctx, "compostable") then
         return TagMapper.makeResult("GardeningCompostable", 0.90, { source = "gardening_compostable" })
     end

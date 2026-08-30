@@ -18,6 +18,7 @@ require "MarketSense/signatures/tags/MS_Sig_Literature"
 require "MarketSense/signatures/tags/MS_Sig_Tool"
 require "MarketSense/signatures/tags/MS_Sig_Weapon"
 require "MarketSense/signatures/tags/MS_Sig_Memento"
+require "MarketSense/signatures/tags/MS_Sig_Misc"
 require "MarketSense/signatures/tags/MS_Sig_BoxesAndStacks"
 require "MarketSense/signatures/tags/MS_Sig_CategoryOverride"
 require "MarketSense/signatures/tags/MS_Sig_Medical"
@@ -91,6 +92,7 @@ local ROOT_PIPELINES = {
     },
     Misc = {
         "Memento",
+        "Misc",
         "CategoryOverride",
     },
 }

@@ -17,6 +17,10 @@ end
 local function displayIs(ctx, t)
     return (ctx.displayCategoryToken or "") == t
 end
+
+local function contains(text, token)
+    return string.find(tostring(text or ""), token, 1, true) ~= nil
+end
 local function teachesSkillXp(ctx)
     local skill = ctx.skillTrainedLower or ""
     if skill ~= "" and skill ~= "none" and skill ~= "nil" then
@@ -33,12 +37,43 @@ function Signature.match(ctx)
     local isMap = (ctx.itemTypeToken or "") == "map" or displayCategory == "cartography"
     local isSkillBook = displayCategory == "skillbook"
 
-    if not itemTypeIs(ctx, "literature") and not hasTag(ctx, "hollowbook")
+    local isLiteratureDisplay = displayCategory == "literature"
+    local isHollowBook = hasTag(ctx, "hollowbook") or hasTag(ctx, "fancybook")
+        or (isLiteratureDisplay and itemTypeIs(ctx, "container"))
+
+    if not itemTypeIs(ctx, "literature") and not isHollowBook
         and not learnsRecipe and not trainsSkill and not isMap and not isSkillBook then
         return { matched = false, confidence = 0 }
     end
     if displayIs(ctx, "gardening") or displayIs(ctx, "memento") then
         return { matched = false, confidence = 0 }
+    end
+
+    if isHollowBook then
+        local itemId = ctx.idLower or ""
+        if hasTag(ctx, "fancybook") or contains(itemId, "hollowfancybook") then
+            return TagMapper.makeResult("LiteratureFancyBook", 0.94, {
+                source = "lit_hollow_fancy_book",
+            })
+        end
+        local variants = {
+            { "handgun", "LiteratureHollowBookHandgun" },
+            { "kids", "LiteratureHollowBookKids" },
+            { "prison", "LiteratureHollowBookPrison" },
+            { "valuables", "LiteratureHollowBookValuables" },
+            { "whiskey", "LiteratureHollowBookWhiskey" },
+        }
+        for _, variant in ipairs(variants) do
+            if contains(itemId, variant[1]) then
+                return TagMapper.makeResult(variant[2], 0.95, {
+                    source = "lit_hollow_book_variant",
+                    variant = variant[1],
+                })
+            end
+        end
+        return TagMapper.makeResult("LiteratureHollowBook", 0.94, {
+            source = "lit_hollow_book_tag_or_display",
+        })
     end
 
     if ctx.canBeWrite then

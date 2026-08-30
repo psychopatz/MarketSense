@@ -53,7 +53,7 @@ def review_row(row: dict[str, Any]) -> tuple[str, str]:
 
     if not category or not primary:
         reasons.append("missing category or primary tag")
-    if category.casefold() == "misc" or primary.casefold() == "misc":
+    if category.casefold() == "misc" and primary.casefold() == "misc":
         reasons.append("broad Misc bucket")
     if "fallback" in source.casefold() or "missing_context" in source.casefold():
         reasons.append(f"fallback resolver ({source})")

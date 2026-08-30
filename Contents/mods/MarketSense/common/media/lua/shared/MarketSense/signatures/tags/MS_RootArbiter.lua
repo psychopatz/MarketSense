@@ -78,7 +78,11 @@ local function materialRoot(ctx)
     local fluidCategory = ctx.fluidCategoryLower or ""
     local replaceOnDeplete = ctx.replaceOnDepleteLower or ""
 
-    if displayCategory == "material" then
+    -- PZ uses MaterialWeapon for bars, stone, wood blanks and other craft
+    -- stock that happens to inherit weapon fields.  The display category is
+    -- the authoritative root signal; do not let damage/category metadata
+    -- turn those resources into market weapons.
+    if displayCategory == "material" or displayCategory == "materialweapon" then
         return resolved("Resource", "root_material_display")
     end
 
@@ -210,6 +214,24 @@ local function toolRoot(ctx)
     return nil
 end
 
+local function gardeningToolRoot(ctx)
+    if (ctx.displayCategoryToken or "") ~= "gardening" then
+        return nil
+    end
+
+    -- HandShovel and Scythe are exposed by PZ under Gardening, but their
+    -- native weapon/sharpening fields describe tools rather than placeable
+    -- garden stock.  Keep ordinary plants, packets and sprays in Building.
+    if itemTypeIs(ctx, "weapon")
+        or hasTagAlias(ctx, "sharpenable")
+        or hasTagAlias(ctx, "scythe")
+        or hasTagAlias(ctx, "digplow")
+        or hasTagAlias(ctx, "takedirt") then
+        return resolved("Tool", "root_gardening_tool")
+    end
+    return nil
+end
+
 local function containerRoot(ctx)
     if (ctx.displayCategoryToken or "") == "watercontainer"
         or itemTypeIs(ctx, "container")
@@ -217,6 +239,17 @@ local function containerRoot(ctx)
         or (ctx.isFluidContainer == true and ctx.isActualLiquid ~= true)
         or (ctx.canStoreWater == true and ctx.isFluidContainer ~= true) then
         return resolved("Container", "root_container")
+    end
+    return nil
+end
+
+local function hollowBookRoot(ctx)
+    if (ctx.displayCategoryToken or "") == "literature"
+        and itemTypeIs(ctx, "container") then
+        return resolved("Literature", "root_hollow_book")
+    end
+    if hasTag(ctx, "hollowbook") or hasTag(ctx, "fancybook") then
+        return resolved("Literature", "root_hollow_book")
     end
     return nil
 end
@@ -267,8 +300,10 @@ function RootArbiter.resolve(ctx)
         medicalRoot,
         foodRoot,
         mementoRoot,
+        hollowBookRoot,
         containerRoot,
         electronicsRoot,
+        gardeningToolRoot,
         buildingRoot,
         literatureRoot,
         apparelRoot,

@@ -26,6 +26,13 @@ local function contains(text, token)
     return string.find(tostring(text or ""), token, 1, true) ~= nil
 end
 
+local function containsAny(text, tokens)
+    for _, token in ipairs(tokens or {}) do
+        if contains(text, token) then return true end
+    end
+    return false
+end
+
 local function slotIs(ctx, slot)
     local bodyLocation = ctx.bodyLocationToken or ""
     local canBeEquipped = ctx.canBeEquippedLower or ""
@@ -104,7 +111,10 @@ function Signature.match(ctx)
     if not itemTypeIs(ctx, "container") and not waterContainer and not emptyFluidContainer then
         return { matched = false, confidence = 0 }
     end
-    if hasTag(ctx, "hollowbook") then return { matched = false, confidence = 0 } end
+    if hasTag(ctx, "hollowbook") or hasTag(ctx, "fancybook")
+        or (ctx.displayCategoryToken or "") == "literature" then
+        return { matched = false, confidence = 0 }
+    end
 
     if hasTag(ctx, "keyring") then
         return TagMapper.makeResult("KeyRing", 0.98, { source = "container_keyring" })
@@ -129,6 +139,63 @@ function Signature.match(ctx)
     local bag = bagResult(ctx, text)
     if bag then
         return bag
+    end
+
+    -- These are inventory containers with stable native names/models but no
+    -- wearable bag slot.  Keep liquid and ammo precedence above these family
+    -- labels; the names only refine otherwise generic Container rows.
+    if containsAny(text, { "firstaidkit", "firstaid_", "firstaid" }) then
+        return TagMapper.makeResult("ContainerMedicalKit", 0.94, {
+            source = "container_medical_kit_name",
+        })
+    end
+    if contains(text, "cooler") then
+        return TagMapper.makeResult("ContainerCooler", 0.94, {
+            source = "container_cooler_name",
+        })
+    end
+    if contains(text, "toolroll") then
+        return TagMapper.makeResult("ContainerToolRoll", 0.94, {
+            source = "container_tool_roll_name",
+        })
+    end
+    if containsAny(text, { "seedbag", "wheatseedsack", "seed_sack" }) then
+        return TagMapper.makeResult("ContainerSeedBag", 0.94, {
+            source = "container_seed_bag_name",
+        })
+    end
+    if containsAny(text, { "wallet", "handbag", "purse" }) then
+        return TagMapper.makeResult("ContainerWallet", 0.92, {
+            source = "container_personal_wallet_name",
+        })
+    end
+    if containsAny(text, { "lunchbag", "photoalbum", "oldphotoalbum", "cookiejar" }) then
+        return TagMapper.makeResult("ContainerPersonal", 0.88, {
+            source = "container_personal_storage_name",
+        })
+    end
+    if contains(text, "parcel") then
+        return TagMapper.makeResult("ContainerParcel", 0.93, {
+            source = "container_parcel_name",
+        })
+    end
+    if containsAny(text, { "present", "gift" }) then
+        return TagMapper.makeResult("ContainerGift", 0.91, {
+            source = "container_gift_name",
+        })
+    end
+    if containsAny(text, {
+        "bag", "sack", "tote", "grocery", "paperbag", "plasticbag",
+        "garbagebag", "laundry", "dicebag", "gembag", "wheatsack",
+    }) then
+        return TagMapper.makeResult("ContainerBagUtility", 0.86, {
+            source = "container_bag_utility_name",
+        })
+    end
+    if containsAny(text, { "dicebag", "gembag", "photoalbum", "cookiejar", "jar" }) then
+        return TagMapper.makeResult("ContainerUtility", 0.84, {
+            source = "container_utility_name",
+        })
     end
 
     if hasBag then
