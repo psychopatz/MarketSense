@@ -166,6 +166,19 @@ local containerHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(containerHeuristicText,
     "Pricing: pending | subtype=ContainerBagBackpack | capacity=27 | reduction=65 | weight=1.0 | yield=not_detected",
     "catalog displays pending container heuristic evidence")
+local electronicsHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "electronics_v2_pending",
+        status = "pending",
+        subtype = "ElectronicsRadio",
+        capabilities = { "radio_communication" },
+        lightStrength = 1.5,
+        deviceDataAvailable = true,
+    },
+})
+T.equal(electronicsHeuristicText,
+    "Pricing: pending | subtype=ElectronicsRadio | capability=radio_communication | light=1.5 | device",
+    "catalog displays pending electronics heuristic evidence")
 T.equal(PsychopatzCore.DebugHub.testTool.id, "marketsense.itemCatalog",
     "catalog debug tool registration")
 local generatedWindow = {

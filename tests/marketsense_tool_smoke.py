@@ -562,12 +562,14 @@ tileset {
     assert not any(spec.key.startswith("PriceClothing") for spec in specs)
     assert not any(spec.key.startswith("PriceContainer") for spec in specs)
     assert not any(spec.key.startswith("PriceTool") for spec in specs)
+    assert not any(spec.key.startswith("PriceElectronics") for spec in specs)
     assert next(spec for spec in specs if spec.key == "StockWeaponSpearMult").default == 1.0
     recommendations = recommended_sandbox_settings(specs)
     assert not any(key.startswith("PriceLiterature") for key in recommendations)
     assert not any(key.startswith("PriceClothing") for key in recommendations)
     assert not any(key.startswith("PriceContainer") for key in recommendations)
     assert not any(key.startswith("PriceTool") for key in recommendations)
+    assert not any(key.startswith("PriceElectronics") for key in recommendations)
     assert recommendations["StockWeaponSpearMult"] == 1.0
     sandbox_audit = sandbox_definition_audit()
     assert sandbox_audit["status"] == "warning"
@@ -586,6 +588,10 @@ tileset {
     )
     assert not any(
         warning["key"].startswith("PriceTool")
+        for warning in sandbox_audit["warnings"]
+    )
+    assert not any(
+        warning["key"].startswith("PriceElectronics")
         for warning in sandbox_audit["warnings"]
     )
     effective = effective_sandbox_settings({"PriceGlobalValue": 123}, specs)

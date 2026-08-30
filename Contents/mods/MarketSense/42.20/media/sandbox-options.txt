@@ -708,16 +708,6 @@ option MarketSense.StockContainerWeightReductionMult
     translation = MarketSense.StockContainerWeightReductionMult,
 }
 
-option MarketSense.PriceElectronicsBatteryValue
-{
-    type = integer,
-    default = 10,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsBatteryValue,
-}
-
 option MarketSense.StockElectronicsBatteryMult
 {
     type = double,
@@ -726,16 +716,6 @@ option MarketSense.StockElectronicsBatteryMult
     max = 100.0,
     page = MarketSenseElectronics,
     translation = MarketSense.StockElectronicsBatteryMult,
-}
-
-option MarketSense.PriceElectronicsCommunicatorValue
-{
-    type = integer,
-    default = 24,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsCommunicatorValue,
 }
 
 option MarketSense.StockElectronicsCommunicatorMult
@@ -748,16 +728,6 @@ option MarketSense.StockElectronicsCommunicatorMult
     translation = MarketSense.StockElectronicsCommunicatorMult,
 }
 
-option MarketSense.PriceElectronicsGeneratorValue
-{
-    type = integer,
-    default = 100,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsGeneratorValue,
-}
-
 option MarketSense.StockElectronicsGeneratorMult
 {
     type = double,
@@ -766,16 +736,6 @@ option MarketSense.StockElectronicsGeneratorMult
     max = 100.0,
     page = MarketSenseElectronics,
     translation = MarketSense.StockElectronicsGeneratorMult,
-}
-
-option MarketSense.PriceElectronicsPowerGeneratorValue
-{
-    type = integer,
-    default = 150,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsPowerGeneratorValue,
 }
 
 option MarketSense.StockElectronicsPowerGeneratorMult
@@ -788,16 +748,6 @@ option MarketSense.StockElectronicsPowerGeneratorMult
     translation = MarketSense.StockElectronicsPowerGeneratorMult,
 }
 
-option MarketSense.PriceElectronicsRadioTwoWayValue
-{
-    type = integer,
-    default = 45,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsRadioTwoWayValue,
-}
-
 option MarketSense.StockElectronicsRadioTwoWayMult
 {
     type = double,
@@ -808,16 +758,6 @@ option MarketSense.StockElectronicsRadioTwoWayMult
     translation = MarketSense.StockElectronicsRadioTwoWayMult,
 }
 
-option MarketSense.PriceElectronicsTelevisionValue
-{
-    type = integer,
-    default = 24,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsTelevisionValue,
-}
-
 option MarketSense.StockElectronicsTelevisionMult
 {
     type = double,
@@ -826,16 +766,6 @@ option MarketSense.StockElectronicsTelevisionMult
     max = 100.0,
     page = MarketSenseElectronics,
     translation = MarketSense.StockElectronicsTelevisionMult,
-}
-
-option MarketSense.PriceElectronicsTransmitterValue
-{
-    type = integer,
-    default = 50,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseElectronics,
-    translation = MarketSense.PriceElectronicsTransmitterValue,
 }
 
 option MarketSense.StockElectronicsTransmitterMult

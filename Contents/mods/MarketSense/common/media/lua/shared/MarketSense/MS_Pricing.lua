@@ -3,6 +3,7 @@ require "MarketSense/Pricing/MS_FluidPricing"
 require "MarketSense/Pricing/MS_FoodPricing"
 require "MarketSense/Pricing/MS_YieldResolver"
 require "MarketSense/Pricing/MS_ContainerPricing"
+require "MarketSense/Pricing/MS_ElectronicsPricing"
 require "MarketSense/Pricing/MS_ToolRecipeDemand"
 require "MarketSense/Pricing/MS_ToolPricing"
 
@@ -18,6 +19,7 @@ local FluidPricing = MarketSense.FluidPricing
 local FoodPricing = MarketSense.FoodPricing
 local YieldResolver = MarketSense.YieldResolver
 local ContainerPricing = MarketSense.ContainerPricing
+local ElectronicsPricing = MarketSense.ElectronicsPricing
 local ToolPricing = MarketSense.ToolPricing
 
 local CATEGORY_BASE_SCORES = {
@@ -265,12 +267,11 @@ function Pricing.calculateRawScore(ctx, details)
         score = base
 
     elseif category == "Electronics" then
-        score = base - weightPenalty
-        if hasTag(details, "ElectronicsGenerator")   then score = score + (cc.generator_bonus or 240) end
-        if hasTag(details, "ElectronicsBattery")     then score = score + (cc.battery_bonus   or 10)  end
-        if hasTag(details, "ElectronicsRadio")       then score = score + (cc.radio_bonus     or 36)  end
-        if hasTag(details, "ElectronicsLight")       then score = score + (cc.light_bonus     or 14)  end
-        if hasTag(details, "ElectronicsTelevision")  then score = score + 42                          end
+        -- The old electronics score stacked a weight penalty with flat
+        -- generator, battery, radio, light, and television dollars.  Keep
+        -- the evidence visible while the functional model is calibrated.
+        details.priceHeuristic = ElectronicsPricing.buildPendingHeuristic(ctx, details)
+        score = base
 
     elseif category == "Resource" then
         score = base - weightPenalty
@@ -339,6 +340,26 @@ function Pricing.applyBalances(ctx, details, audit)
                 remainingUsesRatio = details.priceHeuristic.remainingUsesRatio,
                 weightEmpty = details.priceHeuristic.weightEmpty,
                 mechanicType = details.priceHeuristic.mechanicType,
+                classifierSource = details.priceHeuristic.classifierSource,
+                classifierTag = details.priceHeuristic.classifierTag,
+                displayCategory = details.priceHeuristic.displayCategory,
+                itemType = details.priceHeuristic.itemType,
+                lightStrength = details.priceHeuristic.lightStrength,
+                lightDistance = details.priceHeuristic.lightDistance,
+                lightCanEmit = details.priceHeuristic.lightCanEmit,
+                lightUseBattery = details.priceHeuristic.lightUseBattery,
+                lightHasBattery = details.priceHeuristic.lightHasBattery,
+                deviceDataAvailable = details.priceHeuristic.deviceDataAvailable,
+                deviceIsBatteryPowered = details.priceHeuristic.deviceIsBatteryPowered,
+                deviceHasBattery = details.priceHeuristic.deviceHasBattery,
+                deviceIsTelevision = details.priceHeuristic.deviceIsTelevision,
+                deviceIsTwoWay = details.priceHeuristic.deviceIsTwoWay,
+                deviceIsPortable = details.priceHeuristic.deviceIsPortable,
+                deviceTransmitRange = details.priceHeuristic.deviceTransmitRange,
+                devicePower = details.priceHeuristic.devicePower,
+                capabilities = details.priceHeuristic.capabilities,
+                requirements = details.priceHeuristic.requirements,
+                worldEvidenceAvailable = details.priceHeuristic.worldEvidenceAvailable,
                 familyAnchor = details.priceHeuristic.familyAnchor,
                 recipeDemandScore = details.priceHeuristic.recipeDemandScore,
                 recipeCriticality = details.priceHeuristic.recipeCriticality,
@@ -354,7 +375,8 @@ function Pricing.applyBalances(ctx, details, audit)
         and not isLiteratureCategory(details.category)
         and not isClothingCategory(details.category)
         and not isContainerCategory(details.category)
-        and details.category ~= "Tool" then
+        and details.category ~= "Tool"
+        and details.category ~= "Electronics" then
         local tags = { details.primary }
         -- Liquid content has its own per-litre anchor.  Do not inherit
         -- generic item descriptor additions (for example Rarity.Common),
@@ -417,6 +439,11 @@ function Pricing.applyBalances(ctx, details, audit)
         addAudit(audit, "tool v2 balances", working, working, {
             legacyTagAdditions = false,
             reason = "Tool valuation is usefulness and recipe-demand driven.",
+        })
+    elseif details.category == "Electronics" then
+        addAudit(audit, "electronics v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Electronics valuation is neutral pending calibrated functional anchors.",
         })
     else
         addAudit(audit, "liquid vessel-neutral balance", working, working, {
@@ -541,7 +568,7 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     local working
     if details.category == "Weapon" or isLiteratureCategory(details.category)
         or isClothingCategory(details.category) or isContainerCategory(details.category)
-        or details.category == "Tool" then
+        or details.category == "Tool" or details.category == "Electronics" then
         -- A cached pre-v2 detail may still contain a retired category score.
         -- Rebuild the neutral pending score after tag overrides so the cache
         -- cannot preserve legacy category dollars across a catalog refresh.
@@ -561,7 +588,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and not isLiteratureCategory(details.category)
         and not isClothingCategory(details.category)
         and not isContainerCategory(details.category)
-        and details.category ~= "Tool" then
+        and details.category ~= "Tool"
+        and details.category ~= "Electronics" then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -579,7 +607,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and not isLiteratureCategory(details.category)
         and not isClothingCategory(details.category)
         and not isContainerCategory(details.category)
-        and details.category ~= "Tool" then
+        and details.category ~= "Tool"
+        and details.category ~= "Electronics" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -608,6 +637,11 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         addAudit(audit, "tool v2 balances", working, working, {
             legacyTagAdditions = false,
             reason = "Tool valuation is usefulness and recipe-demand driven.",
+        })
+    elseif details.category == "Electronics" then
+        addAudit(audit, "electronics v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Electronics valuation is neutral pending calibrated functional anchors.",
         })
     else
         addAudit(audit, "food v2 balances", working, working, {

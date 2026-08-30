@@ -329,6 +329,19 @@ local function priceHeuristicSummary(details)
             tostring(heuristic.contentYieldStatus or "not_detected"))
     end
 
+    if model == "electronics_v2_pending" then
+        local capabilities = heuristic.capabilities or {}
+        local capability = capabilities[1] or "-"
+        local device = heuristic.deviceDataAvailable and "device" or "no-device"
+        local light = heuristic.lightStrength ~= nil
+            and tostring(heuristic.lightStrength) or "-"
+        return string.format(
+            "Pricing: %s | subtype=%s | capability=%s | light=%s | %s",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "Electronics"),
+            tostring(capability), light, device)
+    end
+
     if model == "tool_v2" then
         local demand = heuristic.recipeDemand or {}
         return string.format(

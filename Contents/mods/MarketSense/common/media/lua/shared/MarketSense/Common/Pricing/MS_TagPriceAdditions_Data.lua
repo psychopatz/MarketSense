@@ -8,18 +8,10 @@ return {
         -- keep the taxonomy root neutral so it cannot charge for the vessel.
         ["Liquid"]         = 0,
         ["Medical"]        = 40,
-        ["Electronics"]    = 20,
         ["Resource"]       = 8,
         ["Building"]       = 14,
         ["Misc"]           = 2,
         -- Tool subtypes
-        -- Electronics subtypes
-        ["ElectronicsGenerator"]    = 240,
-        ["ElectronicsBattery"]      = 10,
-        ["ElectronicsRadio"]        = 36,
-        ["ElectronicsTelevision"]   = 24,
-        ["ElectronicsCommunicator"] = 45,
-        ["ElectronicsTransmitter"]  = 50,
         -- Resource subtypes
         ["ResourceFuel"]            = 50,
         ["MaterialMetalworking"]    = 12,

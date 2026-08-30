@@ -244,6 +244,33 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local isTwoHandWeapon = Core.safeBoolean(
         instance, "isTwoHandWeapon", Core.safeBoolean(scriptItem, "isTwoHandWeapon", false)
     )
+    -- These are optional electronics signals.  Keep nil as "not exposed" so
+    -- a missing radio/light API is not confused with a measured zero.
+    local lightStrength = readNumber(instance, "getLightStrength")
+    local lightDistance = readNumber(instance, "getLightDistance")
+    local lightCanEmit = Core.safeCall(instance, "canEmitLight", nil)
+    local lightUseBattery = Core.safeCall(instance, "isLightUseBattery", nil)
+    local lightHasBattery = Core.safeCall(instance, "isLightHasBattery", nil)
+    if lightStrength ~= nil then lightStrength = math.max(0, lightStrength) end
+    if lightDistance ~= nil then lightDistance = math.max(0, lightDistance) end
+
+    local device = Core.safeCall(instance, "getDeviceData", nil)
+    local deviceData = nil
+    if device ~= nil then
+        deviceData = {
+            isBatteryPowered = Core.safeCall(device, "getIsBatteryPowered", nil),
+            hasBattery = Core.safeCall(device, "getHasBattery", nil),
+            isTelevision = Core.safeCall(device, "getIsTelevision", nil),
+            isTwoWay = Core.safeCall(device, "getIsTwoWay", nil),
+            isPortable = Core.safeCall(device, "getIsPortable", nil),
+            isHighTier = Core.safeCall(device, "getIsHighTier", nil),
+            minChannelRange = readNumber(device, "getMinChannelRange"),
+            maxChannelRange = readNumber(device, "getMaxChannelRange"),
+            transmitRange = readNumber(device, "getTransmitRange"),
+            power = readNumber(device, "getPower"),
+            isTurnedOn = Core.safeCall(device, "getIsTurnedOn", nil),
+        }
+    end
     local foodAge = nil
     local hasRuntimeFoodAge = false
     local hasRuntimeFoodState = false
@@ -397,6 +424,13 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         weightEmpty = weightEmpty,
         capacity = math.max(0, preferNumber(instance, scriptItem, "getCapacity", 0)),
         weightReduction = math.max(0, preferNumber(instance, scriptItem, "getWeightReduction", 0)),
+        lightStrength = lightStrength,
+        lightDistance = lightDistance,
+        lightCanEmit = lightCanEmit,
+        lightUseBattery = lightUseBattery,
+        lightHasBattery = lightHasBattery,
+        deviceData = deviceData,
+        deviceDataAvailable = deviceData ~= nil,
         biteDefense = math.max(0, preferNumber(instance, scriptItem, "getBiteDefense", 0)),
         scratchDefense = math.max(0, preferNumber(instance, scriptItem, "getScratchDefense", 0)),
         bulletDefense = math.max(0, preferNumber(instance, scriptItem, "getBulletDefense", 0)),

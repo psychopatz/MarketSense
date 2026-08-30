@@ -26,6 +26,7 @@ local defaults = {
         openedPenalty = 0.72,
     },
     foodPricing = {},
+    electronicsPricing = {},
     toolPricing = {},
     stock = {
         ultralightMax = 50,
@@ -81,6 +82,8 @@ function MarketSense.Config.reloadExported()
         end
         runtime.categories = exported.categories or {}
         runtime.foodPricing = exported.food_pricing or runtime.foodPricing or {}
+        runtime.electronicsPricing = exported.electronics_pricing
+            or runtime.electronicsPricing or {}
         runtime.toolPricing = exported.tool_pricing or runtime.toolPricing or {}
         runtime.rarityAdditions = exported.rarity_additions or {}
         runtime.qualityAdditions = exported.quality_additions or {}

@@ -355,6 +355,68 @@ T.equal(staleContainer.priceHeuristic.model, "container_v2_pending",
     "cached legacy container score is rebuilt")
 T.truthy(staleContainer.price < 999, "cached legacy container dollars are discarded")
 
+local electronicsContext = {
+    fullType = "Base.HarnessRadio",
+    displayCategory = "Communications",
+    itemType = "base:radio",
+    weight = 1.0,
+    conditionMax = 10,
+    condition = 10,
+    conditionRatio = 1,
+    lightStrength = 1.5,
+    lightDistance = 8,
+    deviceDataAvailable = true,
+    deviceData = {
+        isBatteryPowered = true,
+        hasBattery = true,
+        isTelevision = false,
+        isTwoWay = true,
+        isPortable = true,
+        transmitRange = 250,
+        power = 1,
+    },
+    capabilities = {
+        capabilities = { "radio_communication" },
+        requirements = { "electricity" },
+        evidence = { "radio_device_data" },
+        powerSource = "battery",
+        available = false,
+    },
+}
+local electronicsDetails = {
+    category = "Electronics",
+    primary = "ElectronicsRadio",
+    tags = { "ElectronicsRadio" },
+    expandedTags = { "ElectronicsRadio", "Electronics" },
+    classificationDetails = { source = "electronics_radio_type", tag = "ElectronicsRadio" },
+}
+local electronicsScore = MarketSense.Pricing.calculateRawScore(
+    electronicsContext, electronicsDetails
+)
+T.equal(electronicsDetails.priceHeuristic.model, "electronics_v2_pending",
+    "electronics pricing reset is exposed")
+T.equal(electronicsDetails.priceHeuristic.status, "pending",
+    "electronics pricing reset is marked pending")
+T.equal(electronicsScore, 14, "pending electronics pricing uses neutral anchor")
+T.equal(electronicsDetails.priceHeuristic.deviceTransmitRange, 250,
+    "electronics heuristic exposes radio device evidence")
+electronicsDetails.rawScore = electronicsScore
+T.equal(MarketSense.Pricing.applyBalances(electronicsContext, electronicsDetails), 14,
+    "pending electronics pricing ignores legacy flat additions")
+
+local staleElectronics = MarketSense.Pricing.applyOverridesOnly(electronicsContext, {
+    fullType = electronicsContext.fullType,
+    category = "Electronics",
+    primary = "ElectronicsRadio",
+    tags = { "ElectronicsRadio" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleElectronics.priceHeuristic.model, "electronics_v2_pending",
+    "cached legacy electronics score is rebuilt")
+T.truthy(staleElectronics.price < 999,
+    "cached legacy electronics dollars are discarded")
+
 local toolContext = {
     fullType = "Base.HarnessBlowtorch",
     conditionMax = 100,

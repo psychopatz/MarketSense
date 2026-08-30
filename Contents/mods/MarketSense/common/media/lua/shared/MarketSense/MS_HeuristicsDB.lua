@@ -127,7 +127,6 @@ DB.registerTag("ContainerWearable", {
     add = 22
 })
 DB.registerTag("ElectronicsGenerator", {
-    add = 240,
     stockMultiplier = 0.35,
     minRatio = 0
 })

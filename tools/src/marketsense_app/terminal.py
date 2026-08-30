@@ -214,6 +214,29 @@ def print_terminal(
             print(f"  ... {len(container_rows) - top:,} more container rows are in JSON/CSV output")
         print()
 
+    electronics_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") == "electronics_v2_pending"
+    ]
+    if electronics_rows:
+        print("ELECTRONICS PRICING STATUS")
+        print("  item | subtype | capability | light | radio device | status | price")
+        for row in sorted(electronics_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            capabilities = heuristic.get("capabilities") or []
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{str(capabilities[0] if capabilities else '-'):<16} | "
+                f"{format_number(heuristic.get('lightStrength')):>5} | "
+                f"{str('yes' if heuristic.get('deviceDataAvailable') else 'no'):<11} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(electronics_rows) > top:
+            print(f"  ... {len(electronics_rows) - top:,} more electronics rows are in JSON/CSV output")
+        print()
+
     liquid_rows = [row for row in rows if row.get("category") == "Liquid"]
     if liquid_rows:
         print("LIQUID CONTENT PRICE SAMPLE")

@@ -39,13 +39,6 @@
     {"path": "Building.WallDecor.Noticeboard", "price": 8, "stock": 1.0, "reason": "Noticeboards."},
 
 
-    {"path": "Electronics", "price": 20, "stock": 1.0, "reason": "Electronic equipment root."},
-    {"path": "Electronics.Radio", "price": 36, "stock": 1.0, "reason": "Radio equipment root."},
-    {"path": "Electronics.Flashlight", "price": 15, "stock": 1.0, "reason": "Handheld lights."},
-    {"path": "Electronics.Light", "price": 8, "stock": 1.0, "reason": "Light sources and fittings."},
-    {"path": "Electronics.Appliance", "price": 18, "stock": 1.0, "reason": "Powered appliances."},
-    {"path": "Electronics.Laundry", "price": 24, "stock": 1.0, "reason": "Washing and laundry appliances."},
-    {"path": "Electronics.Clock", "price": 10, "stock": 1.0, "reason": "Clocks and timekeeping electronics."},
 
     {"path": "Gardening", "price": 8, "stock": 1.0, "reason": "Gardening supply root."},
     {"path": "Gardening.Seed", "price": 8, "stock": 1.0, "reason": "Individual seeds."},
