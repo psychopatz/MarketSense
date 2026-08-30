@@ -121,6 +121,26 @@ local foodHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(foodHeuristicText,
     "Pricing: ready | subtype=FoodNonPerishableBoxed | role=edible | ration=1.25 | hunger=-0.30 | thirst=0.00 | freshness=definition_freshness | yield=resolved",
     "catalog displays food utility and valued bundle evidence")
+T.equal(Window.BuildMarketModifierSummary({
+    marketPricing = {
+        anchor = 10,
+        anchorSpreadMultiplier = 1.04,
+        tagAdd = 17,
+        itemAdd = 0,
+        variationMultiplier = 0.98,
+        variationSource = "WorldGenParams.seedString",
+    },
+}),
+    "Market: anchor=$10 | contrast=1.040x | tagAdd=17 | itemAdd=0 | variation=0.980x (WorldGenParams.seedString)",
+    "catalog displays typed modifier and seeded variation diagnostics")
+T.equal(Window.BuildMarketModifierSummary({
+    marketPricing = {
+        absoluteOverride = true,
+        overridePrice = 77,
+        variationSource = "disabled",
+    },
+}), "Market: exact override=$77 | variation=disabled",
+    "catalog distinguishes exact overrides from disabled variation")
 local weaponToolHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
         model = "weapon_v2",

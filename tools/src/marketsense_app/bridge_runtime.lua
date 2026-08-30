@@ -584,6 +584,7 @@ local function rowJson(row)
     fields[#fields + 1] = jsonString("detection") .. ":" .. jsonValue(row.detection)
     fields[#fields + 1] = jsonString("context") .. ":" .. jsonValue(row.context)
     fields[#fields + 1] = jsonString("priceAudit") .. ":" .. jsonValue(row.priceAudit)
+    fields[#fields + 1] = jsonString("marketPricing") .. ":" .. jsonValue(row.marketPricing)
     fields[#fields + 1] = jsonString("priceHeuristic") .. ":" .. jsonValue(row.priceHeuristic)
     fields[#fields + 1] = jsonString("yieldResolution") .. ":" .. jsonValue(row.yieldResolution)
     fields[#fields + 1] = jsonString("evaluator") .. ":" .. jsonValue(row.evaluator)
@@ -670,6 +671,7 @@ for _, spec in ipairs(specs) do
         row.detection = detection
         row.context = contextSnapshot(context)
         row.priceAudit = details.balanceAudit
+        row.marketPricing = details.marketPricing
         row.priceHeuristic = details.priceHeuristic
         row.yieldResolution = details.yieldResolution
         row.yieldResolver = yieldResolverLabel(details.yieldResolution)

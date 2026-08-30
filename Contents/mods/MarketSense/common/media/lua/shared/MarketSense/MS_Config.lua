@@ -24,6 +24,11 @@ local defaults = {
         maxPrice = 1000000000,
         baseMultiplier = 1.0,
         openedPenalty = 0.72,
+        contrastStrength = 0.08,
+        variationEnabled = true,
+        variationStrength = 0.08,
+        variationSalt = 1,
+        variationAbsoluteOverrides = false,
     },
     foodPricing = {},
     liquidPricing = {},
@@ -112,11 +117,7 @@ function MarketSense.Config.reloadExported()
         runtime.buildingPricing = exported.building_pricing
             or runtime.buildingPricing or {}
         runtime.toolPricing = exported.tool_pricing or runtime.toolPricing or {}
-        runtime.rarityAdditions = exported.rarity_additions or {}
-        runtime.qualityAdditions = exported.quality_additions or {}
-        runtime.themeAdditions = exported.theme_additions or {}
-        runtime.originAdditions = exported.origin_additions or {}
-        runtime.tagPriceAdditions = exported.tag_price_additions or {}
+        runtime.marketModifiers = exported.market_modifiers or runtime.marketModifiers or {}
         runtime.global = exported.global or {}
     end
 end
@@ -131,6 +132,27 @@ function MarketSense.Config.applySandboxOptions()
         if vars.PriceGlobalValue ~= nil then
             runtime.pricing.globalValue = vars.PriceGlobalValue
         end
+        if vars.PriceContrastStrength ~= nil then
+            runtime.pricing.contrastStrength = math.max(0,
+                math.min(0.50, tonumber(vars.PriceContrastStrength) or 0))
+        end
+        if vars.PriceVariationEnabled ~= nil then
+            runtime.pricing.variationEnabled = vars.PriceVariationEnabled == true
+                or vars.PriceVariationEnabled == 1
+                or vars.PriceVariationEnabled == "true"
+        end
+        if vars.PriceVariationStrength ~= nil then
+            runtime.pricing.variationStrength = math.max(0,
+                math.min(0.50, tonumber(vars.PriceVariationStrength) or 0))
+        end
+        if vars.PriceVariationSalt ~= nil then
+            runtime.pricing.variationSalt = math.floor(tonumber(vars.PriceVariationSalt) or 1)
+        end
+        if vars.PriceVariationAbsoluteOverrides ~= nil then
+            runtime.pricing.variationAbsoluteOverrides = vars.PriceVariationAbsoluteOverrides == true
+                or vars.PriceVariationAbsoluteOverrides == 1
+                or vars.PriceVariationAbsoluteOverrides == "true"
+        end
         if vars.StockMultiplier ~= nil then
             runtime.stock.globalMultiplier = vars.StockMultiplier
         end
@@ -138,38 +160,27 @@ function MarketSense.Config.applySandboxOptions()
     else
         runtime.sandboxVars = nil
     end
+    runtime.pricingRevision = (tonumber(runtime.pricingRevision) or 0) + 1
 end
 
--- getSandboxTagMultiplier resolves additive (Price) or multiplicative (Stock) values
+-- getSandboxTagMultiplier resolves multiplicative stock values. Price tag
+-- additions are now owned by MS_MarketModifiers so they cannot be applied twice.
 -- for a list of tags. Flat tokens are expanded using TOKEN_PARENTS from MS_TagMapper;
 -- dot-notation descriptor tags (Rarity.*, Quality.*, Origin.*, Theme.*) keep path-walking.
 function runtime.getSandboxTagMultiplier(mode, tags)
-    if not tags then
-        return mode == "Price" and 0 or 1.0
-    end
+    if mode ~= "Stock" then return 0 end
+    if not tags then return 1.0 end
 
     local vars = runtime.sandboxVars or getSandboxVarsTable()
     local tagList = type(tags) == "table" and tags or { tags }
     local totalMult = 1.0
-    local totalAdd = 0
 
-    -- Resolve a single flat-or-dotted key against sandbox vars and tagPriceAdditions
+    -- Resolve a single flat-or-dotted stock key against sandbox vars.
     local function accumulate(key)
-        if mode == "Price" then
-            local optKey = "Price" .. key:gsub("%.", "") .. "Value"
-            local val = vars and vars[optKey]
-            if val == nil then
-                val = runtime.tagPriceAdditions and runtime.tagPriceAdditions[key]
-            end
-            if type(val) == "number" then
-                totalAdd = totalAdd + val
-            end
-        else
-            local optKey = "Stock" .. key:gsub("%.", "") .. "Mult"
-            local mult = vars and vars[optKey]
-            if type(mult) == "number" then
-                totalMult = totalMult * mult
-            end
+        local optKey = "Stock" .. key:gsub("%.", "") .. "Mult"
+        local mult = vars and vars[optKey]
+        if type(mult) == "number" then
+            totalMult = totalMult * mult
         end
     end
 
@@ -194,7 +205,7 @@ function runtime.getSandboxTagMultiplier(mode, tags)
         end
     end
 
-    return mode == "Price" and totalAdd or totalMult
+    return totalMult
 end
 
 MarketSense.Config.reloadExported()

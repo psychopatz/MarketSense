@@ -28,13 +28,13 @@ class SandboxOption:
     label: str
     tooltip: str
     option_type: str
-    default: int | float | None
+    default: bool | int | float | None
     minimum: int | float | None
     maximum: int | float | None
     page: str
     # ``declared_default`` preserves the value from sandbox-options.txt even
     # when the Python catalog supplies a corrected/effective default.
-    declared_default: int | float | None = None
+    declared_default: bool | int | float | None = None
     category_path: str = ""
     definition_source: str = "declared"
 
@@ -173,7 +173,7 @@ def _recommendation_records(
 
 def recommended_sandbox_settings(
     specs: list[SandboxOption] | None = None,
-) -> dict[str, int | float]:
+) -> dict[str, bool | int | float]:
     """Return only JSON-backed values intended for the reset/self-heal action."""
 
     known = specs or load_sandbox_option_specs()
@@ -219,7 +219,14 @@ def _load_translations(version_root: Path) -> dict[str, str]:
         if key.startswith("Sandbox_MarketSense.")
     }
 
-def _parse_scalar(value: str, option_type: str) -> int | float | None:
+def _parse_scalar(value: str, option_type: str) -> bool | int | float | None:
+    if option_type == "boolean":
+        lowered = value.strip().casefold()
+        if lowered == "true":
+            return True
+        if lowered == "false":
+            return False
+        return None
     try:
         parsed = float(value)
     except ValueError:
@@ -385,7 +392,19 @@ def option_map(specs: list[SandboxOption] | None = None) -> dict[str, SandboxOpt
     return {spec.key: spec for spec in (specs or load_sandbox_option_specs())}
 
 
-def _coerce_value(value: Any, spec: SandboxOption | None) -> int | float:
+def _coerce_value(value: Any, spec: SandboxOption | None) -> bool | int | float:
+    if spec and spec.option_type == "boolean":
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)) and value in (0, 1):
+            return bool(value)
+        if isinstance(value, str):
+            lowered = value.strip().casefold()
+            if lowered in {"true", "1", "yes"}:
+                return True
+            if lowered in {"false", "0", "no"}:
+                return False
+        raise SandboxSettingsError(f"invalid boolean value {value!r}")
     if isinstance(value, bool):
         raise SandboxSettingsError("boolean values are not valid sandbox numbers")
     try:
@@ -403,11 +422,11 @@ def _coerce_value(value: Any, spec: SandboxOption | None) -> int | float:
 
 def normalize_settings(
     values: Mapping[str, Any], specs: list[SandboxOption] | None = None,
-) -> dict[str, int | float]:
+) -> dict[str, bool | int | float]:
     """Validate settings while retaining only MarketSense numeric option keys."""
 
     known = option_map(specs)
-    normalized: dict[str, int | float] = {}
+    normalized: dict[str, bool | int | float] = {}
     for key, value in values.items():
         if value is None or value == "":
             continue
@@ -421,7 +440,7 @@ def normalize_settings(
 
 def default_sandbox_settings(
     specs: list[SandboxOption] | None = None,
-) -> dict[str, int | float]:
+) -> dict[str, bool | int | float]:
     """Return effective defaults, including JSON corrections/recommendations."""
 
     return {

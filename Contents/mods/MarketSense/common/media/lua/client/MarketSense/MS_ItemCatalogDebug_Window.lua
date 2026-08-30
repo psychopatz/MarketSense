@@ -22,6 +22,7 @@ local rowSearchText = Presentation.rowSearchText
 local yieldSummary = Presentation.yieldSummary
 local baseItemSummary = Presentation.baseItemSummary
 local priceHeuristicSummary = Presentation.priceHeuristicSummary
+local marketModifierSummary = Presentation.marketModifierSummary
 local buildDetailSubtext = Presentation.buildDetailSubtext
 local drawMarketItemRow = Presentation.drawMarketItemRow
 
@@ -381,6 +382,7 @@ MarketSenseItemCatalogDebugWindow.BuildCategoryPath = categoryPath
 MarketSenseItemCatalogDebugWindow.BuildYieldSummary = yieldSummary
 MarketSenseItemCatalogDebugWindow.BuildBaseItemSummary = baseItemSummary
 MarketSenseItemCatalogDebugWindow.BuildPriceHeuristicSummary = priceHeuristicSummary
+MarketSenseItemCatalogDebugWindow.BuildMarketModifierSummary = marketModifierSummary
 MarketSenseItemCatalogDebugWindow.BuildDetailSubtext = buildDetailSubtext
 
 function MarketSenseItemCatalogDebugWindow.Open()

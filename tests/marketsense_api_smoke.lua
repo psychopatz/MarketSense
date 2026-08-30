@@ -112,6 +112,10 @@ end
 
 local api = assert(require "MarketSense/MS_PublicAPI")
 T.equal(api, MarketSense, "canonical public API is MarketSense")
+-- Legacy smoke assertions compare raw heuristic values. The new seeded
+-- distribution is covered separately and is disabled for those baselines.
+MarketSense.ItemRuntimeConfig.pricing.variationEnabled = false
+MarketSense.ItemRuntimeConfig.pricing.contrastStrength = 0
 local collectionLike = {}
 function collectionLike:toArray() return { "Beverage", "Liquid" } end
 local collectionValues = MarketSense.Core.listFromJavaCollection(collectionLike)

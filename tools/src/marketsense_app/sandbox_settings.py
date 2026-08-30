@@ -19,7 +19,7 @@ from .sandbox_catalog import (
 
 def effective_sandbox_settings(
     overrides: Mapping[str, Any], specs: list[SandboxOption] | None = None,
-) -> dict[str, int | float]:
+) -> dict[str, bool | int | float]:
     """Merge local overrides over the mod's declared sandbox defaults."""
 
     known = specs or load_sandbox_option_specs()
@@ -30,7 +30,7 @@ def effective_sandbox_settings(
 
 def load_sandbox_settings(
     path: Path | None = None, specs: list[SandboxOption] | None = None,
-) -> dict[str, int | float]:
+) -> dict[str, bool | int | float]:
     path = (path or DEFAULT_SANDBOX_SETTINGS_PATH).expanduser()
     if not path.is_file():
         return {}
@@ -64,4 +64,4 @@ def setting_display(value: Any, spec: SandboxOption) -> str:
         return str(value)
     if spec.default is None:
         return "inherit"
-    return f"default ({spec.default:g})"
+    return f"default ({spec.default})"

@@ -1,6 +1,7 @@
 require "MarketSense/MS_Debug"
 require "MarketSense/MS_ItemsRegistry"
 require "MarketSense/MS_RuntimeRules"
+require "MarketSense/Pricing/MS_MarketModifiers"
 
 MarketSense = MarketSense or {}
 
@@ -11,6 +12,15 @@ local Pricing      = MarketSense.Pricing
 local Stock        = MarketSense.Stock
 local TagUtils     = MarketSense.TagUtils
 local RuntimeRules = MarketSense.RuntimeRules
+local MarketModifiers = MarketSense.MarketModifiers
+
+local function invalidatePricingViews()
+    Cache.clear()
+    if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.state then
+        MarketSense.ItemsRegistry.state.loaded = false
+        MarketSense.ItemsRegistry.state.catalog = nil
+    end
+end
 local API           = MarketSense
 
 -- Stable semantic interface for future consumers.  This returns the
@@ -104,6 +114,36 @@ end
 
 function API.GetRuntimeRules()
     return RuntimeRules and RuntimeRules.getRules and RuntimeRules.getRules() or {}
+end
+
+-- Extension hooks for other mods. These affect lazy pricing immediately and
+-- invalidate materialized details so a registered special item cannot retain
+-- an earlier price.
+function API.RegisterMarketTagModifier(tag, rule)
+    if not MarketModifiers or type(MarketModifiers.registerTag) ~= "function" then
+        return nil
+    end
+    local result = MarketModifiers.registerTag(tag, rule)
+    invalidatePricingViews()
+    return result
+end
+
+function API.RegisterMarketCategoryModifier(category, rule)
+    if not MarketModifiers or type(MarketModifiers.registerCategory) ~= "function" then
+        return nil
+    end
+    local result = MarketModifiers.registerCategory(category, rule)
+    invalidatePricingViews()
+    return result
+end
+
+function API.RegisterMarketItemModifier(fullType, rule)
+    if not MarketModifiers or type(MarketModifiers.registerItem) ~= "function" then
+        return nil
+    end
+    local result = MarketModifiers.registerItem(fullType, rule)
+    invalidatePricingViews()
+    return result
 end
 
 function API.ApplyRuntimeRule(ruleTable)

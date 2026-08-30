@@ -80,34 +80,27 @@ DB.registerCategory("Building", {
 
 -- Descriptor tag defaults (dot-notation kept for descriptors)
 DB.registerTag("Rarity.Uncommon", {
-    add = Config.rarityAdditions and Config.rarityAdditions["Uncommon"] or 14,
     stockMultiplier = Config.global and Config.global.stock_uncommon_multiplier or 0.85
 })
 DB.registerTag("Rarity.Rare", {
-    add = Config.rarityAdditions and Config.rarityAdditions["Rare"] or 17,
     stockMultiplier = Config.global and Config.global.stock_rare_multiplier or 0.55,
     minRatio = Config.global and Config.global.stock_rare_min_ratio or 0
 })
 DB.registerTag("Rarity.Legendary", {
-    add = Config.rarityAdditions and Config.rarityAdditions["Legendary"] or 20,
     stockMultiplier = Config.global and Config.global.stock_legendary_multiplier or 0.22,
     minRatio = Config.global and Config.global.stock_rare_min_ratio or 0
 })
 DB.registerTag("Rarity.UltraRare", {
-    add = Config.rarityAdditions and Config.rarityAdditions["UltraRare"] or 27,
     stockMultiplier = Config.global and Config.global.stock_ultrarare_multiplier or 0.1,
     minRatio = Config.global and Config.global.stock_rare_min_ratio or 0
 })
 DB.registerTag("Quality.Waste", {
-    add = Config.qualityAdditions and Config.qualityAdditions["Waste"] or -10.0,
     stockMultiplier = Config.global and Config.global.stock_waste_multiplier or 1.2
 })
 DB.registerTag("Quality.Luxury", {
-    add = Config.qualityAdditions and Config.qualityAdditions["Luxury"] or 40.0,
     stockMultiplier = Config.global and Config.global.stock_luxury_multiplier or 0.7
 })
 DB.registerTag("Quality.Sterile", {
-    add = Config.qualityAdditions and Config.qualityAdditions["Sterile"] or 14.0,
     stockMultiplier = 1.0
 })
 
@@ -122,9 +115,6 @@ DB.registerTag("Ammo", {
 })
 DB.registerTag("FoodNonPerishableCanned", {
     stockMultiplier = 1.15
-})
-DB.registerTag("ContainerWearable", {
-    add = 22
 })
 DB.registerTag("ElectronicsGenerator", {
     stockMultiplier = 0.35,

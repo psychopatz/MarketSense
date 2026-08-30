@@ -1,7 +1,6 @@
 require "MarketSense/MS_HeuristicsDB"
 
 local DATA_MODULE = "MarketSense/Items/MS_RuntimeRules_Data"
-local TAG_DATA_MODULE = "MarketSense/Common/Pricing/MS_TagPriceAdditions_Data"
 
 local function cloneMap(source)
     local out = {}
@@ -24,10 +23,7 @@ MarketSense.RuntimeRules = MarketSense.RuntimeRules or {
     blacklist = {},
     whitelist = {},
     appliedItems = {},
-    appliedTags = {},
-    previousTagData = {},
     overrideData = {},
-    tagAdditionData = {},
 }
 
 local RuntimeRules = MarketSense.RuntimeRules
@@ -68,6 +64,15 @@ local function normalizeOverride(entry)
     end
     if type(entry.mult) == "number" then
         override.mult = entry.mult
+    end
+    if type(entry.reason) == "string" and entry.reason ~= "" then
+        override.reason = entry.reason
+    end
+    if entry.stateScaled == true then
+        override.stateScaled = true
+    end
+    if type(entry.categories) == "table" and #entry.categories > 0 then
+        override.categories = entry.categories
     end
     if type(entry.minPrice) == "number" then
         override.minPrice = entry.minPrice
@@ -136,24 +141,12 @@ function RuntimeRules.reset()
         DB.items[itemId] = nil
     end
 
-    for tag, _ in pairs(RuntimeRules.appliedTags or {}) do
-        local previous = RuntimeRules.previousTagData and RuntimeRules.previousTagData[tag] or false
-        if previous == false then
-            DB.tags[tag] = nil
-        else
-            DB.tags[tag] = cloneMap(previous)
-        end
-    end
-
     RuntimeRules.blacklist = {}
     RuntimeRules.whitelist = {}
     RuntimeRules.blacklistPatterns = {}
     RuntimeRules.whitelistPatterns = {}
     RuntimeRules.appliedItems = {}
-    RuntimeRules.appliedTags = {}
-    RuntimeRules.previousTagData = {}
     RuntimeRules.overrideData = {}
-    RuntimeRules.tagAdditionData = {}
 end
 
 function RuntimeRules.loadFromFile(force)
@@ -220,27 +213,6 @@ function RuntimeRules.loadFromFile(force)
         end
     end
 
-    -- Tag additions exported from ModManager Tag Pricing page.
-    local okTags, tagData = pcall(require, TAG_DATA_MODULE)
-    if okTags and type(tagData) == "table" then
-        for tag, addition in pairs(tagData.tagAdditions or {}) do
-            local numeric = tonumber(addition)
-            if type(tag) == "string" and tag ~= "" and numeric ~= nil then
-                if RuntimeRules.previousTagData[tag] == nil then
-                    local existing = DB.getTag and DB.getTag(tag) or DB.tags[tag]
-                    RuntimeRules.previousTagData[tag] = existing and cloneMap(existing) or false
-                end
-
-                local tagRule = cloneMap(DB.getTag and DB.getTag(tag) or DB.tags[tag] or {})
-                tagRule.add = numeric
-                DB.registerTag(tag, tagRule)
-
-                RuntimeRules.appliedTags[tag] = true
-                RuntimeRules.tagAdditionData[tag] = numeric
-            end
-        end
-    end
-
     RuntimeRules.loaded = true
     return true
 end
@@ -273,11 +245,6 @@ function RuntimeRules.getOverride(fullType)
     return RuntimeRules.overrideData[fullType]
 end
 
-function RuntimeRules.getTagAddition(tag)
-    RuntimeRules.loadFromFile(false)
-    return RuntimeRules.tagAdditionData[tag]
-end
-
 function RuntimeRules.getRules()
     RuntimeRules.loadFromFile(false)
     return {
@@ -286,7 +253,6 @@ function RuntimeRules.getRules()
         blacklistPatterns = cloneMap(RuntimeRules.blacklistPatterns),
         whitelistPatterns = cloneMap(RuntimeRules.whitelistPatterns),
         overridesById = cloneMap(RuntimeRules.overrideData),
-        tagAdditions = cloneMap(RuntimeRules.tagAdditionData),
     }
 end
 

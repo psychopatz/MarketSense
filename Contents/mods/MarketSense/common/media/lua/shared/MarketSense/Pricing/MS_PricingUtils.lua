@@ -14,28 +14,6 @@ local function addAudit(audit, label, before, after, extra)
     audit[#audit + 1] = { label = label, before = before, after = after, extra = extra }
 end
 
-local function applyAdjustment(value, entry, label, audit)
-    if type(entry) ~= "table" then return value end
-    local working = value
-    if entry.add ~= nil then
-        local before = working
-        working = working + (tonumber(entry.add) or 0)
-        addAudit(audit, label .. " add", before, working)
-    end
-    if entry.mult ~= nil then
-        local before = working
-        working = working * math.max(0, tonumber(entry.mult) or 1)
-        addAudit(audit, label .. " mult", before, working)
-    end
-    local minPrice = entry.minPrice or entry.min
-    if minPrice ~= nil then
-        local before = working
-        working = math.max(working, tonumber(minPrice) or working)
-        addAudit(audit, label .. " min", before, working)
-    end
-    return working
-end
-
 local function isFoodCategory(category)
     return category == "Food" or category == "Beverage"
 end
@@ -167,7 +145,6 @@ end
 
 Utils.CATEGORY_BASE_SCORES = CATEGORY_BASE_SCORES
 Utils.addAudit = addAudit
-Utils.applyAdjustment = applyAdjustment
 Utils.isFoodCategory = isFoodCategory
 Utils.isLiteratureCategory = isLiteratureCategory
 Utils.isClothingCategory = isClothingCategory

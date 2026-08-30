@@ -8,11 +8,24 @@ MarketSense.RuntimeCache = MarketSense.RuntimeCache or {
     tags = {},
     contexts = {},
     missing = {},
-    built = false
+    built = false,
+    pricingRevision = 0,
 }
 
 local Cache = MarketSense.RuntimeCache
 local Core = MarketSense.Core
+
+local function currentPricingRevision()
+    local config = MarketSense.ItemRuntimeConfig
+    return tonumber(config and config.pricingRevision) or 0
+end
+
+function Cache.ensureCurrent()
+    local revision = currentPricingRevision()
+    if Cache.pricingRevision ~= revision then
+        Cache.clear()
+    end
+end
 
 function Cache.clear()
     Cache.prices = {}
@@ -22,13 +35,16 @@ function Cache.clear()
     Cache.contexts = {}
     Cache.missing = {}
     Cache.built = false
+    Cache.pricingRevision = currentPricingRevision()
 end
 
 function Cache.getDetails(fullType)
+    Cache.ensureCurrent()
     return Cache.details[fullType]
 end
 
 function Cache.setDetails(fullType, details)
+    Cache.ensureCurrent()
     if type(fullType) ~= "string" or type(details) ~= "table" then
         return nil
     end

@@ -50,13 +50,18 @@ def _pricing_data_paths(mod_root: Path) -> tuple[Path, Path]:
     )
 
 
-def _flattened_tag_values(document: Mapping[str, Any]) -> dict[str, float]:
+def _typed_tag_values(document: Mapping[str, Any]) -> dict[str, float]:
     values: dict[str, float] = {}
-    additions = document.get("tag_price_additions")
+    modifiers = document.get("market_modifiers")
+    if not isinstance(modifiers, dict):
+        return values
+    additions = modifiers.get("tag_modifiers", modifiers.get("tagModifiers"))
     if not isinstance(additions, dict):
         return values
-    for path, value in additions.items():
-        number = _catalog_number(value)
+    for path, rule in additions.items():
+        if not isinstance(rule, dict):
+            continue
+        number = _catalog_number(rule.get("add"))
         if isinstance(path, str) and number is not None:
             values[_option_key(path, "Price", "Value")] = number
     return values
@@ -87,7 +92,7 @@ def sandbox_definition_audit(
     generated, generated_error = _load_lua_document(generated_path)
     pricing_sandbox = pricing.get("sandbox")
     pricing_sandbox = pricing_sandbox if isinstance(pricing_sandbox, dict) else {}
-    tag_values = _flattened_tag_values(pricing)
+    tag_values = _typed_tag_values(pricing)
 
     warnings: list[dict[str, Any]] = []
 
@@ -147,22 +152,10 @@ def sandbox_definition_audit(
             warn(
                 "sandbox-declaration-mismatch",
                 key,
-                f"sandbox-options.txt default {spec.declared_default:g} differs from pricing data {float(value):g}",
+                f"sandbox-options.txt default {spec.declared_default} differs from pricing data {value}",
                 expected=value,
                 actual=spec.declared_default,
                 source="sandbox-options.txt vs MS_PricingConfig_Data.lua",
-            )
-        if (
-            key.startswith("Price")
-            and key not in {"PriceMultiplier", "PriceGlobalValue"}
-            and float(value) < 0
-        ):
-            warn(
-                "invalid-negative-price",
-                key,
-                f"category price addition is negative ({float(value):g}); reset uses the Python recommendation",
-                actual=value,
-                source="MS_PricingConfig_Data.lua",
             )
 
     recommendation_gaps: list[dict[str, Any]] = []
@@ -193,7 +186,7 @@ def sandbox_definition_audit(
             warn(
                 "python-recommendation-drift",
                 key,
-                f"live default {spec.declared_default:g} differs from recommended {float(record['value']):g}",
+                f"live default {spec.declared_default} differs from recommended {record['value']}",
                 categoryPath=record["path"],
                 expected=record["value"],
                 actual=spec.declared_default,

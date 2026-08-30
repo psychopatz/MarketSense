@@ -175,14 +175,14 @@ class SandboxMixin:
         source_text = {
             "declared": "live sandbox-options.txt",
             "declared+python-recommended": (
-                f"live declaration; Python recommended {spec.default:g}"
+                f"live declaration; Python recommended {spec.default}"
             ),
             "python-recommended": "Python JSON recommendation; live declaration missing",
         }.get(spec.definition_source, spec.definition_source)
         declared_text = (
             "not declared"
             if spec.declared_default is None
-            else f"live default {spec.declared_default:g}"
+            else f"live default {spec.declared_default}"
         )
         self.sandbox_description_var.set(
             f"{spec.label} | {spec.option_type} | "

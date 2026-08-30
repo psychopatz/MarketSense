@@ -220,6 +220,36 @@ local function priceHeuristicSummary(details)
     return formatter and formatter(heuristic) or nil
 end
 
+local function marketModifierSummary(details)
+    local pricing = details and details.marketPricing
+    if type(pricing) ~= "table" then return nil end
+    if pricing.absoluteOverride then
+        local variation
+        if pricing.variationSource == "disabled" then
+            variation = "disabled"
+        elseif pricing.variationSource == "bundle-child" then
+            variation = "bundle-child"
+        else
+            variation = string.format("%.3fx (%s)",
+                tonumber(pricing.variationMultiplier) or 1,
+                tostring(pricing.variationSource or "unknown"))
+        end
+        return string.format("Market: exact override=$%g | variation=%s",
+            tonumber(pricing.overridePrice) or 0,
+            variation)
+    end
+
+    local anchor = pricing.anchor ~= nil and string.format("$%g", pricing.anchor) or "-"
+    local spread = string.format("%.3fx", tonumber(pricing.anchorSpreadMultiplier) or 1)
+    local variation = string.format("%.3fx", tonumber(pricing.variationMultiplier) or 1)
+    local source = tostring(pricing.variationSource or "disabled")
+    return string.format(
+        "Market: anchor=%s | contrast=%s | tagAdd=%g | itemAdd=%g | variation=%s (%s)",
+        anchor, spread, tonumber(pricing.tagAdd) or 0,
+        tonumber(pricing.itemAdd) or 0, variation, source)
+end
+
 return {
     priceHeuristicSummary = priceHeuristicSummary,
+    marketModifierSummary = marketModifierSummary,
 }

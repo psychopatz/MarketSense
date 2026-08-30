@@ -3,6 +3,7 @@
 
 require "MarketSense/MS_Core"
 require "MarketSense/Pricing/MS_YieldResolver"
+require "MarketSense/Pricing/MS_MarketModifiers"
 
 MarketSense = MarketSense or {}
 MarketSense.TransformPricing = MarketSense.TransformPricing or {}
@@ -111,10 +112,22 @@ function TransformPricing.evaluate(ctx, details, options)
             return blocked("resolved", "nested transform evaluation failed: " .. fullType)
         end
 
-        local unitValue = number(childDetails.rawScore, nil)
-        if unitValue == nil then
+        local rawUnitValue = number(childDetails.rawScore, nil)
+        if rawUnitValue == nil then
             return blocked("resolved", "output item did not produce a raw score: " .. fullType)
         end
+        local unitValue, childSummary = MarketSense.MarketModifiers.apply(
+            childContext, childDetails, rawUnitValue, nil, true
+        )
+        if childSummary and childSummary.absoluteOverride then
+            unitValue = childSummary.overridePrice
+        end
+        unitValue = number(unitValue, rawUnitValue)
+        unitValue = math.max(
+            number(MarketSense.ItemRuntimeConfig and MarketSense.ItemRuntimeConfig.pricing
+                and MarketSense.ItemRuntimeConfig.pricing.minPrice, 1),
+            unitValue
+        )
         local value = unitValue * quantity
         total = total + value
         totalQuantity = totalQuantity + quantity
@@ -122,12 +135,14 @@ function TransformPricing.evaluate(ctx, details, options)
             fullType = fullType,
             quantity = quantity,
             chance = chance,
-            unitRawScore = unitValue,
+            unitRawScore = rawUnitValue,
+            unitIntrinsicScore = unitValue,
             contribution = value,
             model = childDetails.priceHeuristic
                 and childDetails.priceHeuristic.model or nil,
             category = childDetails.category,
             primary = childDetails.primary,
+            marketModifiers = childSummary,
         }
     end
 
