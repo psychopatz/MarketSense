@@ -38,12 +38,6 @@
     {"path": "Building.WallDecor.Certificate", "price": 14, "stock": 1.0, "reason": "Certificates and framed records."},
     {"path": "Building.WallDecor.Noticeboard", "price": 8, "stock": 1.0, "reason": "Noticeboards."},
 
-    {"path": "Container.Bag.Satchel", "price": 18, "stock": 1.0, "reason": "Satchel and shoulder-bag variants."},
-    {"path": "Container.Ammo", "price": 18, "stock": 1.0, "reason": "Ammunition containers."},
-    {"path": "Container.Box", "price": 10, "stock": 1.0, "reason": "Portable boxes."},
-    {"path": "Container.Liquid", "price": 14, "stock": 1.0, "reason": "Liquid containers."},
-    {"path": "Container.Wearable", "price": 16, "stock": 1.0, "reason": "Wearable containers."},
-    {"path": "Container.Wearable.Ammo", "price": 20, "stock": 1.0, "reason": "Wearable ammunition containers."},
 
     {"path": "Electronics", "price": 20, "stock": 1.0, "reason": "Electronic equipment root."},
     {"path": "Electronics.Radio", "price": 36, "stock": 1.0, "reason": "Radio equipment root."},
@@ -84,20 +78,6 @@
     {"path": "Resource.Metal", "price": 10, "stock": 1.0, "reason": "Metal resources."},
     {"path": "Resource.Parts", "price": 10, "stock": 1.0, "reason": "Replacement parts."},
 
-    {"path": "Tool", "price": 25, "stock": 1.0, "reason": "Tool root."},
-    {"path": "Tool.Blacksmith", "price": 14, "stock": 1.0, "reason": "Blacksmith tools."},
-    {"path": "Tool.Butchering", "price": 8, "stock": 1.0, "reason": "Butchering tools."},
-    {"path": "Tool.Carpentry", "price": 12, "stock": 1.0, "reason": "Carpentry tools."},
-    {"path": "Tool.Craft", "price": 8, "stock": 1.0, "reason": "Crafting tools."},
-    {"path": "Tool.Farming", "price": 10, "stock": 1.0, "reason": "Farming tools."},
-    {"path": "Tool.FlintKnapping", "price": 8, "stock": 1.0, "reason": "Flint-knapping tools."},
-    {"path": "Tool.Gardening", "price": 10, "stock": 1.0, "reason": "Gardening tools."},
-    {"path": "Tool.Maintenance", "price": 10, "stock": 1.0, "reason": "Maintenance tools."},
-    {"path": "Tool.Masonry", "price": 10, "stock": 1.0, "reason": "Masonry tools."},
-    {"path": "Tool.Mechanics", "price": 14, "stock": 1.0, "reason": "Mechanics tools."},
-    {"path": "Tool.Pottery", "price": 8, "stock": 1.0, "reason": "Pottery tools."},
-    {"path": "Tool.Tailoring", "price": 8, "stock": 1.0, "reason": "Tailoring tools."},
-    {"path": "Tool.Welding", "price": 16, "stock": 1.0, "reason": "Welding tools."},
 
     {"path": "Weapon.Melee", "stock": 1.0, "reason": "Melee weapon family."},
     {"path": "Weapon.Spear", "stock": 1.0, "reason": "Spears and improvised spears."},

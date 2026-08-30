@@ -11,11 +11,12 @@ from .workshop_paths import item_script_paths
 
 
 ITEM_LINE_RE = re.compile(
-    r"^\s*item\s+((?:[0-9]+(?:\.[0-9]+)?)|variable\[[^\]]+\])\s+"
-    r"(\[[^\]]+\]|[^\s,]+)(.*)$",
+    r"\bitem\s+((?:[0-9]+(?:\.[0-9]+)?)|variable\[[^\]]+\])\s+"
+    r"(\[[^\]]+\]|[^\s,{}]+)([^,\n{}]*)",
     re.IGNORECASE,
 )
 CHANCE_RE = re.compile(r"(?:^|\s)chance:([0-9]+(?:\.[0-9]+)?)", re.IGNORECASE)
+MODE_RE = re.compile(r"(?:^|\s)mode:([^\s,]+)", re.IGNORECASE)
 MAPPER_ENTRY_RE = re.compile(
     r"^\s*([^\s=,]+)\s*=\s*([^\s,]+)", re.IGNORECASE
 )
@@ -61,12 +62,30 @@ def _flags(tail: str) -> list[str]:
     return [part.strip() for part in match.group(1).split(";") if part.strip()]
 
 
+def _selector(token: str, module: str) -> tuple[str, list[str]]:
+    """Return the PZ item selector kind and its values.
+
+    Craft recipes use either an explicit item list (``[Base.Hammer]``), an
+    item-tag selector (``tags[base:hammer]``), or the wildcard ``[*]``.  The
+    yield resolver only needs explicit inputs, but tool demand must retain the
+    distinction so a tag-based requirement can be expanded against every
+    loaded item, including Workshop items.
+    """
+
+    cleaned = token.strip()
+    if cleaned.casefold().startswith("tags[") and cleaned.endswith("]"):
+        values = [
+            value.strip() for value in cleaned[5:-1].split(";") if value.strip()
+        ]
+        return "tags", values
+    if cleaned == "[*]" or cleaned == "*":
+        return "wildcard", ["*"]
+    return "items", _types(cleaned, module)
+
+
 def _item_lines(block: str, module: str) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    for line in block.splitlines():
-        match = ITEM_LINE_RE.match(line)
-        if match is None:
-            continue
+    for match in ITEM_LINE_RE.finditer(block):
         amount_token = match.group(1)
         variable = re.fullmatch(
             r"variable\[([^:]+):([^\]]+)\]", amount_token, re.IGNORECASE
@@ -84,6 +103,11 @@ def _item_lines(block: str, module: str) -> list[dict[str, Any]]:
         chance_match = CHANCE_RE.search(match.group(3))
         chance = float(chance_match.group(1)) if chance_match else 1.0
         chance = max(0.0, min(1.0, chance))
+        selector_kind, selectors = _selector(match.group(2), module)
+        mode_match = MODE_RE.search(match.group(3))
+        mode = mode_match.group(1).strip().casefold() if mode_match else "use"
+        tags = selectors if selector_kind == "tags" else []
+        types = selectors if selector_kind == "items" else []
         result.append({
             "amount": amount,
             "maxAmount": maximum if maximum is not None else amount,
@@ -91,7 +115,11 @@ def _item_lines(block: str, module: str) -> list[dict[str, Any]]:
                 maximum is None or maximum != amount
             ),
             "chance": chance,
-            "types": _types(match.group(2), module),
+            "types": types,
+            "selectorKind": selector_kind,
+            "selectors": selectors,
+            "tags": tags,
+            "mode": mode,
             "flags": _flags(match.group(3)),
         })
     return result
@@ -288,5 +316,185 @@ def discover_yield_recipes(
     return index, {
         "recipeCount": recipe_count,
         "sourceCount": source_count,
+        "sourceFileCount": len(unique_paths),
+    }
+
+
+def _casefold_set(values: Any) -> set[str]:
+    if isinstance(values, str):
+        values = re.split(r"[;,]", values)
+    if not isinstance(values, (list, tuple, set)):
+        return set()
+    return {str(value).strip().casefold() for value in values if str(value).strip()}
+
+
+def _tool_input(input_spec: dict[str, Any]) -> bool:
+    """Identify reusable/tool-like recipe inputs from engine script syntax."""
+
+    flags = _casefold_set(input_spec.get("flags"))
+    return input_spec.get("mode") == "keep" or bool(
+        flags.intersection({"toolleft", "toolright"})
+    )
+
+
+def _recipe_input_matches(
+    definition: Any, input_spec: dict[str, Any],
+) -> bool:
+    full_type = str(getattr(definition, "full_type", "") or "")
+    wanted_types = {
+        str(value).casefold() for value in input_spec.get("types") or []
+    }
+    if full_type.casefold() in wanted_types:
+        return True
+    selector_kind = str(input_spec.get("selectorKind") or "")
+    if selector_kind == "wildcard":
+        return True
+    if selector_kind != "tags":
+        return False
+    item_tags = _casefold_set((getattr(definition, "props", {}) or {}).get("tags"))
+    recipe_tags = _casefold_set(input_spec.get("tags"))
+    # InputScript stores multiple item tags as a set; matching all requested
+    # tags mirrors the engine's tag filter and avoids over-valuing a tool that
+    # only happens to share one of several alternatives.
+    return bool(recipe_tags) and recipe_tags.issubset(item_tags)
+
+
+def _unique_recipe_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, int, str]] = set()
+    result: list[dict[str, Any]] = []
+    for record in records:
+        key = (
+            str(record.get("recipe") or "").casefold(),
+            int(record.get("inputIndex") or 0),
+            str(record.get("sourceFile") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(record)
+    return result
+
+
+def discover_tool_recipe_usage(
+    base_scripts_root: Path | None,
+    mod_roots: Iterable[Path],
+    game_version: str | None,
+    definitions: dict[str, Any],
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, int]]:
+    """Index reusable recipe inputs by the concrete item they can accept.
+
+    This is deliberately a recipe graph, not a name heuristic.  Exact item
+    selectors and tag selectors are expanded against the same merged item
+    definitions used by the evaluator, so a mod-defined hammer tag receives
+    the same evidence as a vanilla hammer.  Consumed inputs are retained as a
+    separate signal; they are not treated as reusable tool utility.
+    """
+
+    paths: list[Path] = []
+    seen: set[Path] = set()
+    if base_scripts_root and base_scripts_root.is_dir():
+        paths.extend(sorted(base_scripts_root.rglob("*.txt")))
+    for mod_root in mod_roots:
+        selected, _version = item_script_paths(mod_root, game_version)
+        paths.extend(selected)
+    unique_paths: list[Path] = []
+    for path in paths:
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        unique_paths.append(resolved)
+
+    index: dict[str, list[dict[str, Any]]] = {}
+    definitions_by_type: dict[str, tuple[str, Any]] = {}
+    tag_index: dict[str, list[tuple[str, Any]]] = {}
+    for definition_key, definition in definitions.items():
+        full_type = str(
+            getattr(definition, "full_type", "") or definition_key
+        )
+        definitions_by_type[full_type.casefold()] = (full_type, definition)
+        item_tags = _casefold_set(
+            (getattr(definition, "props", {}) or {}).get("tags")
+        )
+        for tag in item_tags:
+            tag_index.setdefault(tag, []).append((full_type, definition))
+
+    recipe_count = 0
+    input_count = 0
+    reusable_count = 0
+    matched_item_count = 0
+    for path in sorted(unique_paths):
+        for recipe in parse_recipe_script(path):
+            recipe_count += 1
+            for input_index, input_spec in enumerate(recipe.get("inputs") or [], 1):
+                if not input_spec.get("types") and input_spec.get("selectorKind") not in {
+                    "tags", "wildcard",
+                }:
+                    continue
+                if input_spec.get("selectorKind") == "wildcard":
+                    # A wildcard accepts arbitrary resources and cannot prove
+                    # that a particular tool is required.
+                    continue
+                input_count += 1
+                reusable = _tool_input(input_spec)
+                if reusable:
+                    reusable_count += 1
+                selector_kind = input_spec.get("selectorKind")
+                candidates: list[tuple[str, Any]] = []
+                if selector_kind == "items":
+                    for wanted_type in input_spec.get("types") or []:
+                        candidate = definitions_by_type.get(
+                            str(wanted_type).casefold()
+                        )
+                        if candidate is not None:
+                            candidates.append(candidate)
+                elif selector_kind == "tags":
+                    wanted_tags = _casefold_set(input_spec.get("tags"))
+                    if wanted_tags:
+                        tag_candidates = [
+                            tag_index.get(tag, []) for tag in sorted(wanted_tags)
+                        ]
+                        # Start with the narrowest tag bucket, then retain
+                        # only definitions carrying every requested tag.
+                        candidates = min(tag_candidates, key=len) if tag_candidates else []
+                for full_type, definition in candidates:
+                    if not _recipe_input_matches(definition, input_spec):
+                        continue
+                    record = {
+                        "recipe": recipe["recipe"],
+                        "module": recipe["module"],
+                        "source": "offline_recipe_demand",
+                        "sourceFile": recipe["sourceFile"],
+                        "sourceFullType": full_type,
+                        "inputIndex": input_index,
+                        "inputAmount": input_spec.get("amount", 1),
+                        "inputMaxAmount": input_spec.get(
+                            "maxAmount", input_spec.get("amount", 1)
+                        ),
+                        "inputVariable": bool(input_spec.get("variableAmount")),
+                        "inputCount": len(recipe.get("inputs") or []),
+                        "selectorKind": input_spec.get("selectorKind"),
+                        "selectors": list(input_spec.get("selectors") or []),
+                        "mode": input_spec.get("mode", "use"),
+                        "flags": list(input_spec.get("flags") or []),
+                        "reusable": reusable,
+                        "toolFlag": bool(
+                            _casefold_set(input_spec.get("flags")).intersection(
+                                {"toolleft", "toolright"}
+                            )
+                        ),
+                        "outputCount": len(recipe.get("outputs") or []),
+                        "nameHeuristic": bool(recipe.get("nameHint")),
+                    }
+                    index.setdefault(full_type, []).append(record)
+                    matched_item_count += 1
+
+    for full_type, records in index.items():
+        index[full_type] = _unique_recipe_records(records)
+    return index, {
+        "recipeCount": recipe_count,
+        "inputCount": input_count,
+        "reusableInputCount": reusable_count,
+        "matchedItemCount": matched_item_count,
         "sourceFileCount": len(unique_paths),
     }

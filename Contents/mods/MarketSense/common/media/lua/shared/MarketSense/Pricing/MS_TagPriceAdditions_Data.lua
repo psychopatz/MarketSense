@@ -8,27 +8,11 @@ return {
         -- keep the taxonomy root neutral so it cannot charge for the vessel.
         ["Liquid"]         = 0,
         ["Medical"]        = 40,
-        ["Tool"]           = 25,
-        ["Container"]      = 30,
         ["Electronics"]    = 20,
         ["Resource"]       = 8,
         ["Building"]       = 14,
         ["Misc"]           = 2,
         -- Tool subtypes
-        ["ToolCarpentry"]    = 12,
-        ["ToolBlacksmith"]   = 14,
-        ["ToolWelding"]      = 16,
-        ["ToolMechanics"]    = 14,
-        ["ToolTailoring"]    = 8,
-        ["ToolButchering"]   = 8,
-        ["ToolFarming"]      = 10,
-        ["Cooking"]          = 9,
-        -- Container subtypes
-        ["ContainerWearable"]       = 40,
-        ["ContainerWearableAmmo"]   = 20,
-        ["ContainerAmmo"]           = 15,
-        ["ContainerBox"]            = 6,
-        ["ContainerLiquid"]         = 10,
         -- Electronics subtypes
         ["ElectronicsGenerator"]    = 240,
         ["ElectronicsBattery"]      = 10,

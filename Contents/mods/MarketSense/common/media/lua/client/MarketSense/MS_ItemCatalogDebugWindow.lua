@@ -278,6 +278,10 @@ local function priceHeuristicSummary(details)
     if type(heuristic) ~= "table" then return nil end
 
     local model = tostring(heuristic.model or "")
+    local function demandText(value)
+        if value == nil then return "-" end
+        return string.format("%.2f", tonumber(value) or 0)
+    end
     if model == "literature_v2_pending" then
         return string.format(
             "Pricing: %s | subtype=%s | skill=%s | level=%s | recipes=%s | read=%s",
@@ -291,10 +295,16 @@ local function priceHeuristicSummary(details)
     end
 
     if model == "weapon_v2_pending" then
-        return string.format("Pricing: %s | model=%s | class=%s | role=%s",
-            tostring(heuristic.status or "pending"), model,
+        local demand = heuristic.recipeDemand or {}
+        return string.format(
+            "Pricing: %s | class=%s | recipes=%s | reusable=%s | demand=%s | role=%s",
+            tostring(heuristic.status or "pending"),
             tostring(heuristic.mechanicalClass or "-"),
-            tostring(heuristic.role or "-"))
+            tostring(demand.recipeCount ~= nil and demand.recipeCount or "-"),
+            tostring(demand.reusableRecipeCount ~= nil
+                and demand.reusableRecipeCount or "-"),
+            demandText(heuristic.recipeDemandScore),
+            tostring(heuristic.marketRole or heuristic.role or "-"))
     end
 
     if model == "clothing_v2_pending" then
@@ -308,7 +318,45 @@ local function priceHeuristicSummary(details)
             tostring(heuristic.bulletDefense ~= nil and heuristic.bulletDefense or "-"))
     end
 
+    if model == "container_v2_pending" then
+        return string.format(
+            "Pricing: %s | subtype=%s | capacity=%s | reduction=%s | weight=%s | yield=%s",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "Container"),
+            tostring(heuristic.capacity ~= nil and heuristic.capacity or "-"),
+            tostring(heuristic.weightReduction ~= nil and heuristic.weightReduction or "-"),
+            tostring(heuristic.weight ~= nil and heuristic.weight or "-"),
+            tostring(heuristic.contentYieldStatus or "not_detected"))
+    end
+
+    if model == "tool_v2" then
+        local demand = heuristic.recipeDemand or {}
+        return string.format(
+            "Pricing: %s | subtype=%s | recipes=%s | reusable=%s | criticality=%s | demand=%s",
+            tostring(heuristic.status or "ready"),
+            tostring(heuristic.subtype or "Tool"),
+            tostring(demand.recipeCount ~= nil and demand.recipeCount or "-"),
+            tostring(demand.reusableRecipeCount ~= nil
+                and demand.reusableRecipeCount or "-"),
+            tostring(heuristic.recipeCriticality or "none"),
+            demandText(heuristic.recipeDemandScore))
+    end
+
     return nil
+end
+
+local function buildDetailSubtext(details)
+    local yieldText = yieldSummary(details)
+    local heuristicText = priceHeuristicSummary(details)
+    if yieldText and heuristicText then
+        local model = details and details.priceHeuristic
+            and tostring(details.priceHeuristic.model or "") or ""
+        if model == "tool_v2" or model == "weapon_v2_pending" then
+            return heuristicText .. " | " .. yieldText
+        end
+        return yieldText .. " | " .. heuristicText
+    end
+    return yieldText or heuristicText
 end
 
 local function drawMarketItemRow(list, y, entry, alternate)
@@ -658,7 +706,7 @@ function MarketSenseItemCatalogDebugWindow:render()
         detailText = string.format("%s  |  %s  |  $%d  |  %s",
             self.selectedItem.displayName or self.selectedItem.fullType,
             self.selectedItem.category or "Misc", math.floor(price), status)
-        detailSubtext = yieldSummary(details) or priceHeuristicSummary(details)
+        detailSubtext = buildDetailSubtext(details)
     elseif self.statusText then
         detailText = self.statusText
     else
@@ -693,6 +741,7 @@ end
 MarketSenseItemCatalogDebugWindow.BuildCategoryPath = categoryPath
 MarketSenseItemCatalogDebugWindow.BuildYieldSummary = yieldSummary
 MarketSenseItemCatalogDebugWindow.BuildPriceHeuristicSummary = priceHeuristicSummary
+MarketSenseItemCatalogDebugWindow.BuildDetailSubtext = buildDetailSubtext
 
 function MarketSenseItemCatalogDebugWindow.Open()
     if MarketSenseItemCatalogDebugWindow.instance then

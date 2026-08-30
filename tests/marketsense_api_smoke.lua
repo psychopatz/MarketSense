@@ -305,6 +305,142 @@ T.equal(staleClothing.priceHeuristic.model, "clothing_v2_pending",
     "cached legacy clothing score is rebuilt")
 T.truthy(staleClothing.price < 999, "cached legacy clothing dollars are discarded")
 
+local containerContext = {
+    fullType = "Base.HarnessBackpack",
+    capacity = 27,
+    weightReduction = 65,
+    weight = 1.0,
+    conditionMax = 10,
+    condition = 10,
+    conditionRatio = 1,
+    canBeEquipped = "Back",
+    bodyLocation = "Back",
+    bodyLocationToken = "back",
+    isFluidContainer = false,
+    isActualLiquid = false,
+}
+local containerDetails = {
+    category = "Container",
+    primary = "ContainerBagBackpack",
+    tags = { "ContainerBagBackpack" },
+    expandedTags = { "Container", "ContainerBag", "ContainerBagBackpack" },
+    yieldResolution = {
+        status = "resolved",
+        recipe = "OpenHarnessBackpack",
+        outputs = { { fullType = "Base.Ration", quantity = 2 } },
+    },
+    classificationDetails = { source = "container_wearable" },
+}
+local containerScore = MarketSense.Pricing.calculateRawScore(containerContext, containerDetails)
+T.equal(containerDetails.priceHeuristic.model, "container_v2_pending",
+    "container pricing reset is exposed")
+T.equal(containerDetails.priceHeuristic.status, "pending",
+    "container pricing reset is marked pending")
+T.equal(containerScore, 14, "pending container pricing uses neutral anchor")
+T.equal(containerDetails.priceHeuristic.contentYieldOutputCount, 1,
+    "container heuristic exposes deterministic content yield evidence")
+containerDetails.rawScore = containerScore
+T.equal(MarketSense.Pricing.applyBalances(containerContext, containerDetails), 14,
+    "pending container pricing ignores legacy flat additions")
+
+local staleContainer = MarketSense.Pricing.applyOverridesOnly(containerContext, {
+    fullType = containerContext.fullType,
+    category = "Container",
+    primary = "ContainerBagBackpack",
+    tags = { "ContainerBagBackpack" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleContainer.priceHeuristic.model, "container_v2_pending",
+    "cached legacy container score is rebuilt")
+T.truthy(staleContainer.price < 999, "cached legacy container dollars are discarded")
+
+local toolContext = {
+    fullType = "Base.HarnessBlowtorch",
+    conditionMax = 100,
+    condition = 47,
+    conditionRatio = 0.47,
+    conditionLowerChance = 10,
+    useDelta = 0.0625,
+    maxUses = 16,
+    currentUsesFloat = 0.75,
+    remainingUsesRatio = 0.75,
+    weightEmpty = 0.5,
+    weight = 1.5,
+    mechanicType = 0,
+    capacity = 0,
+    weightReduction = 0,
+    isDrainable = true,
+    isDrainableInstance = true,
+    canBeEquipped = "",
+    isTwoHandWeapon = false,
+    acceptItemFunction = "",
+}
+local toolDetails = {
+    category = "Tool",
+    primary = "ToolWelding",
+    tags = { "ToolWelding" },
+    expandedTags = { "Tool", "ToolWelding" },
+    classificationDetails = { source = "tool_tag", tag = "blowtorch" },
+}
+MarketSense.ToolRecipeDemand.setRecipeIndex({
+    [toolContext.fullType] = {
+        {
+            recipe = "WeldHarnessFrame", inputAmount = 1, inputCount = 3,
+            inputIndex = 1, reusable = true, toolFlag = false, mode = "keep",
+        },
+        {
+            recipe = "RepairHarness", inputAmount = 1, inputCount = 2,
+            inputIndex = 2, reusable = true, toolFlag = true, mode = "keep",
+        },
+    },
+})
+local toolScore = MarketSense.Pricing.calculateRawScore(toolContext, toolDetails)
+T.equal(toolDetails.priceHeuristic.model, "tool_v2",
+    "tool pricing model is exposed")
+T.equal(toolDetails.priceHeuristic.status, "ready",
+    "tool pricing model is ready")
+T.equal(toolDetails.priceHeuristic.recipeDemand.reusableRecipeCount, 2,
+    "tool recipe demand counts reusable recipes")
+T.equal(toolDetails.priceHeuristic.recipeCriticality, "low",
+    "small recipe demand remains low criticality")
+T.truthy(toolScore > 14, "recipe demand raises tool score")
+T.equal(toolDetails.priceHeuristic.maxUses, 16,
+    "tool heuristic exposes total drainable uses")
+T.equal(toolDetails.priceHeuristic.remainingUsesRatio, 0.75,
+    "tool heuristic exposes remaining drainable uses")
+T.equal(toolDetails.priceHeuristic.conditionLowerChance, 10,
+    "tool heuristic exposes condition-loss evidence")
+toolDetails.rawScore = toolScore
+T.equal(MarketSense.Pricing.applyBalances(toolContext, toolDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(toolScore)),
+    "tool pricing keeps recipe-driven score without legacy flat additions")
+
+local hybridDetails = {
+    category = "Weapon",
+    primary = "WeaponSmallBlunt",
+    tags = { "WeaponSmallBlunt" },
+    expandedTags = { "Weapon", "WeaponSmallBlunt" },
+    weaponEvidence = { mechanicalClass = "WeaponSmallBlunt" },
+}
+local hybridScore = MarketSense.Pricing.calculateRawScore(toolContext, hybridDetails)
+T.equal(hybridDetails.priceHeuristic.recipeDemand.reusableRecipeCount, 2,
+    "weapon/tool hybrids expose reusable recipe demand")
+T.truthy(hybridScore > 14,
+    "weapon/tool hybrids receive verified recipe utility")
+
+local staleTool = MarketSense.Pricing.applyOverridesOnly(toolContext, {
+    fullType = toolContext.fullType,
+    category = "Tool",
+    primary = "ToolWelding",
+    tags = { "ToolWelding" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleTool.priceHeuristic.model, "tool_v2",
+    "cached legacy tool score is rebuilt")
+T.truthy(staleTool.price < 999, "cached legacy tool dollars are discarded")
+
 local details = assert(api.GetPriceDetails(scriptItem.fullName, true))
 T.equal(details.category, "Food", "food root")
 T.equal(details.primary, "FoodNonPerishableCanned", "description drives canned subtype")

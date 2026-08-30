@@ -45,7 +45,10 @@ from marketsense_app.scan_scope import (
 )
 from marketsense_app.runtime_comparison import compare_harness_to_runtime
 from marketsense_app.reporting import write_heuristic_gap_report, write_low_confidence_report
-from marketsense_app.recipe_parser import discover_yield_recipes
+from marketsense_app.recipe_parser import (
+    discover_tool_recipe_usage,
+    discover_yield_recipes,
+)
 from marketsense_app.preferences import load_preferences, normalize_preferences, save_preferences
 from marketsense_app.script_parser import parse_script
 from marketsense_app.sandbox import (
@@ -262,6 +265,21 @@ tileset {
 """,
             encoding="utf-8",
         )
+        (scripts_root / "generated" / "recipes" / "tool_usage.txt").write_text(
+            """module Base {
+    craftRecipe UseHammer {
+        inputs { item 1 tags[base:hammer] mode:keep flags[MayDegradeLight], }
+        outputs { item 1 Base.Crafted, }
+    }
+    craftRecipe ConsumeHammer {
+        inputs { item 1 [Base.Hammer] mode:destroy, }
+        outputs { item 1 Base.Crafted, }
+    }
+    craftRecipe InlineHammer { inputs { item 1 tags[base:hammer] mode:keep, } outputs { item 1 Base.Crafted, } }
+}
+""",
+            encoding="utf-8",
+        )
         availability_mod = WorkshopMod(media.parent, "base", "Base", "Base", "base")
         availability_definitions = {
             "Base.Looted": ItemDefinition("Base.Looted", "Base", {}, availability_mod, "looted.txt"),
@@ -280,6 +298,10 @@ tileset {
             yield_definitions[full_type] = ItemDefinition(
                 full_type, "Base", {}, availability_mod, "yield.txt"
             )
+        yield_definitions["Base.Hammer"] = ItemDefinition(
+            "Base.Hammer", "Base", {"tags": ["base:hammer"]},
+            availability_mod, "tool_usage.txt"
+        )
         yield_index, yield_stats = discover_yield_recipes(
             scripts_root, (), "42.20", yield_definitions
         )
@@ -294,6 +316,21 @@ tileset {
         }
         assert yield_index["Base.ChanceBox"][0]["resolution"] == "probabilistic"
         assert yield_index["Base.VariableBox"][0]["resolution"] == "unresolved"
+        tool_usage, tool_usage_stats = discover_tool_recipe_usage(
+            scripts_root, (), "42.20", yield_definitions
+        )
+        assert tool_usage_stats["reusableInputCount"] >= 1
+        hammer_usage = tool_usage["Base.Hammer"]
+        reusable_record = next(
+            record for record in hammer_usage if record["recipe"] == "UseHammer"
+        )
+        consumed_record = next(
+            record for record in hammer_usage if record["recipe"] == "ConsumeHammer"
+        )
+        assert any(record["recipe"] == "InlineHammer" for record in hammer_usage)
+        assert reusable_record["reusable"] is True
+        assert reusable_record["selectorKind"] == "tags"
+        assert consumed_record["reusable"] is False
         availability_index = build_acquisition_index(
             availability_definitions.values(), scripts_root, (), "42.20"
         )
@@ -523,10 +560,14 @@ tileset {
     assert not any(spec.key == "PriceWeaponValue" for spec in specs)
     assert not any(spec.key == "PriceWeaponExplosiveValue" for spec in specs)
     assert not any(spec.key.startswith("PriceClothing") for spec in specs)
+    assert not any(spec.key.startswith("PriceContainer") for spec in specs)
+    assert not any(spec.key.startswith("PriceTool") for spec in specs)
     assert next(spec for spec in specs if spec.key == "StockWeaponSpearMult").default == 1.0
     recommendations = recommended_sandbox_settings(specs)
     assert not any(key.startswith("PriceLiterature") for key in recommendations)
     assert not any(key.startswith("PriceClothing") for key in recommendations)
+    assert not any(key.startswith("PriceContainer") for key in recommendations)
+    assert not any(key.startswith("PriceTool") for key in recommendations)
     assert recommendations["StockWeaponSpearMult"] == 1.0
     sandbox_audit = sandbox_definition_audit()
     assert sandbox_audit["status"] == "warning"
@@ -537,6 +578,14 @@ tileset {
     )
     assert not any(
         warning["key"].startswith("PriceClothing")
+        for warning in sandbox_audit["warnings"]
+    )
+    assert not any(
+        warning["key"].startswith("PriceContainer")
+        for warning in sandbox_audit["warnings"]
+    )
+    assert not any(
+        warning["key"].startswith("PriceTool")
         for warning in sandbox_audit["warnings"]
     )
     effective = effective_sandbox_settings({"PriceGlobalValue": 123}, specs)

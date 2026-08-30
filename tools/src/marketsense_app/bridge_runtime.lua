@@ -5,6 +5,7 @@ _G.unpack = _G.unpack or table.unpack
 local specs = __MARKETSENSE_SPEC_LITERAL__
 local sandboxOptions = __MARKETSENSE_SANDBOX_LITERAL__
 local yieldRecipes = __MARKETSENSE_YIELD_LITERAL__
+local toolRecipeUsage = __MARKETSENSE_TOOL_RECIPE_LITERAL__
 local byFullType = {}
 local items = {}
 
@@ -362,6 +363,9 @@ SandboxVars = { MarketSense = sandboxOptions }
 local api = require "MarketSense/MS_PublicAPI"
 if MarketSense.YieldResolver and MarketSense.YieldResolver.setRecipeIndex then
     MarketSense.YieldResolver.setRecipeIndex(yieldRecipes)
+end
+if MarketSense.ToolRecipeDemand and MarketSense.ToolRecipeDemand.setRecipeIndex then
+    MarketSense.ToolRecipeDemand.setRecipeIndex(toolRecipeUsage)
 end
 
 local function jsonEscape(value)

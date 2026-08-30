@@ -88,6 +88,19 @@ local missingYieldText = Window.BuildYieldSummary({
 })
 T.equal(missingYieldText, "Yield: NOT_DETECTED (4326 recipes, 1875 sources indexed)",
     "catalog displays missing-yield index diagnostics")
+local weaponToolHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "weapon_v2_pending",
+        status = "pending",
+        mechanicalClass = "WeaponSmallBlunt",
+        role = "tool",
+        recipeDemandScore = 0.91,
+        recipeDemand = { recipeCount = 53, reusableRecipeCount = 52 },
+    },
+})
+T.equal(weaponToolHeuristicText,
+    "Pricing: pending | class=WeaponSmallBlunt | recipes=53 | reusable=52 | demand=0.91 | role=tool",
+    "catalog displays tool recipe demand for weapon hybrids")
 local literatureHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
         model = "literature_v2_pending",
@@ -116,6 +129,43 @@ local clothingHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(clothingHeuristicText,
     "Pricing: pending | subtype=ClothingOuterwear | slot=jacket | bite=10 | scratch=20 | bullet=0",
     "catalog displays pending clothing heuristic evidence")
+local toolHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "tool_v2",
+        status = "ready",
+        subtype = "ToolBlacksmith",
+        recipeCriticality = "high",
+        recipeDemandScore = 0.91,
+        recipeDemand = { recipeCount = 53, reusableRecipeCount = 52 },
+    },
+})
+T.equal(toolHeuristicText,
+    "Pricing: ready | subtype=ToolBlacksmith | recipes=53 | reusable=52 | criticality=high | demand=0.91",
+    "catalog displays tool recipe-demand evidence")
+T.equal(Window.BuildDetailSubtext({
+    yieldResolution = { status = "not_detected", recipeCount = 1, sourceCount = 2 },
+    priceHeuristic = {
+        model = "tool_v2", status = "ready", subtype = "ToolBlacksmith",
+        recipeCriticality = "high", recipeDemandScore = 0.91,
+        recipeDemand = { recipeCount = 53, reusableRecipeCount = 52 },
+    },
+}),
+    "Pricing: ready | subtype=ToolBlacksmith | recipes=53 | reusable=52 | criticality=high | demand=0.91 | Yield: NOT_DETECTED (1 recipes, 2 sources indexed)",
+    "catalog keeps pricing diagnostics visible beside yield diagnostics")
+local containerHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "container_v2_pending",
+        status = "pending",
+        subtype = "ContainerBagBackpack",
+        capacity = 27,
+        weightReduction = 65,
+        weight = 1.0,
+        contentYieldStatus = "not_detected",
+    },
+})
+T.equal(containerHeuristicText,
+    "Pricing: pending | subtype=ContainerBagBackpack | capacity=27 | reduction=65 | weight=1.0 | yield=not_detected",
+    "catalog displays pending container heuristic evidence")
 T.equal(PsychopatzCore.DebugHub.testTool.id, "marketsense.itemCatalog",
     "catalog debug tool registration")
 local generatedWindow = {

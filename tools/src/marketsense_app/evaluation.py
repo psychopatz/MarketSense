@@ -18,7 +18,7 @@ from .availability import (
 from .models import ItemDefinition
 from .heuristics import heuristic_coverage
 from .reporting import build_summary
-from .recipe_parser import discover_yield_recipes
+from .recipe_parser import discover_tool_recipe_usage, discover_yield_recipes
 from .review import low_confidence_rows, review_row
 from .scan_scope import (
     candidate_definitions,
@@ -277,6 +277,16 @@ def evaluate(
         f"recipes: indexed {yield_stats['recipeCount']:,} craft recipes and "
         f"{yield_stats['sourceCount']:,} single-input yield sources"
     ))
+    tool_recipe_usage, tool_recipe_stats = discover_tool_recipe_usage(
+        scripts_root,
+        (mod.root for mod in mods),
+        options.game_version,
+        merged_definitions,
+    )
+    _progress(progress, (
+        f"tool demand: indexed {tool_recipe_stats['reusableInputCount']:,} reusable "
+        f"recipe inputs across {len(tool_recipe_usage):,} items"
+    ))
     bridge_definitions = emulate_pz_acquisition_flags(
         all_ordered, availability_records, tile_properties
     )
@@ -286,6 +296,7 @@ def evaluate(
         bridge_definitions,
         effective_sandbox,
         yield_recipes=yield_recipes,
+        tool_recipe_usage=tool_recipe_usage,
         emitted_types={definition.full_type for definition in ordered},
     )
     _progress(progress, f"lua: returned {len(bridge_result.rows):,} rows")
@@ -389,6 +400,7 @@ def evaluate(
         "excluded_by_exact_category": category_omitted,
     }
     summary["yield_recipe_graph"] = dict(yield_stats)
+    summary["tool_recipe_demand_graph"] = dict(tool_recipe_stats)
     summary["availability_verification"] = {
         "authority": "MarketSense.ItemAvailability (Lua runtime)",
         "static_audit": "offline source scan (comparison only)",

@@ -620,15 +620,6 @@ option MarketSense.StockClothingTacticalMult
     translation = MarketSense.StockClothingTacticalMult,
 }
 
-option MarketSense.PriceContainerValue
-{
-    type = integer,
-    default = 214,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerValue,
-}
 
 option MarketSense.StockContainerMult
 {
@@ -640,15 +631,6 @@ option MarketSense.StockContainerMult
     translation = MarketSense.StockContainerMult,
 }
 
-option MarketSense.PriceContainerBagValue
-{
-    type = integer,
-    default = 343,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerBagValue,
-}
 
 option MarketSense.StockContainerBagMult
 {
@@ -660,15 +642,6 @@ option MarketSense.StockContainerBagMult
     translation = MarketSense.StockContainerBagMult,
 }
 
-option MarketSense.PriceContainerBagBackpackValue
-{
-    type = integer,
-    default = 22,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerBagBackpackValue,
-}
 
 option MarketSense.StockContainerBagBackpackMult
 {
@@ -680,15 +653,6 @@ option MarketSense.StockContainerBagBackpackMult
     translation = MarketSense.StockContainerBagBackpackMult,
 }
 
-option MarketSense.PriceContainerBagBandolierValue
-{
-    type = integer,
-    default = 24,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerBagBandolierValue,
-}
 
 option MarketSense.StockContainerBagBandolierMult
 {
@@ -700,15 +664,6 @@ option MarketSense.StockContainerBagBandolierMult
     translation = MarketSense.StockContainerBagBandolierMult,
 }
 
-option MarketSense.PriceContainerBagDuffelValue
-{
-    type = integer,
-    default = 24,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerBagDuffelValue,
-}
 
 option MarketSense.StockContainerBagDuffelMult
 {
@@ -720,15 +675,6 @@ option MarketSense.StockContainerBagDuffelMult
     translation = MarketSense.StockContainerBagDuffelMult,
 }
 
-option MarketSense.PriceContainerBagFannyValue
-{
-    type = integer,
-    default = 15,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerBagFannyValue,
-}
 
 option MarketSense.StockContainerBagFannyMult
 {
@@ -740,15 +686,6 @@ option MarketSense.StockContainerBagFannyMult
     translation = MarketSense.StockContainerBagFannyMult,
 }
 
-option MarketSense.PriceContainerCapacityValue
-{
-    type = integer,
-    default = 182,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerCapacityValue,
-}
 
 option MarketSense.StockContainerCapacityMult
 {
@@ -760,15 +697,6 @@ option MarketSense.StockContainerCapacityMult
     translation = MarketSense.StockContainerCapacityMult,
 }
 
-option MarketSense.PriceContainerWeightReductionValue
-{
-    type = integer,
-    default = 17,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseContainer,
-    translation = MarketSense.PriceContainerWeightReductionValue,
-}
 
 option MarketSense.StockContainerWeightReductionMult
 {
@@ -1308,16 +1236,6 @@ option MarketSense.StockThemeWinterMult
     max = 100.0,
     page = MarketSenseTheme,
     translation = MarketSense.StockThemeWinterMult,
-}
-
-option MarketSense.PriceToolCookwareValue
-{
-    type = integer,
-    default = 9,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseTool,
-    translation = MarketSense.PriceToolCookwareValue,
 }
 
 option MarketSense.StockToolCookwareMult

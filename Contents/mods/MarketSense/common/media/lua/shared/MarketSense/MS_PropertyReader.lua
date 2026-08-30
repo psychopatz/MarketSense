@@ -168,10 +168,12 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local isFoodInstance = false
     local isInventoryItemInstance = false
     local isLiteratureInstance = false
+    local isDrainableInstance = false
     if instance and type(instanceof) == "function" then
         isFoodInstance        = instanceof(instance, "Food") == true
         isInventoryItemInstance = instanceof(instance, "InventoryItem") == true
         isLiteratureInstance  = instanceof(instance, "Literature") == true
+        isDrainableInstance   = instanceof(instance, "DrainableComboItem") == true
     end
 
     local description = preferString(instance, scriptItem, { "getDescription", "getTooltip" }, "")
@@ -215,6 +217,27 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local conditionRatio = nil
     if conditionMax > 0 then
         conditionRatio = math.max(0, math.min(1, currentCondition / conditionMax))
+    end
+    local conditionLowerChance = readNumber(instance, "getConditionLowerChance")
+    if conditionLowerChance == nil then
+        conditionLowerChance = readNumber(scriptItem, "getConditionLowerChance")
+    end
+    if conditionLowerChance ~= nil then
+        conditionLowerChance = math.max(0, conditionLowerChance)
+    end
+    local useDelta = math.max(0, preferNumber(instance, scriptItem, "getUseDelta", 0))
+    local maxUses = nil
+    local currentUsesFloat = nil
+    local weightEmpty = nil
+    if isDrainableInstance then
+        maxUses = readNumber(instance, "getMaxUses")
+        currentUsesFloat = readNumber(instance, "getCurrentUsesFloat")
+        weightEmpty = readNumber(instance, "getWeightEmpty")
+        if maxUses ~= nil then maxUses = math.max(0, maxUses) end
+        if currentUsesFloat ~= nil then
+            currentUsesFloat = math.max(0, math.min(1, currentUsesFloat))
+        end
+        if weightEmpty ~= nil then weightEmpty = math.max(0, weightEmpty) end
     end
     local hitChance = math.max(0, preferNumber(instance, scriptItem, "getHitChance", 0))
     local aimingTime = math.max(0, preferNumber(instance, scriptItem, "getAimingTime", 0))
@@ -359,6 +382,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         conditionMax = conditionMax,
         condition = currentCondition,
         conditionRatio = conditionRatio,
+        conditionLowerChance = conditionLowerChance,
         hasRuntimeState = hasRuntimeState,
         hasRuntimeCondition = hasRuntimeCondition,
         hitChance = hitChance,
@@ -366,7 +390,11 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         -- Kept for consumers of the old field. It now means hit chance only;
         -- aiming time is exposed separately instead of being conflated with it.
         reliability = hitChance,
-        useDelta = math.max(0, preferNumber(instance, scriptItem, "getUseDelta", 0)),
+        useDelta = useDelta,
+        maxUses = maxUses,
+        currentUsesFloat = currentUsesFloat,
+        remainingUsesRatio = currentUsesFloat,
+        weightEmpty = weightEmpty,
         capacity = math.max(0, preferNumber(instance, scriptItem, "getCapacity", 0)),
         weightReduction = math.max(0, preferNumber(instance, scriptItem, "getWeightReduction", 0)),
         biteDefense = math.max(0, preferNumber(instance, scriptItem, "getBiteDefense", 0)),
@@ -443,6 +471,7 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         hasWorldStaticModel = Core.safeString(scriptItem, "getWorldStaticModel", "") ~= "",
         isCookable = Core.safeBoolean(scriptItem, "isCookable", false),
         isDrainable = Core.safeBoolean(scriptItem, "isDrainable", false),
+        isDrainableInstance = isDrainableInstance,
         canStoreWater = Core.safeBoolean(scriptItem, "CanStoreWater", false),
         isDung = isDung,
         hasOpenSound = openSound ~= "", hasCloseSound = closeSound ~= "",

@@ -2,6 +2,7 @@ local T = require "tests/support/test"
 T.addPackagePaths()
 
 local Resolver = assert(require "MarketSense/Pricing/MS_YieldResolver")
+local ToolRecipeDemand = assert(require "MarketSense/Pricing/MS_ToolRecipeDemand")
 
 -- PZ exposes several Java List/Set values through collection-shaped bridge
 -- objects rather than plain Lua arrays.  This fixture keeps the payload out
@@ -22,14 +23,21 @@ local function item(fullType)
     return value
 end
 
-local function input(possible, amount, originalLine)
+local function input(possible, amount, originalLine, mode, tool)
     local value = {
         possible = javaList(possible), amount = amount or 1,
         line = originalLine or "",
+        mode = mode or "use", tool = tool == true,
     }
     function value:getPossibleInputItems() return self.possible end
     function value:getAmount() return self.amount end
+    function value:getMaxAmount() return self.amount end
     function value:getOriginalLine() return self.line end
+    function value:isKeep() return self.mode == "keep" end
+    function value:isDestroy() return self.mode == "destroy" end
+    function value:isTool() return self.tool end
+    function value:isToolLeft() return false end
+    function value:isToolRight() return false end
     return value
 end
 
@@ -73,6 +81,7 @@ local beerPack = item("Base.BeerPack")
 local beerCanPack = item("Base.BeerCanPack")
 local ambiguousBox = item("Base.AmbiguousBox")
 local unknownBox = item("Base.UnknownBox")
+local hammer = item("Base.Hammer")
 
 local beerMapper = mapper({
     [beerBottle] = javaList({ beerPack }),
@@ -93,6 +102,11 @@ local recipes = {
     recipe("OpenBoxOne", { input({ ambiguousBox }) }, { output({ egg }, 1) }),
     recipe("OpenBoxTwo", { input({ ambiguousBox }) }, { output({ beerCan }, 1) }),
     recipe("OpenUnknownBox", { input({ unknownBox }) }, { output({}) }),
+    recipe(
+        "UseHammer",
+        { input({ hammer }, 2, "item 2 tags[base:hammer] mode:keep flags[MayDegradeLight]", "keep") },
+        { output({ egg }, 1) }
+    ),
 }
 
 _G.getScriptManager = function()
@@ -141,5 +155,18 @@ T.equal(explicitResolution.status, "resolved",
     "explicit opener resolves outside the global recipe index")
 T.equal(explicitResolution.outputs[1].quantity, 6,
     "explicit opener retains mapped yield quantity")
+
+_G.getScriptManager = function()
+    return { getAllCraftRecipes = function() return javaList(recipes) end }
+end
+ToolRecipeDemand.clear()
+local toolDemand = ToolRecipeDemand.resolve({ fullType = hammer:getFullName() })
+T.equal(toolDemand.status, "resolved", "runtime tool recipe demand resolves")
+T.equal(toolDemand.reusableRecipeCount, 1,
+    "runtime tool demand counts reusable recipes")
+T.equal(toolDemand.reusableInputAmount, 2,
+    "runtime tool demand uses the recipe input amount")
+T.equal(toolDemand.recipes[1].selectorKind, "tags",
+    "runtime tool demand preserves tag selector evidence")
 
 T.finish("marketsense_yield_resolver_smoke")

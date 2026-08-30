@@ -49,6 +49,7 @@ def bridge_source(
     definitions: list[ItemDefinition],
     sandbox_options: dict[str, int | float] | None = None,
     yield_recipes: dict[str, list[dict[str, Any]]] | None = None,
+    tool_recipe_usage: dict[str, list[dict[str, Any]]] | None = None,
     emitted_types: set[str] | None = None,
 ) -> str:
     specs = []
@@ -75,7 +76,8 @@ def bridge_source(
         and math.isfinite(float(value))
     }
     return render_bridge(
-        lua_value(specs), lua_value(safe_sandbox), lua_value(yield_recipes or {})
+        lua_value(specs), lua_value(safe_sandbox), lua_value(yield_recipes or {}),
+        lua_value(tool_recipe_usage or {})
     )
 
 
@@ -106,10 +108,11 @@ def run_lua_result(
     definitions: list[ItemDefinition],
     sandbox_options: dict[str, int | float] | None = None,
     yield_recipes: dict[str, list[dict[str, Any]]] | None = None,
+    tool_recipe_usage: dict[str, list[dict[str, Any]]] | None = None,
     emitted_types: set[str] | None = None,
 ) -> BridgeResult:
     bridge = bridge_source(
-        definitions, sandbox_options, yield_recipes, emitted_types
+        definitions, sandbox_options, yield_recipes, tool_recipe_usage, emitted_types
     )
     with tempfile.TemporaryDirectory(prefix="marketsense-offline-") as temp_dir:
         bridge_path = Path(temp_dir) / "bridge.lua"
@@ -152,10 +155,12 @@ def run_lua(
     definitions: list[ItemDefinition],
     sandbox_options: dict[str, int | float] | None = None,
     yield_recipes: dict[str, list[dict[str, Any]]] | None = None,
+    tool_recipe_usage: dict[str, list[dict[str, Any]]] | None = None,
     emitted_types: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Backward-compatible row-only wrapper around the metadata-aware bridge."""
 
     return run_lua_result(
-        lua, definitions, sandbox_options, yield_recipes, emitted_types
+        lua, definitions, sandbox_options, yield_recipes, tool_recipe_usage,
+        emitted_types
     ).rows

@@ -2,6 +2,9 @@ require "MarketSense/MS_Stock"
 require "MarketSense/Pricing/MS_FluidPricing"
 require "MarketSense/Pricing/MS_FoodPricing"
 require "MarketSense/Pricing/MS_YieldResolver"
+require "MarketSense/Pricing/MS_ContainerPricing"
+require "MarketSense/Pricing/MS_ToolRecipeDemand"
+require "MarketSense/Pricing/MS_ToolPricing"
 
 MarketSense = MarketSense or {}
 MarketSense.Pricing = MarketSense.Pricing or {}
@@ -14,6 +17,8 @@ local Config   = MarketSense.ItemRuntimeConfig
 local FluidPricing = MarketSense.FluidPricing
 local FoodPricing = MarketSense.FoodPricing
 local YieldResolver = MarketSense.YieldResolver
+local ContainerPricing = MarketSense.ContainerPricing
+local ToolPricing = MarketSense.ToolPricing
 
 local CATEGORY_BASE_SCORES = {
     Medical = 18, Weapon = 18, Tool = 14,
@@ -64,6 +69,10 @@ local function isClothingCategory(category)
     return category == "Clothing"
 end
 
+local function isContainerCategory(category)
+    return category == "Container"
+end
+
 local function clampAndRound(value)
     return Core.round(Core.priceClamp(value))
 end
@@ -89,15 +98,16 @@ function Pricing.calculateRawScore(ctx, details)
         if hasTag(details, "Bandage")   then score = score + 8  end
 
     elseif category == "Weapon" then
-        -- The old weapon score mixed raw engine values with flat bonuses. It
-        -- is intentionally retired until the evidence-based weapon model is
-        -- implemented. Keep a visible neutral result so the catalog cannot
-        -- mistake a generic fallback for a completed weapon valuation.
+        -- Some native weapons are also reusable crafting tools (for example,
+        -- Base.Hammer). Keep the weapon root/category, but bridge verified
+        -- reusable recipe utility into the pending weapon score so those
+        -- items are not priced like combat-only or unused weapons.
         local weaponEvidence = details.weaponEvidence or {}
+        local recipeDemand, recipeContribution = ToolPricing.recipeEvidence(ctx)
         details.priceHeuristic = {
             model = "weapon_v2_pending",
             status = "pending",
-            reason = "Legacy weapon scoring removed; awaiting calibrated weapon anchors.",
+            reason = "Weapon scoring is pending; verified reusable tool recipes are bridged.",
             mechanicalClass = weaponEvidence.mechanicalClass or details.primary or "Weapon",
             mechanicalFamily = weaponEvidence.mechanicalFamily,
             marketRole = weaponEvidence.marketRole,
@@ -108,6 +118,10 @@ function Pricing.calculateRawScore(ctx, details)
             hasRuntimeState = ctx.hasRuntimeState == true,
             hasRuntimeCondition = ctx.hasRuntimeCondition == true,
             twoHanded = ctx.isTwoHandWeapon == true,
+            recipeDemand = recipeDemand,
+            recipeDemandScore = recipeDemand.recipeDemandScore,
+            recipeCriticality = recipeDemand.criticality,
+            recipeContribution = recipeContribution,
             staticMetricsAvailable = {
                 minDamage = ctx.minDamage ~= nil,
                 maxDamage = ctx.maxDamage ~= nil,
@@ -116,12 +130,14 @@ function Pricing.calculateRawScore(ctx, details)
                 conditionMax = ctx.conditionMax ~= nil,
                 weight = ctx.weight ~= nil,
                 twoHandWeapon = ctx.isTwoHandWeapon ~= nil,
+                recipeDemand = recipeDemand.status == "resolved",
             },
             plannedPositiveAnchors = {
                 "effective damage throughput",
                 "reach and target coverage",
                 "reliability and durability",
                 "ammunition compatibility or yield",
+                "reusable crafting and repair recipe demand for tool hybrids",
             },
             plannedNegativeAnchors = {
                 "weight relative to performance",
@@ -130,7 +146,7 @@ function Pricing.calculateRawScore(ctx, details)
                 "scarcity or compatibility gaps",
             },
         }
-        score = base
+        score = base + recipeContribution
 
     elseif category == "Literature" then
         -- The old literature score was a collection of flat root/subtype
@@ -183,17 +199,11 @@ function Pricing.calculateRawScore(ctx, details)
         score = base
 
     elseif category == "Tool" then
-        local durabilityWeight = (ctx.conditionMax or 0) * (ctx.useDelta and ctx.useDelta > 0 and 18 or 8)
-        score = base + durabilityWeight - weightPenalty
-        if hasTag(details, "ToolCraft")  then score = score + (cc.crafting_bonus or 20) end
-        if hasTag(details, "ToolFarming") then score = score + (cc.farming_bonus  or 12) end
-        if hasTag(details, "Cooking")    then score = score + 10 end
+        score = ToolPricing.calculate(ctx, details)
 
-    elseif category == "Container" then
+    elseif isContainerCategory(category) then
+        details.priceHeuristic = ContainerPricing.buildPendingHeuristic(ctx, details)
         score = base
-            + ((ctx.capacity      or 0) * (cc.capacity_weight           or 4))
-            + ((ctx.weightReduction or 0) * (cc.weight_reduction_weight or 0.65))
-            - weightPenalty
 
     elseif isClothingCategory(category) then
         -- The old clothing score stacked raw defense, warmth, wind, and a
@@ -319,6 +329,21 @@ function Pricing.applyBalances(ctx, details, audit)
                 conditionRatio = details.priceHeuristic.conditionRatio,
                 runSpeedModifier = details.priceHeuristic.runSpeedModifier,
                 combatSpeedModifier = details.priceHeuristic.combatSpeedModifier,
+                capacity = details.priceHeuristic.capacity,
+                weightReduction = details.priceHeuristic.weightReduction,
+                contentYieldStatus = details.priceHeuristic.contentYieldStatus,
+                contentYieldOutputCount = details.priceHeuristic.contentYieldOutputCount,
+                conditionLowerChance = details.priceHeuristic.conditionLowerChance,
+                useDelta = details.priceHeuristic.useDelta,
+                maxUses = details.priceHeuristic.maxUses,
+                remainingUsesRatio = details.priceHeuristic.remainingUsesRatio,
+                weightEmpty = details.priceHeuristic.weightEmpty,
+                mechanicType = details.priceHeuristic.mechanicType,
+                familyAnchor = details.priceHeuristic.familyAnchor,
+                recipeDemandScore = details.priceHeuristic.recipeDemandScore,
+                recipeCriticality = details.priceHeuristic.recipeCriticality,
+                recipeContribution = details.priceHeuristic.recipeContribution,
+                recipeDemand = details.priceHeuristic.recipeDemand,
             })
     end
 
@@ -327,7 +352,9 @@ function Pricing.applyBalances(ctx, details, audit)
     if Config.getSandboxTagMultiplier and details.category ~= "Weapon"
         and not isFoodCategory(details.category)
         and not isLiteratureCategory(details.category)
-        and not isClothingCategory(details.category) then
+        and not isClothingCategory(details.category)
+        and not isContainerCategory(details.category)
+        and details.category ~= "Tool" then
         local tags = { details.primary }
         -- Liquid content has its own per-litre anchor.  Do not inherit
         -- generic item descriptor additions (for example Rarity.Common),
@@ -354,7 +381,9 @@ function Pricing.applyBalances(ctx, details, audit)
     if details.category ~= "Liquid" and details.category ~= "Weapon"
         and not isFoodCategory(details.category)
         and not isLiteratureCategory(details.category)
-        and not isClothingCategory(details.category) then
+        and not isClothingCategory(details.category)
+        and not isContainerCategory(details.category)
+        and details.category ~= "Tool" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or details.tags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -367,7 +396,7 @@ function Pricing.applyBalances(ctx, details, audit)
     elseif details.category == "Weapon" then
         addAudit(audit, "weapon v2 pending balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Weapon valuation is intentionally neutral pending calibration.",
+            reason = "Weapon valuation is neutral pending calibration except for verified reusable tool demand.",
         })
     elseif isLiteratureCategory(details.category) then
         addAudit(audit, "literature v2 pending balances", working, working, {
@@ -378,6 +407,16 @@ function Pricing.applyBalances(ctx, details, audit)
         addAudit(audit, "clothing v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Clothing valuation is intentionally neutral pending calibration.",
+        })
+    elseif isContainerCategory(details.category) then
+        addAudit(audit, "container v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Container valuation is intentionally neutral pending calibration.",
+        })
+    elseif details.category == "Tool" then
+        addAudit(audit, "tool v2 balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Tool valuation is usefulness and recipe-demand driven.",
         })
     else
         addAudit(audit, "liquid vessel-neutral balance", working, working, {
@@ -501,7 +540,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     local itemEntry = applyTagOverrideIfPresent(ctx, details)
     local working
     if details.category == "Weapon" or isLiteratureCategory(details.category)
-        or isClothingCategory(details.category) then
+        or isClothingCategory(details.category) or isContainerCategory(details.category)
+        or details.category == "Tool" then
         -- A cached pre-v2 detail may still contain a retired category score.
         -- Rebuild the neutral pending score after tag overrides so the cache
         -- cannot preserve legacy category dollars across a catalog refresh.
@@ -519,7 +559,9 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     if Config.getSandboxTagMultiplier and details.category ~= "Weapon"
         and not isFoodCategory(details.category)
         and not isLiteratureCategory(details.category)
-        and not isClothingCategory(details.category) then
+        and not isClothingCategory(details.category)
+        and not isContainerCategory(details.category)
+        and details.category ~= "Tool" then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -535,7 +577,9 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     addAudit(audit, "global mult", beforeSandbox, working)
     if not isFoodCategory(details.category) and details.category ~= "Weapon"
         and not isLiteratureCategory(details.category)
-        and not isClothingCategory(details.category) then
+        and not isClothingCategory(details.category)
+        and not isContainerCategory(details.category)
+        and details.category ~= "Tool" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -554,6 +598,16 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         addAudit(audit, "clothing v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Clothing valuation is intentionally neutral pending calibration.",
+        })
+    elseif isContainerCategory(details.category) then
+        addAudit(audit, "container v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Container valuation is intentionally neutral pending calibration.",
+        })
+    elseif details.category == "Tool" then
+        addAudit(audit, "tool v2 balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Tool valuation is usefulness and recipe-demand driven.",
         })
     else
         addAudit(audit, "food v2 balances", working, working, {

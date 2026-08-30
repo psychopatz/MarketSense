@@ -100,13 +100,17 @@ def print_terminal(
     ]
     if weapon_rows:
         print("WEAPON PRICING STATUS")
-        print("  item | mechanical class | market role | status | price")
+        print("  item | mechanical class | market role | recipes | reusable | demand | status | price")
         for row in sorted(weapon_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
             heuristic = row.get("priceHeuristic") or {}
+            demand = heuristic.get("recipeDemand") or {}
             print(
                 f"  {row.get('fullType', '-'):<36} | "
                 f"{row.get('mechanicalClass', '-'):<18} | "
                 f"{str(heuristic.get('marketRole') or row.get('marketRole') or '-'):<12} | "
+                f"{format_number(demand.get('recipeCount')):>7} | "
+                f"{format_number(demand.get('reusableRecipeCount')):>8} | "
+                f"{format_number(heuristic.get('recipeDemandScore')):>6} | "
                 f"{str(heuristic.get('status') or '-'):<7} | "
                 f"{format_number(row.get('price')):>5}"
             )
@@ -159,6 +163,55 @@ def print_terminal(
             )
         if len(clothing_rows) > top:
             print(f"  ... {len(clothing_rows) - top:,} more clothing rows are in JSON/CSV output")
+        print()
+
+    tool_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") in {
+            "tool_v2"
+        }
+    ]
+    if tool_rows:
+        print("TOOL PRICING STATUS")
+        print("  item | subtype | recipes | reusable | criticality | demand | status | price")
+        for row in sorted(tool_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            demand = heuristic.get("recipeDemand") or {}
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{format_number(demand.get('recipeCount')):>7} | "
+                f"{format_number(demand.get('reusableRecipeCount')):>8} | "
+                f"{str(heuristic.get('recipeCriticality') or '-'):<11} | "
+                f"{format_number(heuristic.get('recipeDemandScore')):>6} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(tool_rows) > top:
+            print(f"  ... {len(tool_rows) - top:,} more tool rows are in JSON/CSV output")
+        print()
+
+    container_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") == "container_v2_pending"
+    ]
+    if container_rows:
+        print("CONTAINER PRICING STATUS")
+        print("  item | subtype | capacity | reduction | weight | content yield | status | price")
+        for row in sorted(container_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{format_number(heuristic.get('capacity')):>8} | "
+                f"{format_number(heuristic.get('weightReduction')):>9} | "
+                f"{format_number(heuristic.get('weight')):>6} | "
+                f"{str(heuristic.get('contentYieldStatus') or '-'):<13} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(container_rows) > top:
+            print(f"  ... {len(container_rows) - top:,} more container rows are in JSON/CSV output")
         print()
 
     liquid_rows = [row for row in rows if row.get("category") == "Liquid"]
