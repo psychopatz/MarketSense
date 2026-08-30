@@ -14,7 +14,6 @@ from .config import (
 from .gui_audits import AuditMixin
 from .gui_controller import ALL_MODS_LABEL, ControllerMixin
 from .gui_items import ItemsMixin
-from .gui_liquid import LiquidPricingMixin
 from .gui_overview import OverviewMixin
 from .gui_sandbox import SandboxMixin
 from .gui_widgets import WidgetMixin
@@ -33,7 +32,6 @@ class MarketSenseGui(
     WidgetMixin,
     OverviewMixin,
     ItemsMixin,
-    LiquidPricingMixin,
     AuditMixin,
     SandboxMixin,
     ControllerMixin,
@@ -347,7 +345,6 @@ class MarketSenseGui(
         self._build_low_confidence()
         self._build_heuristic_gaps()
         self._build_sandbox()
-        self._build_liquid_pricing()
         self._build_mods()
         self.log = scrolledtext.ScrolledText(
             self.notebook, wrap="none", state="disabled"

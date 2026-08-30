@@ -31,12 +31,6 @@ from marketsense_app.lua_rules import (
     set_item_override,
     set_membership_rule,
 )
-from marketsense_app.liquid_pricing import (
-    LiquidPricingCatalog,
-    load_liquid_catalog,
-    render_liquid_overrides,
-    save_liquid_overrides,
-)
 from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
 from marketsense_app.scan_scope import (
@@ -84,52 +78,12 @@ def main() -> int:
     assert len(candidate_definitions([scope_food, scope_weapon], "Weapon")) == 2
     assert len(candidate_definitions([scope_food, scope_weapon], "unknown")) == 2
 
-    liquid_catalog = LiquidPricingCatalog(
-        {
-            "defaultPricePerLiter": 5.0,
-            "liquids": {
-                "Water": {"pricePerLiter": 5.0, "primary": "LiquidWater"},
-            },
-            "primaryDefaults": {"LiquidWater": 5.0},
-        },
-        {},
-        Path("base.lua"),
-        Path("overrides.lua"),
+    liquid_pricing_root = (
+        ROOT / "Contents" / "mods" / "MarketSense" / "common" / "media"
+        / "lua" / "shared" / "MarketSense" / "Pricing"
     )
-    water = next(row for row in liquid_catalog.rows() if row.key == "Water")
-    liquid_catalog.set_price(water, 7.5)
-    assert water.price_per_liter == 7.5 and water.source == "override"
-    rendered_liquids = render_liquid_overrides(liquid_catalog.override_payload())
-    assert '["Water"]' in rendered_liquids and '"pricePerLiter"] = 7.5' in rendered_liquids
-    liquid_catalog.clear_price(water)
-    assert water.price_per_liter == 5.0 and not water.overridden
-
-    with TemporaryDirectory(prefix="marketsense-liquid-smoke-") as liquid_temp:
-        liquid_root = Path(liquid_temp)
-        liquid_base = liquid_root / "base.lua"
-        liquid_override = liquid_root / "overrides.lua"
-        liquid_base.write_text(
-            "return { defaultPricePerLiter = 5, "
-            "liquids = { Water = { pricePerLiter = 5, primary = 'LiquidWater' } }, "
-            "primaryDefaults = { LiquidWater = 5 } }\n",
-            encoding="utf-8",
-        )
-        round_trip = load_liquid_catalog(
-            "lua", liquid_base, liquid_override
-        )
-        round_trip_water = next(
-            row for row in round_trip.rows() if row.key == "Water"
-        )
-        round_trip.set_price(round_trip_water, 8.25)
-        save_liquid_overrides(round_trip, liquid_override)
-        loaded_override = load_liquid_catalog(
-            "lua", liquid_base, liquid_override
-        )
-        loaded_water = next(
-            row for row in loaded_override.rows() if row.key == "Water"
-        )
-        assert loaded_water.price_per_liter == 8.25
-        assert loaded_water.source == "override"
+    assert not (liquid_pricing_root / "MS_FluidPricing.lua").exists()
+    assert not (liquid_pricing_root / "MS_LiquidPricing_Data.lua").exists()
 
     with TemporaryDirectory(prefix="marketsense-tool-smoke-") as temp_dir:
         root = Path(temp_dir)

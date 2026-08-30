@@ -297,18 +297,21 @@ def print_terminal(
 
     liquid_rows = [row for row in rows if row.get("category") == "Liquid"]
     if liquid_rows:
-        print("LIQUID CONTENT PRICE SAMPLE")
-        print("  item | fluid | litres | $/litre | content value | final price | source")
+        print("LIQUID PRICING STATUS")
+        print("  item | subtype | fluid | amount | primary | ratio | mixture | yield | status | price")
         for row in sorted(liquid_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
             heuristic = row.get("priceHeuristic") or {}
             print(
                 f"  {row.get('fullType', '-'):<36} | "
-                f"{str(heuristic.get('fluidType') or row.get('fluidType') or '-'):<16} | "
-                f"{format_number(heuristic.get('volume')):>6} | "
-                f"{format_number(heuristic.get('pricePerLiter')):>8} | "
-                f"{format_number(heuristic.get('contentValue')):>13} | "
-                f"{format_number(row.get('price')):>11} | "
-                f"{heuristic.get('pricingSource', '-')}"
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{str(heuristic.get('fluidTypeString') or heuristic.get('fluidType') or '-'):<16} | "
+                f"{format_number(heuristic.get('fluidAmount')):>6} | "
+                f"{format_number(heuristic.get('fluidPrimaryAmount')):>7} | "
+                f"{format_number(heuristic.get('fluidFilledRatio')):>5} | "
+                f"{str('yes' if heuristic.get('fluidIsMixture') else 'no'):<7} | "
+                f"{str(heuristic.get('yieldStatus') or 'not_detected'):<12} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
             )
         if len(liquid_rows) > top:
             print(f"  ... {len(liquid_rows) - top:,} more liquid rows are in JSON/CSV output")

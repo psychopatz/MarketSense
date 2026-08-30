@@ -115,6 +115,22 @@ local literatureHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(literatureHeuristicText,
     "Pricing: pending | subtype=Literature.SkillBook | skill=Carpentry | level=3 | recipes=2 | read=normal",
     "catalog displays pending literature heuristic metadata")
+local liquidHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "liquid_v2_pending",
+        status = "pending",
+        subtype = "LiquidWater",
+        fluidTypeString = "Water",
+        fluidAmount = 2,
+        fluidPrimaryAmount = 2,
+        fluidFilledRatio = 1,
+        fluidIsMixture = false,
+        yieldStatus = "not_detected",
+    },
+})
+T.equal(liquidHeuristicText,
+    "Pricing: pending | subtype=LiquidWater | fluid=Water | amount=2 | primary=2 | ratio=1.00 | mixture=no | yield=not_detected",
+    "catalog displays pending liquid heuristic evidence")
 local clothingHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
         model = "clothing_v2_pending",

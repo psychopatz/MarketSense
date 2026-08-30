@@ -87,11 +87,13 @@ multipliers to `1.0`, and contains repair values for invalid negative literature
 additions. `Reset recommended` writes those catalog values to the sandbox JSON
 and automatically applies them with a rescan; it does not modify generated Lua.
 
-The separate `Liquid pricing` tab edits actual fluid content anchors in dollars
-per litre. It is independent from Container/Liquid category sandbox settings:
-the editor writes only the game-readable
-`Pricing/MS_LiquidPricing_Overrides_Data.lua` file, while shipped anchors stay
-in `Pricing/MS_LiquidPricing_Data.lua`.
+Liquid rows are currently shown through the normal item evidence and heuristic
+diagnostics. The retired per-litre table/editor is intentionally absent while
+the new utility model is calibrated; this prevents an unverified fluid anchor
+from being mistaken for a market price. The pending model records measured
+amount, capacity, primary amount, fill ratio, mixture state, fluid identity and
+categories, player-effect evidence, vessel burden, and deterministic yield
+evidence.
 
 The Diagnostics tab shows a timestamped, bounded scan log: cache lookup,
 Workshop discovery, vanilla discovery, availability indexing, Lua evaluation,

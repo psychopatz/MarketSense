@@ -72,8 +72,6 @@ tools/
     gui_audits.py          # review, runtime verification, and gap views
     runtime_comparison.py  # MS_Items parser and harness/runtime comparison
     gui_sandbox.py         # sandbox pricing editor
-    gui_liquid.py          # dedicated per-litre liquid content editor
-    liquid_pricing.py      # Lua-backed liquid anchors and sparse overrides
     gui_controller.py      # settings, discovery, scan lifecycle, exports
     cache.py               # invalidation-aware persistent result cache
     scan_scope.py          # conservative bounded category-audit prefilters
@@ -145,8 +143,8 @@ The emulator deliberately exposes the same Lua-facing method names used by the
 mod (`getItemType`, `getTooltip`, `getDescription`, `getTags`, item stats,
 `getAllItems`, `ScriptManager:FindItem`, and the fluid-container/primary-fluid
 methods used by the Liquid taxonomy). Filled fluid rows also expose the
-dedicated per-litre content pricing heuristic; vessel capacity/name is not
-used as an item-price anchor. It does not claim to reproduce PZ
+pending liquid utility heuristic; vessel capacity/name is not used as an
+item-price anchor. It does not claim to reproduce PZ
 mod load order or live Java inventory state; those remain final in-game checks.
 `--self-test` runs deterministic synthetic food, medical, weapon, and container
 fixtures through the real Lua evaluator and fails if categories, descriptions,
@@ -183,15 +181,12 @@ recommendations. Those recommendations are editable in
 JSON and triggers a rescan, allowing invalid price defaults to self-heal in the
 offline harness without editing generated Lua.
 
-The separate `Liquid pricing` tab edits actual fluid content, not the vessel or
-the category sandbox values. It shows exact fluid anchors (`Water`, `Petrol`,
-`Beer`, and Workshop fluid names), family fallbacks (`LiquidWater`,
-`LiquidFuel`, and so on), and the unknown fallback. Values are dollars per
-litre. `Apply override` writes only the sparse, game-readable
-`Contents/mods/MarketSense/common/media/lua/shared/MarketSense/Pricing/MS_LiquidPricing_Overrides_Data.lua`
-file; the shipped defaults remain in `MS_LiquidPricing_Data.lua`. `Use base
-default` and `Reset all` remove local overrides, while `Apply & rescan` runs the
-real Market Sense Lua evaluator using the edited per-litre values.
+Liquid rows are included in the normal Items, heuristic-gap, diagnostics, and
+JSON/CSV evidence views. The old per-litre editor and data table were removed
+because they could not account for player utility, harmful state, mixture
+uncertainty, vessel burden, or deterministic package yields. Liquid rows now
+report the pending `liquid_v2_pending` evidence model until those anchors are
+calibrated.
 GUI paths and scan options are saved to
 `tools/.config/inspector-settings.json`, with `--settings-config PATH` available
 for another location; the selected sandbox JSON path is saved there too. The GUI exposes equivalent cache controls and a Clear

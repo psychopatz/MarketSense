@@ -1,44 +1,68 @@
 local T = require "tests/support/test"
 T.addPackagePaths()
 
--- Simulate the file that the Python editor writes without touching the real
--- working tree.  The production module still loads this through pcall(require)
--- so a missing override file remains a valid installation state.
-package.preload["MarketSense/Pricing/MS_LiquidPricing_Overrides_Data"] = function()
-    return {
-        liquids = {
-            Water = { pricePerLiter = 7.5 },
-        },
-        primaryDefaults = {
-            LiquidFuel = 9.0,
-        },
-        defaultPricePerLiter = 6.0,
-    }
-end
-
 require "MarketSense/MS_Stock"
-local fluidPricing = assert(require "MarketSense/Pricing/MS_FluidPricing")
-local water = fluidPricing.getDefinition({ fluidType = "Water" }, { primary = "LiquidWater" })
-T.equal(water.pricePerLiter, 7.5, "exact liquid override")
-T.equal(water.source, "override", "exact liquid override source")
+local pricing = assert(require "MarketSense/MS_Pricing")
 
-local fuel = fluidPricing.getDefinition({ fluidType = "NewFuel" }, { primary = "LiquidFuel" })
-T.equal(fuel.pricePerLiter, 9.0, "family liquid override")
-T.equal(fuel.source, "override", "family liquid override source")
-
-local unknown = fluidPricing.getDefinition({ fluidType = "NewUnknown" }, { primary = "NoSuchFamily" })
-T.equal(unknown.pricePerLiter, 6.0, "global liquid fallback override")
-T.equal(unknown.source, "default_override", "global fallback override source")
-
-local details = {}
-local value = fluidPricing.calculate({
+local context = {
+    fullType = "Base.HarnessWaterBottle",
     fluidType = "Water",
+    fluidTypeString = "Water",
+    fluidCategory = "Beverage",
+    fluidCategories = { "Beverage", "Liquid" },
+    fluidAmount = 2,
     fluidCapacity = 2,
     fluidPrimaryAmount = 2,
-}, details)
-T.equal(value, 15, "exact liquid override calculates by litre")
-T.equal(details.priceHeuristic.pricePerLiter, 7.5, "price audit exposes override")
-T.equal(details.priceHeuristic.volume, 2, "price audit exposes litres")
-T.truthy(details.priceHeuristic.vesselIndependent, "price audit is vessel independent")
+    fluidFilledRatio = 1,
+    fluidIsEmpty = false,
+    fluidIsMixture = false,
+    fluidContainerName = "Bottle",
+    isFluidContainer = true,
+    isActualLiquid = true,
+    weight = 0.4,
+    thirstChange = -0.3,
+    isPoison = false,
+}
+local details = {
+    category = "Liquid",
+    primary = "LiquidWater",
+    tags = { "LiquidWater" },
+    expandedTags = { "LiquidWater", "Liquid" },
+    classificationDetails = { source = "fluid_exact", tag = "LiquidWater" },
+    rawScore = 0,
+}
+
+local score = pricing.calculateRawScore(context, details)
+T.equal(score, 5, "pending liquid pricing uses neutral anchor")
+T.equal(details.priceHeuristic.model, "liquid_v2_pending",
+    "liquid pricing reset is exposed")
+T.equal(details.priceHeuristic.status, "pending",
+    "liquid pricing reset is marked pending")
+T.equal(details.priceHeuristic.fluidPrimaryAmount, 2,
+    "liquid heuristic exposes primary amount")
+T.equal(details.priceHeuristic.fluidFilledRatio, 1,
+    "liquid heuristic exposes fill ratio")
+T.falsy(details.priceHeuristic.fluidIsMixture,
+    "single-fluid heuristic is not marked as mixture")
+T.falsy(details.priceHeuristic.pricePerLiter,
+    "legacy per-litre anchor is removed")
+T.falsy(details.priceHeuristic.contentValue,
+    "legacy content value is removed")
+
+details.rawScore = score
+T.equal(pricing.applyBalances(context, details), 5,
+    "pending liquid pricing ignores legacy tag additions")
+
+local stale = pricing.applyOverridesOnly(context, {
+    fullType = context.fullType,
+    category = "Liquid",
+    primary = "LiquidWater",
+    tags = { "LiquidWater" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(stale.priceHeuristic.model, "liquid_v2_pending",
+    "cached legacy liquid score is rebuilt")
+T.truthy(stale.price < 999, "cached legacy liquid dollars are discarded")
 
 T.finish("marketsense_liquid_pricing_smoke")

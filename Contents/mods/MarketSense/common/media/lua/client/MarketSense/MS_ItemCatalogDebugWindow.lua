@@ -294,6 +294,22 @@ local function priceHeuristicSummary(details)
             tostring(heuristic.readType or "-"))
     end
 
+    if model == "liquid_v2_pending" then
+        local fluid = heuristic.fluidTypeString or heuristic.fluidType or "-"
+        local mixture = heuristic.fluidIsMixture and "yes" or "no"
+        return string.format(
+            "Pricing: %s | subtype=%s | fluid=%s | amount=%s | primary=%s | ratio=%s | mixture=%s | yield=%s",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "LiquidUnknown"),
+            tostring(fluid),
+            tostring(heuristic.fluidAmount ~= nil and heuristic.fluidAmount or "-"),
+            tostring(heuristic.fluidPrimaryAmount ~= nil
+                and heuristic.fluidPrimaryAmount or "-"),
+            demandText(heuristic.fluidFilledRatio),
+            mixture,
+            tostring(heuristic.yieldStatus or "not_detected"))
+    end
+
     if model == "weapon_v2_pending" then
         local demand = heuristic.recipeDemand or {}
         return string.format(

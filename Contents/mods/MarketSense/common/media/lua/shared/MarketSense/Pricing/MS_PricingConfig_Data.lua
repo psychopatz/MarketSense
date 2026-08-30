@@ -117,6 +117,9 @@ return {
     ["building_pricing"] = {
         ["model"] = "building_v2_pending",
     },
+    ["liquid_pricing"] = {
+        ["model"] = "liquid_v2_pending",
+    },
     ["rarity_additions"] = {
         ["Common"] = 1.0,
         ["Uncommon"] = 1.18,
@@ -338,11 +341,6 @@ return {
             ["stock_min_ratio"] = 0.16,
         },
         ["Liquid"] = {
-            ["price_floor"] = 1.0,
-            ["price_ceiling"] = 1e+30,
-            -- Per-litre content anchors live in MS_LiquidPricing_Data.lua.
-            ["base"] = 0.0,
-            ["weight_penalty"] = 0.5,
             ["stock_multiplier"] = 1.0,
             ["stock_min_ratio"] = 0.15,
         },

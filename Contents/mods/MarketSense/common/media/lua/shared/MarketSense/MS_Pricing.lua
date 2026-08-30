@@ -1,5 +1,5 @@
 require "MarketSense/MS_Stock"
-require "MarketSense/Pricing/MS_FluidPricing"
+require "MarketSense/Pricing/MS_LiquidPricing"
 require "MarketSense/Pricing/MS_FoodPricing"
 require "MarketSense/Pricing/MS_YieldResolver"
 require "MarketSense/Pricing/MS_ContainerPricing"
@@ -17,7 +17,7 @@ local Core     = MarketSense.Core
 local TagUtils = MarketSense.TagUtils
 local DB       = MarketSense.HeuristicsDB
 local Config   = MarketSense.ItemRuntimeConfig
-local FluidPricing = MarketSense.FluidPricing
+local LiquidPricing = MarketSense.LiquidPricing
 local FoodPricing = MarketSense.FoodPricing
 local YieldResolver = MarketSense.YieldResolver
 local ContainerPricing = MarketSense.ContainerPricing
@@ -29,7 +29,7 @@ local ToolPricing = MarketSense.ToolPricing
 local CATEGORY_BASE_SCORES = {
     Medical = 18, Weapon = 18, Tool = 14,
     Container = 14, Clothing = 4, Electronics = 14, Resource = 7,
-    Building = 5, Liquid = 0, Literature = 5, Misc = 2,
+    Building = 5, Liquid = 5, Literature = 5, Misc = 2,
 }
 
 local function addAudit(audit, label, before, after, extra)
@@ -94,9 +94,10 @@ function Pricing.calculateRawScore(ctx, details)
         score = FoodPricing.calculate(ctx, details)
 
     elseif category == "Liquid" then
-        -- The vessel is deliberately excluded.  Only the primary fluid's
-        -- measured volume contributes to the content value.
-        score = FluidPricing.calculate(ctx, details)
+        -- Retain the complete fluid evidence surface while the new utility
+        -- anchors are calibrated.  Vessel capacity is not liquid value.
+        details.priceHeuristic = LiquidPricing.buildPendingHeuristic(ctx, details)
+        score = base
 
     elseif category == "Medical" then
         -- The old medical score stacked a generic weight penalty with flat
@@ -322,9 +323,21 @@ function Pricing.applyBalances(ctx, details, audit)
                 learnedRecipeCount = details.priceHeuristic.learnedRecipeCount,
                 skillLevel = details.priceHeuristic.skillLevel,
                 readType = details.priceHeuristic.readType,
-                pricePerLiter = details.priceHeuristic.pricePerLiter,
-                volume = details.priceHeuristic.volume,
-                contentValue = details.priceHeuristic.contentValue,
+                fluidType = details.priceHeuristic.fluidType,
+                fluidTypeString = details.priceHeuristic.fluidTypeString,
+                fluidCategory = details.priceHeuristic.fluidCategory,
+                fluidCategories = details.priceHeuristic.fluidCategories,
+                fluidAmount = details.priceHeuristic.fluidAmount,
+                fluidCapacity = details.priceHeuristic.fluidCapacity,
+                fluidPrimaryAmount = details.priceHeuristic.fluidPrimaryAmount,
+                fluidFilledRatio = details.priceHeuristic.fluidFilledRatio,
+                fluidIsEmpty = details.priceHeuristic.fluidIsEmpty,
+                fluidIsMixture = details.priceHeuristic.fluidIsMixture,
+                yieldStatus = details.priceHeuristic.yieldStatus,
+                yieldRecipe = details.priceHeuristic.yieldRecipe,
+                yieldOutputCount = details.priceHeuristic.yieldOutputCount,
+                yieldOutputQuantity = details.priceHeuristic.yieldOutputQuantity,
+                yieldOutputs = details.priceHeuristic.yieldOutputs,
                 bodyLocation = details.priceHeuristic.bodyLocation,
                 bodyLocationToken = details.priceHeuristic.bodyLocationToken,
                 biteDefense = details.priceHeuristic.biteDefense,
@@ -383,11 +396,6 @@ function Pricing.applyBalances(ctx, details, audit)
                 replaceOnUse = details.priceHeuristic.replaceOnUse,
                 replaceOnUseOn = details.priceHeuristic.replaceOnUseOn,
                 isDisappearOnUse = details.priceHeuristic.isDisappearOnUse,
-                yieldStatus = details.priceHeuristic.yieldStatus,
-                yieldRecipe = details.priceHeuristic.yieldRecipe,
-                yieldOutputCount = details.priceHeuristic.yieldOutputCount,
-                yieldOutputQuantity = details.priceHeuristic.yieldOutputQuantity,
-                yieldOutputs = details.priceHeuristic.yieldOutputs,
                 worldObjectClass = details.priceHeuristic.worldObjectClass,
                 worldContainerCapacity = details.priceHeuristic.worldContainerCapacity,
                 worldSurface = details.priceHeuristic.worldSurface,
@@ -404,19 +412,12 @@ function Pricing.applyBalances(ctx, details, audit)
         and details.category ~= "Tool"
         and details.category ~= "Electronics"
         and details.category ~= "Medical"
-        and details.category ~= "Building" then
+        and details.category ~= "Building"
+        and details.category ~= "Liquid" then
         local tags = { details.primary }
-        -- Liquid content has its own per-litre anchor.  Do not inherit
-        -- generic item descriptor additions (for example Rarity.Common),
-        -- because those additions describe the vessel/item and would turn
-        -- Water at $5/L into a different price merely because it is in a
-        -- bottle or can.  A future Liquid.* sandbox override can still use
-        -- the primary liquid token above.
-        if details.category ~= "Liquid" then
-            for _, t in ipairs(details.tags or {}) do
-                if string.find(t, ".", 1, true) then
-                    tags[#tags + 1] = t
-                end
+        for _, t in ipairs(details.tags or {}) do
+            if string.find(t, ".", 1, true) then
+                tags[#tags + 1] = t
             end
         end
         sandboxAdd = sandboxAdd + Config.getSandboxTagMultiplier("Price", tags)
@@ -485,11 +486,14 @@ function Pricing.applyBalances(ctx, details, audit)
             legacyTagAdditions = false,
             reason = "Building valuation is neutral pending calibrated function anchors.",
         })
+    elseif details.category == "Liquid" then
+        addAudit(audit, "liquid v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Liquid valuation is neutral pending calibrated utility anchors.",
+        })
     else
-        addAudit(audit, "liquid vessel-neutral balance", working, working, {
-            fluidType = details.priceHeuristic and details.priceHeuristic.fluidType,
-            pricePerLiter = details.priceHeuristic and details.priceHeuristic.pricePerLiter,
-            volume = details.priceHeuristic and details.priceHeuristic.volume,
+        addAudit(audit, "generic balances", working, working, {
+            reason = "Generic category/tag balances applied.",
         })
     end
     working = applyAdjustment(working, DB.getModule(ctx.moduleName), "module:" .. tostring(ctx.moduleName), audit)
@@ -609,7 +613,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     if details.category == "Weapon" or isLiteratureCategory(details.category)
         or isClothingCategory(details.category) or isContainerCategory(details.category)
         or details.category == "Tool" or details.category == "Electronics"
-        or details.category == "Medical" or details.category == "Building" then
+        or details.category == "Medical" or details.category == "Building"
+        or details.category == "Liquid" then
         -- A cached pre-v2 detail may still contain a retired category score.
         -- Rebuild the neutral pending score after tag overrides so the cache
         -- cannot preserve legacy category dollars across a catalog refresh.
@@ -632,7 +637,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and details.category ~= "Tool"
         and details.category ~= "Electronics"
         and details.category ~= "Medical"
-        and details.category ~= "Building" then
+        and details.category ~= "Building"
+        and details.category ~= "Liquid" then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -698,10 +704,15 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
             legacyTagAdditions = false,
             reason = "Building valuation is neutral pending calibrated function anchors.",
         })
-    else
-        addAudit(audit, "food v2 balances", working, working, {
+    elseif details.category == "Liquid" then
+        addAudit(audit, "liquid v2 pending balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Food valuation is feature/profile driven.",
+            reason = "Liquid valuation is neutral pending calibrated utility anchors.",
+        })
+    else
+        addAudit(audit, "generic balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Generic category/tag balances applied.",
         })
     end
     working = applyAdjustment(working, DB.getModule(ctx.moduleName), "module:" .. tostring(ctx.moduleName), audit)

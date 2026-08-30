@@ -1171,11 +1171,13 @@ def self_test(lua: str) -> tuple[bool, list[dict[str, Any]]]:
         and abs(float(water_context.get("fluidAmount", 0)) - 1.0) < 1e-9
         and abs(float(water_context.get("fluidCapacity", 0)) - 1.0) < 1e-9
         and water.get("price") == 5
-        and water_two_liter.get("price") == 10
-        and water_in_can.get("price") == 10
-        and (water_two_liter.get("priceHeuristic") or {}).get("pricePerLiter") == 5
-        and (water_two_liter.get("priceHeuristic") or {}).get("volume") == 2
-        and (water_two_liter.get("priceHeuristic") or {}).get("vesselIndependent") is True
+        and water_two_liter.get("price") == 5
+        and water_in_can.get("price") == 5
+        and (water_two_liter.get("priceHeuristic") or {}).get("model") == "liquid_v2_pending"
+        and (water_two_liter.get("priceHeuristic") or {}).get("status") == "pending"
+        and (water_two_liter.get("priceHeuristic") or {}).get("fluidPrimaryAmount") == 2
+        and (water_two_liter.get("priceHeuristic") or {}).get("fluidFilledRatio") == 1
+        and (water_two_liter.get("priceHeuristic") or {}).get("fluidIsMixture") is False
         and empty_fluid.get("category") == "Container"
         and empty_fluid.get("primary") == "ContainerLiquid"
     )

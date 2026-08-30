@@ -4,8 +4,8 @@
 return {
     generatorVersion = 2,
     schemaVersion = 4,
-    signatureVersion = "market-sense-v21-food-pricing-v2",
-    pricingHeuristicVersion = 17,
+    signatureVersion = "market-sense-v21-liquid-pricing-v2",
+    pricingHeuristicVersion = 18,
     categoryOrder = {
         ["Food"]        = 1,
         ["Liquid"]      = 2,
