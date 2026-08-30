@@ -7,9 +7,7 @@ return {
         -- Liquid price comes from the dedicated per-litre fluid data table;
         -- keep the taxonomy root neutral so it cannot charge for the vessel.
         ["Liquid"]         = 0,
-        ["Medical"]        = 40,
         ["Resource"]       = 8,
-        ["Building"]       = 14,
         ["Misc"]           = 2,
         -- Tool subtypes
         -- Resource subtypes

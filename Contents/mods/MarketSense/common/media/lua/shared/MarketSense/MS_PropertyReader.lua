@@ -49,6 +49,14 @@ local function preferNumber(primaryObj, fallbackObj, methodNames, defaultValue)
     return tonumber(defaultValue) or 0
 end
 
+local function optionalNumber(primaryObj, fallbackObj, methodNames)
+    local value = readNumber(primaryObj, methodNames)
+    if value ~= nil then
+        return value
+    end
+    return readNumber(fallbackObj, methodNames)
+end
+
 local function preferString(primaryObj, fallbackObj, methodNames, defaultValue)
     local value = Core.safeString(primaryObj, methodNames, "")
     if value ~= "" then
@@ -149,7 +157,6 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local doubleClickRecipe = Core.safeString(scriptItem, "getDoubleClickRecipe", "")
     local openingRecipe = Core.safeString(scriptItem, "getOpeningRecipe", "")
     local replaceOnDeplete  = Core.safeString(scriptItem, "getReplaceOnDeplete", "")
-    local replaceOnUse      = Core.safeString(scriptItem, "getReplaceOnUse", "")
     local replaceOnCooked   = Core.safeString(scriptItem, "getReplaceOnCooked", "")
     local onCooked          = Core.safeString(scriptItem, "getOnCooked", "")
     local evolvedRecipe     = Core.safeString(scriptItem, "getEvolvedRecipe", "")
@@ -204,6 +211,34 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
     local boredom = positiveMagnitude(boredomChange)
     local stress = positiveMagnitude(stressChange)
     local customEatSound = preferString(instance, scriptItem, "getCustomEatSound", "")
+    -- Optional medical signals.  Keep unavailable values as nil so a missing
+    -- medical API is not interpreted as a measured zero-effect treatment.
+    local bandagePower = optionalNumber(instance, scriptItem, "getBandagePower")
+    local reduceInfectionPower = optionalNumber(instance, scriptItem, "getReduceInfectionPower")
+    local alcoholPower = optionalNumber(instance, scriptItem, "getAlcoholPower")
+    local foodSicknessChange = optionalNumber(instance, scriptItem, "getFoodSicknessChange")
+    local painReduction = optionalNumber(instance, scriptItem, "getPainReduction")
+    local fluReduction = optionalNumber(instance, scriptItem, "getFluReduction")
+    local isMedicalLoot = Core.safeBoolean(scriptItem, "isMedicalLoot", nil)
+    local canBandage = Core.safeBoolean(instance, "isCanBandage", nil)
+    if canBandage == nil then
+        canBandage = Core.safeBoolean(scriptItem, "isCanBandage", nil)
+    end
+    local useSelf = Core.safeBoolean(instance, "isUseSelf", nil)
+    if useSelf == nil then
+        useSelf = Core.safeBoolean(scriptItem, "isUseSelf", nil)
+    end
+    local replaceOnUse = preferString(instance, scriptItem, "getReplaceOnUse", "")
+    local replaceOnUseOn = preferString(instance, scriptItem, "getReplaceOnUseOnString", "")
+    local isDisappearOnUse = Core.safeBoolean(instance, "isDisappearOnUse", nil)
+    if isDisappearOnUse == nil then
+        isDisappearOnUse = Core.safeBoolean(scriptItem, "isDisappearOnUse", nil)
+    end
+    if bandagePower ~= nil then bandagePower = math.max(0, bandagePower) end
+    if reduceInfectionPower ~= nil then reduceInfectionPower = math.max(0, reduceInfectionPower) end
+    if alcoholPower ~= nil then alcoholPower = math.max(0, alcoholPower) end
+    if painReduction ~= nil then painReduction = math.max(0, painReduction) end
+    if fluReduction ~= nil then fluReduction = math.max(0, fluReduction) end
     local conditionMax = math.max(0, preferNumber(instance, scriptItem, "getConditionMax", 0))
     local currentCondition = conditionMax
     local hasRuntimeCondition = false
@@ -394,6 +429,18 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         unhappyChange = unhappyChange,
         boredomChange = boredomChange,
         stressChange = stressChange,
+        bandagePower = bandagePower,
+        reduceInfectionPower = reduceInfectionPower,
+        alcoholPower = alcoholPower,
+        foodSicknessChange = foodSicknessChange,
+        painReduction = painReduction,
+        fluReduction = fluReduction,
+        isMedicalLoot = isMedicalLoot,
+        canBandage = canBandage,
+        useSelf = useSelf,
+        replaceOnUse = replaceOnUse ~= "" and replaceOnUse or nil,
+        replaceOnUseOn = replaceOnUseOn ~= "" and replaceOnUseOn or nil,
+        isDisappearOnUse = isDisappearOnUse,
         foodAge = foodAge,
         hasRuntimeFoodAge = hasRuntimeFoodAge,
         hasRuntimeFoodState = hasRuntimeFoodState,
@@ -491,10 +538,10 @@ function PropertyReader.buildContext(scriptItemOrFullType, inventoryItem)
         isTwoHandWeapon = isTwoHandWeapon,
         isSpice = Core.safeBoolean(scriptItem, "isSpice", false),
         isPoison = Core.safeBoolean(scriptItem, "isPoison", false),
-        alcoholPower = Core.safeNumber(scriptItem, "getAlcoholPower", 0),
+        alcoholPower = alcoholPower,
         fatigueChange = Core.safeNumber(scriptItem, "getFatigueChange", 0),
-        reduceInfectionPower = Core.safeNumber(scriptItem, "getReduceInfectionPower", 0),
-        bandagePower = Core.safeNumber(scriptItem, "getBandagePower", 0),
+        reduceInfectionPower = reduceInfectionPower,
+        bandagePower = bandagePower,
         mechanicType = math.max(0, Core.safeNumber(instance or scriptItem, "getMechanicType", 0)),
         canAge = Core.safeBoolean(instance or scriptItem, "canAge", false),
         canBeWrite = Core.safeBoolean(instance or scriptItem, "canBeWrite", false),

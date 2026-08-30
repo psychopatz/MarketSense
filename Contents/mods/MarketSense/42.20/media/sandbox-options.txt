@@ -30,16 +30,6 @@ option MarketSense.StockMultiplier
     translation = MarketSense.StockMultiplier,
 }
 
-option MarketSense.PriceBuildingValue
-{
-    type = integer,
-    default = 14,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingValue,
-}
-
 option MarketSense.StockBuildingMult
 {
     type = double,
@@ -48,16 +38,6 @@ option MarketSense.StockBuildingMult
     max = 100.0,
     page = MarketSenseBuilding,
     translation = MarketSense.StockBuildingMult,
-}
-
-option MarketSense.PriceBuildingFixtureValue
-{
-    type = integer,
-    default = 7,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingFixtureValue,
 }
 
 option MarketSense.StockBuildingFixtureMult
@@ -70,16 +50,6 @@ option MarketSense.StockBuildingFixtureMult
     translation = MarketSense.StockBuildingFixtureMult,
 }
 
-option MarketSense.PriceBuildingFixtureApplianceValue
-{
-    type = integer,
-    default = 5,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingFixtureApplianceValue,
-}
-
 option MarketSense.StockBuildingFixtureApplianceMult
 {
     type = double,
@@ -88,16 +58,6 @@ option MarketSense.StockBuildingFixtureApplianceMult
     max = 100.0,
     page = MarketSenseBuilding,
     translation = MarketSense.StockBuildingFixtureApplianceMult,
-}
-
-option MarketSense.PriceBuildingFixturePlumbingValue
-{
-    type = integer,
-    default = 6,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingFixturePlumbingValue,
 }
 
 option MarketSense.StockBuildingFixturePlumbingMult
@@ -110,16 +70,6 @@ option MarketSense.StockBuildingFixturePlumbingMult
     translation = MarketSense.StockBuildingFixturePlumbingMult,
 }
 
-option MarketSense.PriceBuildingFurnitureValue
-{
-    type = integer,
-    default = 8,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingFurnitureValue,
-}
-
 option MarketSense.StockBuildingFurnitureMult
 {
     type = double,
@@ -128,16 +78,6 @@ option MarketSense.StockBuildingFurnitureMult
     max = 100.0,
     page = MarketSenseBuilding,
     translation = MarketSense.StockBuildingFurnitureMult,
-}
-
-option MarketSense.PriceBuildingFurnitureBedValue
-{
-    type = integer,
-    default = 17,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingFurnitureBedValue,
 }
 
 option MarketSense.StockBuildingFurnitureBedMult
@@ -150,16 +90,6 @@ option MarketSense.StockBuildingFurnitureBedMult
     translation = MarketSense.StockBuildingFurnitureBedMult,
 }
 
-option MarketSense.PriceBuildingFurnitureChairValue
-{
-    type = integer,
-    default = 4,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingFurnitureChairValue,
-}
-
 option MarketSense.StockBuildingFurnitureChairMult
 {
     type = double,
@@ -168,16 +98,6 @@ option MarketSense.StockBuildingFurnitureChairMult
     max = 100.0,
     page = MarketSenseBuilding,
     translation = MarketSense.StockBuildingFurnitureChairMult,
-}
-
-option MarketSense.PriceBuildingGardenValue
-{
-    type = integer,
-    default = 13,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingGardenValue,
 }
 
 option MarketSense.StockBuildingGardenMult
@@ -190,16 +110,6 @@ option MarketSense.StockBuildingGardenMult
     translation = MarketSense.StockBuildingGardenMult,
 }
 
-option MarketSense.PriceBuildingGardenSeedValue
-{
-    type = integer,
-    default = 21,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingGardenSeedValue,
-}
-
 option MarketSense.StockBuildingGardenSeedMult
 {
     type = double,
@@ -208,16 +118,6 @@ option MarketSense.StockBuildingGardenSeedMult
     max = 100.0,
     page = MarketSenseBuilding,
     translation = MarketSense.StockBuildingGardenSeedMult,
-}
-
-option MarketSense.PriceBuildingMoveableValue
-{
-    type = integer,
-    default = 18,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingMoveableValue,
 }
 
 option MarketSense.StockBuildingMoveableMult
@@ -230,16 +130,6 @@ option MarketSense.StockBuildingMoveableMult
     translation = MarketSense.StockBuildingMoveableMult,
 }
 
-option MarketSense.PriceBuildingSurvivalValue
-{
-    type = integer,
-    default = 18,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingSurvivalValue,
-}
-
 option MarketSense.StockBuildingSurvivalMult
 {
     type = double,
@@ -250,16 +140,6 @@ option MarketSense.StockBuildingSurvivalMult
     translation = MarketSense.StockBuildingSurvivalMult,
 }
 
-option MarketSense.PriceBuildingSurvivalTrapValue
-{
-    type = integer,
-    default = 6,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingSurvivalTrapValue,
-}
-
 option MarketSense.StockBuildingSurvivalTrapMult
 {
     type = double,
@@ -268,16 +148,6 @@ option MarketSense.StockBuildingSurvivalTrapMult
     max = 100.0,
     page = MarketSenseBuilding,
     translation = MarketSense.StockBuildingSurvivalTrapMult,
-}
-
-option MarketSense.PriceBuildingVehicleValue
-{
-    type = integer,
-    default = 12,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseBuilding,
-    translation = MarketSense.PriceBuildingVehicleValue,
 }
 
 option MarketSense.StockBuildingVehicleMult
@@ -866,16 +736,6 @@ option MarketSense.StockLiteratureSkillBookMult
     max = 100.0,
     page = MarketSenseLiterature,
     translation = MarketSense.StockLiteratureSkillBookMult,
-}
-
-option MarketSense.PriceMedicalValue
-{
-    type = integer,
-    default = 40,
-    min = -1000000,
-    max = 1000000,
-    page = MarketSenseMedical,
-    translation = MarketSense.PriceMedicalValue,
 }
 
 option MarketSense.StockMedicalMult

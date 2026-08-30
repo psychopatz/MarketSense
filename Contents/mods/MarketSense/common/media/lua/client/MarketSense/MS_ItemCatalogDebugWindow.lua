@@ -342,6 +342,48 @@ local function priceHeuristicSummary(details)
             tostring(capability), light, device)
     end
 
+    if model == "medical_v2_pending" then
+        local treatment = heuristic.bandagePower
+            or heuristic.reduceInfectionPower
+            or heuristic.painReduction
+            or heuristic.fluReduction
+            or heuristic.foodSicknessChange
+        local effect = treatment ~= nil and tostring(treatment) or "-"
+        return string.format(
+            "Pricing: %s | subtype=%s | bandage=%s | infection=%s | effect=%s | yield=%s",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "Medical"),
+            tostring(heuristic.bandagePower ~= nil and heuristic.bandagePower or "-"),
+            tostring(heuristic.reduceInfectionPower ~= nil
+                and heuristic.reduceInfectionPower or "-"),
+            effect,
+            tostring(heuristic.yieldStatus or "not_detected"))
+    end
+
+    if model == "building_v2_pending" then
+        local capabilities = heuristic.capabilities or {}
+        local capability = capabilities[1] or "-"
+        local evidence = heuristic.capabilityEvidence or {}
+        local evidenceSource = evidence[1] or "-"
+        local requirements = heuristic.requirements or {}
+        local requirement = requirements[1] or "-"
+        local capacity = heuristic.worldContainerCapacity
+        if capacity == nil or capacity <= 0 then
+            capacity = heuristic.capacity
+        end
+        local world = heuristic.worldEvidenceAvailable and "available" or "unavailable"
+        return string.format(
+            "Pricing: %s | subtype=%s | capability=%s | evidence=%s | requirement=%s | capacity=%s | world=%s | yield=%s",
+            tostring(heuristic.status or "pending"),
+            tostring(heuristic.subtype or "Building"),
+            tostring(capability),
+            tostring(evidenceSource),
+            tostring(requirement),
+            tostring(capacity ~= nil and capacity or "-"),
+            world,
+            tostring(heuristic.yieldStatus or "not_detected"))
+    end
+
     if model == "tool_v2" then
         local demand = heuristic.recipeDemand or {}
         return string.format(

@@ -4,6 +4,8 @@ require "MarketSense/Pricing/MS_FoodPricing"
 require "MarketSense/Pricing/MS_YieldResolver"
 require "MarketSense/Pricing/MS_ContainerPricing"
 require "MarketSense/Pricing/MS_ElectronicsPricing"
+require "MarketSense/Pricing/MS_MedicalPricing"
+require "MarketSense/Pricing/MS_BuildingPricing"
 require "MarketSense/Pricing/MS_ToolRecipeDemand"
 require "MarketSense/Pricing/MS_ToolPricing"
 
@@ -20,6 +22,8 @@ local FoodPricing = MarketSense.FoodPricing
 local YieldResolver = MarketSense.YieldResolver
 local ContainerPricing = MarketSense.ContainerPricing
 local ElectronicsPricing = MarketSense.ElectronicsPricing
+local MedicalPricing = MarketSense.MedicalPricing
+local BuildingPricing = MarketSense.BuildingPricing
 local ToolPricing = MarketSense.ToolPricing
 
 local CATEGORY_BASE_SCORES = {
@@ -95,9 +99,18 @@ function Pricing.calculateRawScore(ctx, details)
         score = FluidPricing.calculate(ctx, details)
 
     elseif category == "Medical" then
-        score = base + 12 - weightPenalty
-        if hasTag(details, "FirstAid")  then score = score + 16 end
-        if hasTag(details, "Bandage")   then score = score + 8  end
+        -- The old medical score stacked a generic weight penalty with flat
+        -- FirstAid/Bandage dollars. Keep medical evidence visible while the
+        -- treatment-effect model is calibrated.
+        details.priceHeuristic = MedicalPricing.buildPendingHeuristic(ctx, details)
+        score = base
+
+    elseif category == "Building" then
+        -- Building contains heterogeneous placeables, fixtures, survival
+        -- objects, and world-capability items. Keep their evidence visible
+        -- while those functions are calibrated into comparable anchors.
+        details.priceHeuristic = BuildingPricing.buildPendingHeuristic(ctx, details)
+        score = base
 
     elseif category == "Weapon" then
         -- Some native weapons are also reusable crafting tools (for example,
@@ -281,14 +294,6 @@ function Pricing.calculateRawScore(ctx, details)
         if hasTag(details, "MaterialWood")          then score = score + 8 end
         if hasTag(details, "MaterialChemical")      then score = score + 18 end
 
-    elseif category == "Building" then
-        score = base + ((ctx.capacity or 0) * (cc.storage_capacity_weight or 0.18)) - weightPenalty
-        if hasTag(details, "BuildingFurnitureStorage")   then score = score + (cc.storage_bonus   or 10) end
-        if hasTag(details, "BuildingFixtureAppliance")   then score = score + (cc.appliance_bonus or 18) end
-        if hasTag(details, "BuildingGarden")             then score = score + (cc.garden_bonus    or 4)  end
-        if hasTag(details, "BuildingSurvival")           then score = score + (cc.survival_bonus  or 8)  end
-        if hasTag(details, "BuildingVehicle")            then score = score + (cc.vehicle_bonus   or 8)  end
-
     else
         score = base - weightPenalty
     end
@@ -359,12 +364,33 @@ function Pricing.applyBalances(ctx, details, audit)
                 devicePower = details.priceHeuristic.devicePower,
                 capabilities = details.priceHeuristic.capabilities,
                 requirements = details.priceHeuristic.requirements,
+                capabilityEvidence = details.priceHeuristic.capabilityEvidence,
                 worldEvidenceAvailable = details.priceHeuristic.worldEvidenceAvailable,
                 familyAnchor = details.priceHeuristic.familyAnchor,
                 recipeDemandScore = details.priceHeuristic.recipeDemandScore,
                 recipeCriticality = details.priceHeuristic.recipeCriticality,
                 recipeContribution = details.priceHeuristic.recipeContribution,
                 recipeDemand = details.priceHeuristic.recipeDemand,
+                medicalLoot = details.priceHeuristic.isMedicalLoot,
+                canBandage = details.priceHeuristic.canBandage,
+                bandagePower = details.priceHeuristic.bandagePower,
+                reduceInfectionPower = details.priceHeuristic.reduceInfectionPower,
+                alcoholPower = details.priceHeuristic.alcoholPower,
+                painReduction = details.priceHeuristic.painReduction,
+                fluReduction = details.priceHeuristic.fluReduction,
+                foodSicknessChange = details.priceHeuristic.foodSicknessChange,
+                useSelf = details.priceHeuristic.useSelf,
+                replaceOnUse = details.priceHeuristic.replaceOnUse,
+                replaceOnUseOn = details.priceHeuristic.replaceOnUseOn,
+                isDisappearOnUse = details.priceHeuristic.isDisappearOnUse,
+                yieldStatus = details.priceHeuristic.yieldStatus,
+                yieldRecipe = details.priceHeuristic.yieldRecipe,
+                yieldOutputCount = details.priceHeuristic.yieldOutputCount,
+                yieldOutputQuantity = details.priceHeuristic.yieldOutputQuantity,
+                yieldOutputs = details.priceHeuristic.yieldOutputs,
+                worldObjectClass = details.priceHeuristic.worldObjectClass,
+                worldContainerCapacity = details.priceHeuristic.worldContainerCapacity,
+                worldSurface = details.priceHeuristic.worldSurface,
             })
     end
 
@@ -376,7 +402,9 @@ function Pricing.applyBalances(ctx, details, audit)
         and not isClothingCategory(details.category)
         and not isContainerCategory(details.category)
         and details.category ~= "Tool"
-        and details.category ~= "Electronics" then
+        and details.category ~= "Electronics"
+        and details.category ~= "Medical"
+        and details.category ~= "Building" then
         local tags = { details.primary }
         -- Liquid content has its own per-litre anchor.  Do not inherit
         -- generic item descriptor additions (for example Rarity.Common),
@@ -405,7 +433,9 @@ function Pricing.applyBalances(ctx, details, audit)
         and not isLiteratureCategory(details.category)
         and not isClothingCategory(details.category)
         and not isContainerCategory(details.category)
-        and details.category ~= "Tool" then
+        and details.category ~= "Tool"
+        and details.category ~= "Medical"
+        and details.category ~= "Building" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or details.tags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -444,6 +474,16 @@ function Pricing.applyBalances(ctx, details, audit)
         addAudit(audit, "electronics v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Electronics valuation is neutral pending calibrated functional anchors.",
+        })
+    elseif details.category == "Medical" then
+        addAudit(audit, "medical v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Medical valuation is neutral pending calibrated treatment anchors.",
+        })
+    elseif details.category == "Building" then
+        addAudit(audit, "building v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Building valuation is neutral pending calibrated function anchors.",
         })
     else
         addAudit(audit, "liquid vessel-neutral balance", working, working, {
@@ -568,7 +608,8 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     local working
     if details.category == "Weapon" or isLiteratureCategory(details.category)
         or isClothingCategory(details.category) or isContainerCategory(details.category)
-        or details.category == "Tool" or details.category == "Electronics" then
+        or details.category == "Tool" or details.category == "Electronics"
+        or details.category == "Medical" or details.category == "Building" then
         -- A cached pre-v2 detail may still contain a retired category score.
         -- Rebuild the neutral pending score after tag overrides so the cache
         -- cannot preserve legacy category dollars across a catalog refresh.
@@ -589,7 +630,9 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and not isClothingCategory(details.category)
         and not isContainerCategory(details.category)
         and details.category ~= "Tool"
-        and details.category ~= "Electronics" then
+        and details.category ~= "Electronics"
+        and details.category ~= "Medical"
+        and details.category ~= "Building" then
         local sandboxTags = { details.primary }
         for _, tag in ipairs(details.tags or {}) do
             if tag ~= details.primary and string.find(tag, ".", 1, true) then
@@ -608,7 +651,9 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         and not isClothingCategory(details.category)
         and not isContainerCategory(details.category)
         and details.category ~= "Tool"
-        and details.category ~= "Electronics" then
+        and details.category ~= "Electronics"
+        and details.category ~= "Medical"
+        and details.category ~= "Building" then
         working = applyAdjustment(working, DB.getCategory(details.category), "category:" .. tostring(details.category), audit)
         for _, tag in ipairs(details.expandedTags or {}) do
             working = applyAdjustment(working, DB.getTag(tag), "tag:" .. tag, audit)
@@ -642,6 +687,16 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
         addAudit(audit, "electronics v2 pending balances", working, working, {
             legacyTagAdditions = false,
             reason = "Electronics valuation is neutral pending calibrated functional anchors.",
+        })
+    elseif details.category == "Medical" then
+        addAudit(audit, "medical v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Medical valuation is neutral pending calibrated treatment anchors.",
+        })
+    elseif details.category == "Building" then
+        addAudit(audit, "building v2 pending balances", working, working, {
+            legacyTagAdditions = false,
+            reason = "Building valuation is neutral pending calibrated function anchors.",
         })
     else
         addAudit(audit, "food v2 balances", working, working, {

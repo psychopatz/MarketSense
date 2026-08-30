@@ -179,6 +179,36 @@ local electronicsHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(electronicsHeuristicText,
     "Pricing: pending | subtype=ElectronicsRadio | capability=radio_communication | light=1.5 | device",
     "catalog displays pending electronics heuristic evidence")
+local medicalHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "medical_v2_pending",
+        status = "pending",
+        subtype = "FirstAid",
+        bandagePower = 1,
+        reduceInfectionPower = 0,
+        yieldStatus = "resolved",
+    },
+})
+T.equal(medicalHeuristicText,
+    "Pricing: pending | subtype=FirstAid | bandage=1 | infection=0 | effect=1 | yield=resolved",
+    "catalog displays pending medical heuristic evidence")
+local buildingHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "building_v2_pending",
+        status = "pending",
+        subtype = "BuildingFurnitureStorage",
+        capabilities = { "storage_surface" },
+        capabilityEvidence = { "world.furniture.storage" },
+        requirements = { "electricity" },
+        capacity = 24,
+        worldContainerCapacity = 24,
+        worldEvidenceAvailable = true,
+        yieldStatus = "resolved",
+    },
+})
+T.equal(buildingHeuristicText,
+    "Pricing: pending | subtype=BuildingFurnitureStorage | capability=storage_surface | evidence=world.furniture.storage | requirement=electricity | capacity=24 | world=available | yield=resolved",
+    "catalog displays pending building heuristic evidence")
 T.equal(PsychopatzCore.DebugHub.testTool.id, "marketsense.itemCatalog",
     "catalog debug tool registration")
 local generatedWindow = {

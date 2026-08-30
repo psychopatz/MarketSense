@@ -3,42 +3,6 @@
   "gameVersion": "42.20",
   "purpose": "Recommended MarketSense sandbox values used by the offline harness. Live sandbox-options.txt remains authoritative for Project Zomboid; entries missing there are shown as Python-only recommendations and are not silently treated as live declarations.",
   "recommendations": [
-    {"path": "Building.Fixture.Lighting", "price": 6, "stock": 1.0, "reason": "Moveable and fixture lighting."},
-    {"path": "Building.Furniture.Counter", "price": 10, "stock": 1.0, "reason": "Counters and work surfaces."},
-    {"path": "Building.Furniture.Decor", "price": 5, "stock": 1.0, "reason": "Decorative furniture."},
-    {"path": "Building.Furniture.Storage", "price": 12, "stock": 1.0, "reason": "Storage furniture."},
-    {"path": "Building.Furniture.Table", "price": 10, "stock": 1.0, "reason": "Tables and table-like furniture."},
-    {"path": "Building.Furniture.Laundry", "price": 15, "stock": 1.0, "reason": "Laundry furniture and fixtures."},
-    {"path": "Building.Survival.SleepingBag", "price": 20, "stock": 1.0, "reason": "Packed sleeping equipment."},
-    {"path": "Building.Survival.Tent", "price": 24, "stock": 1.0, "reason": "Packed shelter equipment."},
-    {"path": "Building.Recreation", "price": 10, "stock": 1.0, "reason": "Recreation moveables."},
-    {"path": "Building.Recreation.Fitness", "price": 16, "stock": 1.0, "reason": "Gym and fitness equipment."},
-    {"path": "Building.Recreation.Drum", "price": 12, "stock": 1.0, "reason": "Musical recreation equipment."},
-    {"path": "Building.Medical", "price": 12, "stock": 1.0, "reason": "Medical moveables."},
-    {"path": "Building.Medical.Gurney", "price": 18, "stock": 1.0, "reason": "Medical transport furniture."},
-    {"path": "Building.Medical.Bloodbag", "price": 12, "stock": 1.0, "reason": "Blood storage equipment."},
-    {"path": "Building.Crafting", "price": 10, "stock": 1.0, "reason": "Crafting stations."},
-    {"path": "Building.Crafting.Forge", "price": 24, "stock": 1.0, "reason": "Forge equipment."},
-    {"path": "Building.Crafting.Masonry", "price": 14, "stock": 1.0, "reason": "Masonry stations."},
-    {"path": "Building.Logistics", "price": 7, "stock": 1.0, "reason": "Handling and logistics equipment."},
-    {"path": "Building.Logistics.Pallet", "price": 6, "stock": 1.0, "reason": "Pallets and bulk handling."},
-    {"path": "Building.Infrastructure", "price": 7, "stock": 1.0, "reason": "Infrastructure moveables."},
-    {"path": "Building.Infrastructure.Traffic", "price": 4, "stock": 1.0, "reason": "Traffic control objects."},
-    {"path": "Building.Funeral", "price": 10, "stock": 1.0, "reason": "Funeral and memorial objects."},
-    {"path": "Building.Funeral.Coffin", "price": 22, "stock": 1.0, "reason": "Coffins and burial equipment."},
-    {"path": "Building.Agriculture", "price": 10, "stock": 1.0, "reason": "Agricultural moveables."},
-    {"path": "Building.Agriculture.Hay", "price": 7, "stock": 1.0, "reason": "Hay and feed storage."},
-    {"path": "Building.Agriculture.Livestock", "price": 14, "stock": 1.0, "reason": "Livestock equipment."},
-    {"path": "Building.Agriculture.Scarecrow", "price": 9, "stock": 1.0, "reason": "Crop protection objects."},
-    {"path": "Building.Garden.Decor", "price": 6, "stock": 1.0, "reason": "Garden decoration."},
-    {"path": "Building.Display", "price": 8, "stock": 1.0, "reason": "Displays and exhibits."},
-    {"path": "Building.Display.Skeleton", "price": 16, "stock": 1.0, "reason": "Skeleton display objects."},
-    {"path": "Building.WallDecor", "price": 6, "stock": 1.0, "reason": "Wall-mounted decoration."},
-    {"path": "Building.WallDecor.Map", "price": 12, "stock": 1.0, "reason": "Maps and wall plans."},
-    {"path": "Building.WallDecor.Certificate", "price": 14, "stock": 1.0, "reason": "Certificates and framed records."},
-    {"path": "Building.WallDecor.Noticeboard", "price": 8, "stock": 1.0, "reason": "Noticeboards."},
-
-
 
     {"path": "Gardening", "price": 8, "stock": 1.0, "reason": "Gardening supply root."},
     {"path": "Gardening.Seed", "price": 8, "stock": 1.0, "reason": "Individual seeds."},
@@ -107,10 +71,8 @@
     {"path": "Beverage.Soda", "price": 3, "stock": 1.0, "reason": "Soda."},
     {"path": "Beverage.Dairy", "price": 5, "stock": 1.0, "reason": "Dairy beverages."},
     {"path": "Beverage.Milk", "price": 5, "stock": 1.0, "reason": "Milk."},
-    {"path": "Beverage.Juice", "price": 4, "stock": 1.0, "reason": "Juice."},
+    {"path": "Beverage.Juice", "price": 4, "stock": 1.0, "reason": "Juice."}
 
 
-    {"path": "FirstAid", "price": 8, "stock": 1.0, "reason": "First-aid supplies."},
-    {"path": "Bandage", "price": 5, "stock": 1.0, "reason": "Bandages."}
   ]
 }

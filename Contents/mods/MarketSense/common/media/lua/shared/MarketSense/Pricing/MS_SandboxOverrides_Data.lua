@@ -3,21 +3,7 @@
 -- These values override SandboxVars.MarketSense at runtime for parity.
 
 return {
-    ["PriceBuildingFixtureApplianceValue"] = 5.0,
-    ["PriceBuildingFixturePlumbingValue"] = 6.0,
-    ["PriceBuildingFixtureValue"] = 7.0,
-    ["PriceBuildingFurnitureBedValue"] = 17.0,
-    ["PriceBuildingFurnitureChairValue"] = 4.0,
-    ["PriceBuildingFurnitureValue"] = 8.0,
-    ["PriceBuildingGardenSeedValue"] = 21.0,
-    ["PriceBuildingGardenValue"] = 13.0,
-    ["PriceBuildingMoveableValue"] = 18.0,
-    ["PriceBuildingSurvivalTrapValue"] = 6.0,
-    ["PriceBuildingSurvivalValue"] = 18.0,
-    ["PriceBuildingValue"] = 14.0,
-    ["PriceBuildingVehicleValue"] = 12.0,
     ["PriceGlobalValue"] = 0.0,
-    ["PriceMedicalValue"] = 40.0,
     ["PriceMiscValue"] = 17.0,
     ["PriceMultiplier"] = 1.0,
     ["PriceQualityLuxuryValue"] = 40.0,

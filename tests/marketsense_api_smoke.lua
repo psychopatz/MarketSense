@@ -417,6 +417,140 @@ T.equal(staleElectronics.priceHeuristic.model, "electronics_v2_pending",
 T.truthy(staleElectronics.price < 999,
     "cached legacy electronics dollars are discarded")
 
+local medicalContext = {
+    fullType = "Base.HarnessBandage",
+    displayCategory = "FirstAid",
+    itemType = "base:medical",
+    lootType = "medical",
+    weight = 0.1,
+    conditionMax = 1,
+    condition = 1,
+    conditionRatio = 1,
+    isMedicalLoot = true,
+    canBandage = true,
+    bandagePower = 1.0,
+    reduceInfectionPower = 0.0,
+    alcoholPower = 0.0,
+    useSelf = false,
+    useDelta = 1.0,
+    maxUses = 1,
+    remainingUsesRatio = 1,
+    replaceOnUse = "Base.SoiledBandage",
+}
+local medicalDetails = {
+    category = "Medical",
+    primary = "FirstAid",
+    tags = { "FirstAid" },
+    expandedTags = { "FirstAid" },
+    yieldResolution = {
+        status = "resolved",
+        recipe = "OpenHarnessMedicalKit",
+        outputs = { { fullType = "Base.HarnessBandage", quantity = 2 } },
+    },
+    classificationDetails = { source = "medical_display", tag = "FirstAid" },
+}
+local medicalScore = MarketSense.Pricing.calculateRawScore(medicalContext, medicalDetails)
+T.equal(medicalDetails.priceHeuristic.model, "medical_v2_pending",
+    "medical pricing reset is exposed")
+T.equal(medicalDetails.priceHeuristic.status, "pending",
+    "medical pricing reset is marked pending")
+T.equal(medicalScore, 18, "pending medical pricing uses neutral anchor")
+T.equal(medicalDetails.priceHeuristic.bandagePower, 1.0,
+    "medical heuristic exposes treatment evidence")
+T.equal(medicalDetails.priceHeuristic.yieldOutputCount, 1,
+    "medical heuristic exposes deterministic yield evidence")
+medicalDetails.rawScore = medicalScore
+T.equal(MarketSense.Pricing.applyBalances(medicalContext, medicalDetails), 18,
+    "pending medical pricing ignores legacy flat additions")
+
+local staleMedical = MarketSense.Pricing.applyOverridesOnly(medicalContext, {
+    fullType = medicalContext.fullType,
+    category = "Medical",
+    primary = "FirstAid",
+    tags = { "FirstAid" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleMedical.priceHeuristic.model, "medical_v2_pending",
+    "cached legacy medical score is rebuilt")
+T.truthy(staleMedical.price < 999,
+    "cached legacy medical dollars are discarded")
+
+local buildingContext = {
+    fullType = "Base.HarnessStorageCrate",
+    displayCategory = "Furniture",
+    itemType = "base:moveable",
+    isMoveable = true,
+    canBeEquipped = false,
+    weight = 3.0,
+    conditionMax = 100,
+    condition = 100,
+    conditionRatio = 1,
+    capacity = 24,
+    weightReduction = 0,
+    worldObjectSprite = "furniture_storage",
+    worldStaticModel = "crate_model",
+    worldObjectEvidence = {
+        available = true,
+        objectClass = "IsoObject",
+        customName = "crate",
+        groupName = "storage",
+        containerType = "crate",
+        containerCapacity = 24,
+        surface = 0,
+        isTable = false,
+        isTableTop = false,
+        genericCraftingSurface = false,
+    },
+    capabilities = {
+        available = true,
+        capabilities = { "storage_surface" },
+        requirements = {},
+        evidence = { "world.furniture.storage" },
+        powerSource = "",
+    },
+}
+local buildingDetails = {
+    category = "Building",
+    primary = "BuildingFurnitureStorage",
+    tags = { "BuildingFurnitureStorage" },
+    expandedTags = { "BuildingFurnitureStorage", "BuildingFurniture", "Building" },
+    classificationDetails = { source = "building_display", tag = "BuildingFurnitureStorage" },
+    yieldResolution = {
+        status = "resolved",
+        recipe = "OpenHarnessCrate",
+        outputs = { { fullType = "Base.HarnessPlank", quantity = 4, resolution = "exact" } },
+    },
+}
+local buildingScore = MarketSense.Pricing.calculateRawScore(buildingContext, buildingDetails)
+T.equal(buildingDetails.priceHeuristic.model, "building_v2_pending",
+    "building pricing reset is exposed")
+T.equal(buildingDetails.priceHeuristic.status, "pending",
+    "building pricing reset is marked pending")
+T.equal(buildingScore, 5, "pending building pricing uses neutral anchor")
+T.equal(buildingDetails.priceHeuristic.capabilities[1], "storage_surface",
+    "building heuristic exposes verified capability evidence")
+T.equal(buildingDetails.priceHeuristic.worldContainerCapacity, 24,
+    "building heuristic exposes world container capacity")
+T.equal(buildingDetails.priceHeuristic.yieldOutputQuantity, 4,
+    "building heuristic exposes deterministic bundle quantity")
+buildingDetails.rawScore = buildingScore
+T.equal(MarketSense.Pricing.applyBalances(buildingContext, buildingDetails), 5,
+    "pending building pricing ignores legacy flat additions")
+
+local staleBuilding = MarketSense.Pricing.applyOverridesOnly(buildingContext, {
+    fullType = buildingContext.fullType,
+    category = "Building",
+    primary = "BuildingFurnitureStorage",
+    tags = { "BuildingFurnitureStorage" },
+    rawScore = 999,
+    price = 999,
+}, true)
+T.equal(staleBuilding.priceHeuristic.model, "building_v2_pending",
+    "cached legacy building score is rebuilt")
+T.truthy(staleBuilding.price < 999,
+    "cached legacy building dollars are discarded")
+
 local toolContext = {
     fullType = "Base.HarnessBlowtorch",
     conditionMax = 100,

@@ -237,6 +237,64 @@ def print_terminal(
             print(f"  ... {len(electronics_rows) - top:,} more electronics rows are in JSON/CSV output")
         print()
 
+    medical_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") == "medical_v2_pending"
+    ]
+    if medical_rows:
+        print("MEDICAL PRICING STATUS")
+        print("  item | subtype | bandage | infection | effect | doses/yield | status | price")
+        for row in sorted(medical_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            treatment = heuristic.get("bandagePower")
+            if treatment is None:
+                treatment = heuristic.get("painReduction")
+            if treatment is None:
+                treatment = heuristic.get("fluReduction")
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{format_number(heuristic.get('bandagePower')):>7} | "
+                f"{format_number(heuristic.get('reduceInfectionPower')):>9} | "
+                f"{format_number(treatment):>6} | "
+                f"{format_number(heuristic.get('maxUses')):>5}/{format_number(heuristic.get('yieldOutputCount')):<5} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(medical_rows) > top:
+            print(f"  ... {len(medical_rows) - top:,} more medical rows are in JSON/CSV output")
+        print()
+
+    building_rows = [
+        row for row in rows
+        if (row.get("priceHeuristic") or {}).get("model") == "building_v2_pending"
+    ]
+    if building_rows:
+        print("BUILDING PRICING STATUS")
+        print("  item | subtype | capability | evidence | capacity | world | requirements | status | price")
+        for row in sorted(building_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
+            heuristic = row.get("priceHeuristic") or {}
+            capabilities = heuristic.get("capabilities") or []
+            evidence = heuristic.get("capabilityEvidence") or []
+            requirements = heuristic.get("requirements") or []
+            capacity = heuristic.get("worldContainerCapacity")
+            if capacity is None or capacity <= 0:
+                capacity = heuristic.get("capacity")
+            print(
+                f"  {row.get('fullType', '-'):<36} | "
+                f"{str(heuristic.get('subtype') or row.get('primary') or '-'):<24} | "
+                f"{str(capabilities[0] if capabilities else '-'):<18} | "
+                f"{str(evidence[0] if evidence else '-'):<24} | "
+                f"{format_number(capacity):>8} | "
+                f"{str('yes' if heuristic.get('worldEvidenceAvailable') else 'no'):<5} | "
+                f"{str(requirements[0] if requirements else '-'):<16} | "
+                f"{str(heuristic.get('status') or '-'):<7} | "
+                f"{format_number(row.get('price')):>5}"
+            )
+        if len(building_rows) > top:
+            print(f"  ... {len(building_rows) - top:,} more building rows are in JSON/CSV output")
+        print()
+
     liquid_rows = [row for row in rows if row.get("category") == "Liquid"]
     if liquid_rows:
         print("LIQUID CONTENT PRICE SAMPLE")
