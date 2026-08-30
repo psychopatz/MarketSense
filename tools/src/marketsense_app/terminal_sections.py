@@ -99,7 +99,7 @@ def print_pricing_statuses(
 ) -> None:
     weapon_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "weapon_v2_pending"
+        if (row.get("priceHeuristic") or {}).get("model") == "weapon_v2"
     ]
     if weapon_rows:
         print("WEAPON PRICING STATUS")
@@ -123,7 +123,7 @@ def print_pricing_statuses(
 
     literature_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "literature_v2_pending"
+        if (row.get("priceHeuristic") or {}).get("model") == "literature_v2"
     ]
     if literature_rows:
         print("LITERATURE PRICING STATUS")
@@ -146,7 +146,7 @@ def print_pricing_statuses(
 
     clothing_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "clothing_v2_pending"
+        if (row.get("priceHeuristic") or {}).get("model") == "clothing_v2"
     ]
     if clothing_rows:
         print("CLOTHING PRICING STATUS")
@@ -196,7 +196,7 @@ def print_pricing_statuses(
 
     container_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "container_v2_pending"
+        if (row.get("priceHeuristic") or {}).get("model") == "container_v2"
     ]
     if container_rows:
         print("CONTAINER PRICING STATUS")
@@ -219,7 +219,7 @@ def print_pricing_statuses(
 
     electronics_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "electronics_v2_pending"
+        if (row.get("priceHeuristic") or {}).get("model") == "electronics_v2"
     ]
     if electronics_rows:
         print("ELECTRONICS PRICING STATUS")
@@ -242,7 +242,7 @@ def print_pricing_statuses(
 
     medical_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "medical_v2_pending"
+        if (row.get("priceHeuristic") or {}).get("model") == "medical_v2"
     ]
     if medical_rows:
         print("MEDICAL PRICING STATUS")
@@ -270,7 +270,7 @@ def print_pricing_statuses(
 
     building_rows = [
         row for row in rows
-        if (row.get("priceHeuristic") or {}).get("model") == "building_v2_pending"
+        if (row.get("priceHeuristic") or {}).get("model") == "building_v2"
     ]
     if building_rows:
         print("BUILDING PRICING STATUS")
@@ -345,11 +345,13 @@ def print_pricing_statuses(
     misc_rows = [
         row for row in rows
         if row.get("category") == "Misc"
-        and (row.get("priceHeuristic") or {}).get("model") == "misc_v2_pending"
+        and (row.get("priceHeuristic") or {}).get("model") in {
+            "misc_v2", "misc_v2_bundle",
+        }
     ]
     if misc_rows:
         print("MISC PRICING STATUS")
-        print("  item | subtype | signals | uses | weight | yield | outputs | qty | status | price")
+        print("  item | subtype | signals | uses | weight | yield | mode | value | outputs | qty | status | price")
         for row in sorted(misc_rows, key=lambda item: str(item.get("fullType", "")))[:top]:
             heuristic = row.get("priceHeuristic") or {}
             signals = heuristic.get("signals") or []
@@ -360,6 +362,8 @@ def print_pricing_statuses(
                 f"{format_number(heuristic.get('remainingUsesRatio') if heuristic.get('remainingUsesRatio') is not None else heuristic.get('maxUses')):>5} | "
                 f"{format_number(heuristic.get('weight')):>6} | "
                 f"{str(heuristic.get('yieldStatus') or 'not_detected'):<12} | "
+                f"{str(heuristic.get('mode') or '-'):<18} | "
+                f"{format_number(heuristic.get('yieldValue')):>5} | "
                 f"{format_number(heuristic.get('yieldOutputCount')):>7} | "
                 f"{format_number(heuristic.get('yieldOutputQuantity')):>5} | "
                 f"{str(heuristic.get('status') or '-'):<7} | "

@@ -29,6 +29,10 @@ local defaults = {
     liquidPricing = {},
     resourcePricing = {},
     miscPricing = {},
+    weaponPricing = {},
+    literaturePricing = {},
+    clothingPricing = {},
+    containerPricing = {},
     electronicsPricing = {},
     medicalPricing = {},
     buildingPricing = {},
@@ -68,8 +72,8 @@ local function getSandboxVarsTable()
 end
 
 function MarketSense.Config.reloadExported()
-    local ok, exported = pcall(require, "MarketSense/Pricing/MS_PricingConfig_Data")
-    if ok and type(exported) == "table" then
+    local exported = require "MarketSense/Pricing/MS_PricingConfig_Data"
+    if type(exported) == "table" then
         if exported.global then
             runtime.pricing.minPrice = exported.global.min_price or runtime.pricing.minPrice
             runtime.pricing.maxPrice = exported.global.max_price or runtime.pricing.maxPrice
@@ -93,6 +97,14 @@ function MarketSense.Config.reloadExported()
             or runtime.resourcePricing or {}
         runtime.miscPricing = exported.misc_pricing
             or runtime.miscPricing or {}
+        runtime.weaponPricing = exported.weapon_pricing
+            or runtime.weaponPricing or {}
+        runtime.literaturePricing = exported.literature_pricing
+            or runtime.literaturePricing or {}
+        runtime.clothingPricing = exported.clothing_pricing
+            or runtime.clothingPricing or {}
+        runtime.containerPricing = exported.container_pricing
+            or runtime.containerPricing or {}
         runtime.electronicsPricing = exported.electronics_pricing
             or runtime.electronicsPricing or {}
         runtime.medicalPricing = exported.medical_pricing

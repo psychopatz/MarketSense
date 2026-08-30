@@ -4,6 +4,9 @@
 -- the same deterministic path as vanilla items.
 
 require "MarketSense/Pricing/MS_ToolRecipeDemand"
+require "MarketSense/MS_Core"
+require "MarketSense/Pricing/MS_PricingUtils"
+require "MarketSense/Pricing/MS_TransformPricing"
 
 MarketSense = MarketSense or {}
 MarketSense.ToolPricing = MarketSense.ToolPricing or {}
@@ -11,6 +14,8 @@ MarketSense.ToolPricing = MarketSense.ToolPricing or {}
 local ToolPricing = MarketSense.ToolPricing
 local Demand = MarketSense.ToolRecipeDemand
 local Config = MarketSense.ItemRuntimeConfig
+local Utils = require "MarketSense/Pricing/MS_PricingUtils"
+local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
     model = "tool_v2",
@@ -42,6 +47,8 @@ local DEFAULTS = {
     weightPenalty = 1.5,
     twoHandPenalty = 2.0,
     stateFloor = 0.15,
+    yieldMultiplier = 1.0,
+    yieldPremium = 0.0,
 }
 
 local function number(value, fallback)
@@ -76,7 +83,7 @@ local function buildHeuristic(ctx, details, c, demand, score)
     local classification = type(details.classificationDetails) == "table"
         and details.classificationDetails or {}
     local subtype = details.primary or "Tool"
-    return {
+    local heuristic = {
         model = c.model,
         status = "ready",
         reason = "Tool usefulness combines engine metrics with reusable recipe demand.",
@@ -109,6 +116,8 @@ local function buildHeuristic(ctx, details, c, demand, score)
         recipeDemandScore = demand.recipeDemandScore,
         recipeCriticality = demand.criticality,
         recipeContribution = score.recipeContribution,
+        positiveContributions = {},
+        negativeContributions = {},
         score = score.total,
         staticMetricsAvailable = {
             conditionMax = ctx.conditionMax ~= nil,
@@ -146,6 +155,18 @@ local function buildHeuristic(ctx, details, c, demand, score)
             "ambiguous name/tag classification or rarity without mechanical evidence",
         },
     }
+    Utils.addYieldEvidence(heuristic, details)
+    Utils.addContribution(heuristic.positiveContributions, "tool family",
+        c.familyAnchors[subtype] or 0, subtype)
+    Utils.addContribution(heuristic.positiveContributions, "condition lifetime",
+        score.conditionContribution or 0, ctx.conditionMax)
+    Utils.addContribution(heuristic.positiveContributions, "reusable amount",
+        score.drainableContribution or 0, ctx.maxUses)
+    Utils.addContribution(heuristic.positiveContributions, "verified recipe demand",
+        score.recipeContribution or 0, demand.recipeDemandScore)
+    Utils.addContribution(heuristic.negativeContributions, "weight and handling",
+        score.weightPenalty or 0, ctx.weight)
+    return heuristic
 end
 
 function ToolPricing.recipeEvidence(ctx)
@@ -166,6 +187,32 @@ function ToolPricing.calculate(ctx, details)
     local c = settings()
     local demand, recipeContribution = ToolPricing.recipeEvidence(ctx)
     local subtype = details.primary or "Tool"
+    local transformScore, transform = TransformPricing.evaluate(ctx, details, {
+        multiplier = c.yieldMultiplier,
+        premium = c.yieldPremium,
+        floor = c.floor,
+        ceiling = c.ceiling,
+    })
+    if transformScore ~= nil then
+        local heuristic = {
+            model = Utils.bundleModel(c.model), status = "ready",
+            subtype = subtype,
+            reason = "Deterministic tool transform valued from individualized child outputs.",
+            recipeDemand = demand, recipeDemandScore = demand.recipeDemandScore,
+            recipeCriticality = demand.criticality,
+            positiveContributions = transform.contributions,
+            negativeContributions = {},
+        }
+        Utils.addYieldEvidence(heuristic, details)
+        for key, value in pairs(transform) do heuristic[key] = value end
+        heuristic.model = Utils.bundleModel(c.model)
+        heuristic.status = "ready"
+        heuristic.yieldEvaluation = "valued"
+        heuristic.positiveContributions = transform.contributions
+        heuristic.negativeContributions = {}
+        details.priceHeuristic = heuristic
+        return transformScore
+    end
     local familyAnchor = number(c.familyAnchors[subtype], 0)
     local conditionMax = math.max(0, number(ctx.conditionMax, 0))
     local conditionRatio = ctx.conditionRatio
@@ -206,6 +253,12 @@ function ToolPricing.calculate(ctx, details)
         weightPenalty = weightPenalty,
     }
     details.priceHeuristic = buildHeuristic(ctx, details, c, demand, score)
+    if details.yieldResolution and details.yieldResolution.status == "resolved" then
+        details.priceHeuristic.yieldEvaluation = "blocked"
+        details.priceHeuristic.yieldBlockedReason = "tool transform could not be valued"
+    else
+        details.priceHeuristic.yieldEvaluation = "not_detected"
+    end
     return total
 end
 

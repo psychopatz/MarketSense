@@ -52,6 +52,19 @@ function Pricing.applyBalances(ctx, details, audit)
                 yieldOutputCount = details.priceHeuristic.yieldOutputCount,
                 yieldOutputQuantity = details.priceHeuristic.yieldOutputQuantity,
                 yieldOutputs = details.priceHeuristic.yieldOutputs,
+                yieldEvaluation = details.priceHeuristic.yieldEvaluation,
+                yieldBlockedReason = details.priceHeuristic.yieldBlockedReason,
+                yieldMode = details.priceHeuristic.mode,
+                yieldValue = details.priceHeuristic.yieldValue,
+                yieldContributions = details.priceHeuristic.contributions,
+                positiveContributions = details.priceHeuristic.positiveContributions,
+                negativeContributions = details.priceHeuristic.negativeContributions,
+                anchor = details.priceHeuristic.anchor,
+                positiveScore = details.priceHeuristic.positiveScore,
+                negativeScore = details.priceHeuristic.negativeScore,
+                subtotal = details.priceHeuristic.subtotal,
+                stateFactor = details.priceHeuristic.stateFactor,
+                weightPenalty = details.priceHeuristic.weightPenalty,
                 bodyLocation = details.priceHeuristic.bodyLocation,
                 bodyLocationToken = details.priceHeuristic.bodyLocationToken,
                 biteDefense = details.priceHeuristic.biteDefense,
@@ -173,24 +186,24 @@ function Pricing.applyBalances(ctx, details, audit)
             reason = "Food valuation is feature/profile driven.",
         })
     elseif details.category == "Weapon" then
-        addAudit(audit, "weapon v2 pending balances", working, working, {
+        addAudit(audit, "weapon v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Weapon valuation is neutral pending calibration except for verified reusable tool demand.",
+            reason = "Weapon valuation is combat performance, condition, handling, and verified recipe demand.",
         })
     elseif isLiteratureCategory(details.category) then
-        addAudit(audit, "literature v2 pending balances", working, working, {
+        addAudit(audit, "literature v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Literature valuation is intentionally neutral pending calibration.",
+            reason = "Literature valuation is knowledge, information, entertainment, and writing utility.",
         })
     elseif isClothingCategory(details.category) then
-        addAudit(audit, "clothing v2 pending balances", working, working, {
+        addAudit(audit, "clothing v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Clothing valuation is intentionally neutral pending calibration.",
+            reason = "Clothing valuation is protection, coverage, mobility, and condition.",
         })
     elseif isContainerCategory(details.category) then
-        addAudit(audit, "container v2 pending balances", working, working, {
+        addAudit(audit, "container v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Container valuation is intentionally neutral pending calibration.",
+            reason = "Container valuation is useful capacity, carry efficiency, portability, and state.",
         })
     elseif details.category == "Tool" then
         addAudit(audit, "tool v2 balances", working, working, {
@@ -198,35 +211,44 @@ function Pricing.applyBalances(ctx, details, audit)
             reason = "Tool valuation is usefulness and recipe-demand driven.",
         })
     elseif details.category == "Electronics" then
-        addAudit(audit, "electronics v2 pending balances", working, working, {
+        addAudit(audit, "electronics v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Electronics valuation is neutral pending calibrated functional anchors.",
+            reason = "Electronics valuation is verified device, light, power, and portability utility.",
         })
     elseif details.category == "Medical" then
-        addAudit(audit, "medical v2 pending balances", working, working, {
+        addAudit(audit, "medical v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Medical valuation is neutral pending calibrated treatment anchors.",
+            reason = "Medical valuation is treatment outcomes, doses, and patient-facing utility.",
         })
     elseif details.category == "Building" then
-        addAudit(audit, "building v2 pending balances", working, working, {
+        addAudit(audit, "building v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Building valuation is neutral pending calibrated function anchors.",
+            reason = "Building valuation is placed-object service, storage, and deployability utility.",
         })
     elseif details.category == "Liquid" then
-        addAudit(audit, "liquid v2 pending balances", working, working, {
+        addAudit(audit, "liquid v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Liquid valuation is neutral pending calibrated utility anchors.",
+            reason = "Liquid valuation is measured amount, effects, fluid function, and safety.",
         })
     elseif details.category == "Resource" then
-        addAudit(audit, "resource v2 pending balances", working, working, {
+        addAudit(audit, "resource v2 balances", working, working, {
             legacyTagAdditions = false,
-            reason = "Resource valuation is neutral pending calibrated utility, quantity, and processing anchors.",
+            reason = "Resource valuation is material role, usable form, quantity, and processing cost.",
         })
     elseif details.category == "Misc" then
-        addAudit(audit, "misc v2 pending balances", working, working, {
-            legacyTagAdditions = false,
-            reason = "Misc valuation is neutral pending calibrated capability and fallback anchors.",
-        })
+        local heuristic = details.priceHeuristic or {}
+        if heuristic.status == "ready" then
+            addAudit(audit, "misc v2 heuristic balances", working, working, {
+                legacyTagAdditions = false,
+                model = heuristic.model,
+                reason = "Deterministic Misc transform value is already included in the raw score.",
+            })
+        else
+            addAudit(audit, "misc v2 fallback balances", working, working, {
+                legacyTagAdditions = false,
+                reason = "Misc fallback did not expose a ready heuristic; no legacy additions applied.",
+            })
+        end
     else
         addAudit(audit, "generic balances", working, working, {
             reason = "Generic category/tag balances applied.",

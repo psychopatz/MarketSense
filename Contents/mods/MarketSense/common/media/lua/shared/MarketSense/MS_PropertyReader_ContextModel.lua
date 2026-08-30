@@ -105,6 +105,10 @@ function ContextModel.build(facts, scriptItem, fullType, moduleName, typeName, i
     local lightCanEmit = facts.lightCanEmit
     local lightUseBattery = facts.lightUseBattery
     local lightHasBattery = facts.lightHasBattery
+    local waterResistance = facts.waterResistance
+    local runSpeedModifier = facts.runSpeedModifier
+    local combatSpeedModifier = facts.combatSpeedModifier
+    local neckProtectionModifier = facts.neckProtectionModifier
     local deviceData = facts.deviceData
     local foodAge = facts.foodAge
     local hasRuntimeFoodAge = facts.hasRuntimeFoodAge
@@ -229,6 +233,10 @@ function ContextModel.build(facts, scriptItem, fullType, moduleName, typeName, i
         lightCanEmit = lightCanEmit,
         lightUseBattery = lightUseBattery,
         lightHasBattery = lightHasBattery,
+        waterResistance = waterResistance,
+        runSpeedModifier = runSpeedModifier,
+        combatSpeedModifier = combatSpeedModifier,
+        neckProtectionModifier = neckProtectionModifier,
         deviceData = deviceData,
         deviceDataAvailable = deviceData ~= nil,
         biteDefense = math.max(0, preferNumber(instance, scriptItem, "getBiteDefense", 0)),
@@ -392,4 +400,3 @@ end
 MarketSense.PropertyReaderContextModel = ContextModel
 
 return ContextModel
-

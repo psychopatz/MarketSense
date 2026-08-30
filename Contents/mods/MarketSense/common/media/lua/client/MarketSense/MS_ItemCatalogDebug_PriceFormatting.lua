@@ -5,6 +5,19 @@ local function demandText(value)
         return string.format("%.2f", tonumber(value) or 0)
     end
 
+local function formatFood(heuristic)
+        return string.format(
+            "Pricing: %s | subtype=%s | role=%s | ration=%s | hunger=%s | thirst=%s | freshness=%s | yield=%s",
+            tostring(heuristic.status or "unknown"),
+            tostring(heuristic.subtype or "Food"),
+            tostring(heuristic.role or "edible"),
+            demandText(heuristic.rationUnits),
+            demandText(heuristic.hungerChange),
+            demandText(heuristic.thirstChange),
+            tostring(heuristic.freshnessState or "-"),
+            tostring(heuristic.yieldStatus or "not_detected"))
+end
+
 local function formatLiterature(heuristic)
         return string.format(
             "Pricing: %s | subtype=%s | skill=%s | level=%s | recipes=%s | read=%s",
@@ -58,7 +71,7 @@ local function formatMisc(heuristic)
         if signals[2] then signalText = signalText .. "," .. tostring(signals[2]) end
         local uses = heuristic.remainingUsesRatio
         if uses == nil then uses = heuristic.maxUses end
-        return string.format(
+        local result = string.format(
             "Pricing: %s | subtype=%s | signals=%s | uses=%s | weight=%s | yield=%s (%s outputs, qty=%s)",
             tostring(heuristic.status or "pending"),
             tostring(heuristic.subtype or "Misc"),
@@ -70,6 +83,13 @@ local function formatMisc(heuristic)
                 and heuristic.yieldOutputCount or 0),
             tostring(heuristic.yieldOutputQuantity ~= nil
                 and heuristic.yieldOutputQuantity or 0))
+        if heuristic.mode ~= nil then
+            result = result .. " | mode=" .. tostring(heuristic.mode)
+        end
+        if heuristic.yieldValue ~= nil then
+            result = result .. " | value=" .. tostring(heuristic.yieldValue)
+        end
+        return result
 end
 
 local function formatWeapon(heuristic)
@@ -97,6 +117,7 @@ local function formatClothing(heuristic)
 end
 
 local function formatContainer(heuristic)
+        local yieldStatus = heuristic.yieldStatus or heuristic.contentYieldStatus
         return string.format(
             "Pricing: %s | subtype=%s | capacity=%s | reduction=%s | weight=%s | yield=%s",
             tostring(heuristic.status or "pending"),
@@ -104,7 +125,7 @@ local function formatContainer(heuristic)
             tostring(heuristic.capacity ~= nil and heuristic.capacity or "-"),
             tostring(heuristic.weightReduction ~= nil and heuristic.weightReduction or "-"),
             tostring(heuristic.weight ~= nil and heuristic.weight or "-"),
-            tostring(heuristic.contentYieldStatus or "not_detected"))
+            tostring(yieldStatus or "not_detected"))
 end
 
 local function formatElectronics(heuristic)
@@ -176,16 +197,19 @@ local function formatTool(heuristic)
 end
 
 local MODEL_FORMATTERS = {
-    ["literature_v2_pending"] = formatLiterature,
-    ["liquid_v2_pending"] = formatLiquid,
-    ["resource_v2_pending"] = formatResource,
-    ["misc_v2_pending"] = formatMisc,
-    ["weapon_v2_pending"] = formatWeapon,
-    ["clothing_v2_pending"] = formatClothing,
-    ["container_v2_pending"] = formatContainer,
-    ["electronics_v2_pending"] = formatElectronics,
-    ["medical_v2_pending"] = formatMedical,
-    ["building_v2_pending"] = formatBuilding,
+    ["food_v2"] = formatFood,
+    ["food_v2_bundle"] = formatFood,
+    ["literature_v2"] = formatLiterature,
+    ["liquid_v2"] = formatLiquid,
+    ["resource_v2"] = formatResource,
+    ["misc_v2"] = formatMisc,
+    ["misc_v2_bundle"] = formatMisc,
+    ["weapon_v2"] = formatWeapon,
+    ["clothing_v2"] = formatClothing,
+    ["container_v2"] = formatContainer,
+    ["electronics_v2"] = formatElectronics,
+    ["medical_v2"] = formatMedical,
+    ["building_v2"] = formatBuilding,
     ["tool_v2"] = formatTool,
 }
 

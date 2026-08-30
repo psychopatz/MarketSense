@@ -33,11 +33,11 @@ local details = {
 }
 
 local score = pricing.calculateRawScore(context, details)
-T.equal(score, 5, "pending liquid pricing uses neutral anchor")
-T.equal(details.priceHeuristic.model, "liquid_v2_pending",
-    "liquid pricing reset is exposed")
-T.equal(details.priceHeuristic.status, "pending",
-    "liquid pricing reset is marked pending")
+T.truthy(score > 5, "measured liquid utility raises its anchor")
+T.equal(details.priceHeuristic.model, "liquid_v2",
+    "liquid pricing model is exposed")
+T.equal(details.priceHeuristic.status, "ready",
+    "liquid pricing model is ready")
 T.equal(details.priceHeuristic.fluidPrimaryAmount, 2,
     "liquid heuristic exposes primary amount")
 T.equal(details.priceHeuristic.fluidFilledRatio, 1,
@@ -50,8 +50,9 @@ T.falsy(details.priceHeuristic.contentValue,
     "legacy content value is removed")
 
 details.rawScore = score
-T.equal(pricing.applyBalances(context, details), 5,
-    "pending liquid pricing ignores legacy tag additions")
+T.equal(pricing.applyBalances(context, details),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(score)),
+    "liquid pricing keeps heuristic score without legacy flat additions")
 
 local stale = pricing.applyOverridesOnly(context, {
     fullType = context.fullType,
@@ -61,7 +62,7 @@ local stale = pricing.applyOverridesOnly(context, {
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(stale.priceHeuristic.model, "liquid_v2_pending",
+T.equal(stale.priceHeuristic.model, "liquid_v2",
     "cached legacy liquid score is rebuilt")
 T.truthy(stale.price < 999, "cached legacy liquid dollars are discarded")
 

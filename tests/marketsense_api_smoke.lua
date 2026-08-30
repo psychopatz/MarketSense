@@ -254,14 +254,15 @@ local literatureDetails = {
     classificationDetails = { source = "lit_skillbook" },
 }
 local literatureScore = MarketSense.Pricing.calculateRawScore(literatureContext, literatureDetails)
-T.equal(literatureDetails.priceHeuristic.model, "literature_v2_pending",
-    "literature pricing reset is exposed")
-T.equal(literatureDetails.priceHeuristic.status, "pending",
-    "literature pricing reset is marked pending")
-T.equal(literatureScore, 5, "pending literature pricing uses neutral anchor")
+T.equal(literatureDetails.priceHeuristic.model, "literature_v2",
+    "literature pricing model is exposed")
+T.equal(literatureDetails.priceHeuristic.status, "ready",
+    "literature pricing model is ready")
+T.truthy(literatureScore > 5, "literature usefulness raises its anchor")
 literatureDetails.rawScore = literatureScore
-T.equal(MarketSense.Pricing.applyBalances(literatureContext, literatureDetails), 5,
-    "pending literature pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(literatureContext, literatureDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(literatureScore)),
+    "literature pricing keeps heuristic score without legacy flat additions")
 
 local staleLiterature = MarketSense.Pricing.applyOverridesOnly(literatureContext, {
     fullType = literatureContext.fullType,
@@ -271,7 +272,7 @@ local staleLiterature = MarketSense.Pricing.applyOverridesOnly(literatureContext
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleLiterature.priceHeuristic.model, "literature_v2_pending",
+T.equal(staleLiterature.priceHeuristic.model, "literature_v2",
     "cached legacy literature score is rebuilt")
 T.truthy(staleLiterature.price < 999, "cached legacy literature dollars are discarded")
 
@@ -299,14 +300,15 @@ local clothingDetails = {
     classificationDetails = { source = "apparel_bodyloc" },
 }
 local clothingScore = MarketSense.Pricing.calculateRawScore(clothingContext, clothingDetails)
-T.equal(clothingDetails.priceHeuristic.model, "clothing_v2_pending",
-    "clothing pricing reset is exposed")
-T.equal(clothingDetails.priceHeuristic.status, "pending",
-    "clothing pricing reset is marked pending")
-T.equal(clothingScore, 4, "pending clothing pricing uses neutral anchor")
+T.equal(clothingDetails.priceHeuristic.model, "clothing_v2",
+    "clothing pricing model is exposed")
+T.equal(clothingDetails.priceHeuristic.status, "ready",
+    "clothing pricing model is ready")
+T.truthy(clothingScore > 4, "clothing protection raises its anchor")
 clothingDetails.rawScore = clothingScore
-T.equal(MarketSense.Pricing.applyBalances(clothingContext, clothingDetails), 4,
-    "pending clothing pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(clothingContext, clothingDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(clothingScore)),
+    "clothing pricing keeps heuristic score without legacy flat additions")
 
 local staleClothing = MarketSense.Pricing.applyOverridesOnly(clothingContext, {
     fullType = clothingContext.fullType,
@@ -316,7 +318,7 @@ local staleClothing = MarketSense.Pricing.applyOverridesOnly(clothingContext, {
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleClothing.priceHeuristic.model, "clothing_v2_pending",
+T.equal(staleClothing.priceHeuristic.model, "clothing_v2",
     "cached legacy clothing score is rebuilt")
 T.truthy(staleClothing.price < 999, "cached legacy clothing dollars are discarded")
 
@@ -347,16 +349,17 @@ local containerDetails = {
     classificationDetails = { source = "container_wearable" },
 }
 local containerScore = MarketSense.Pricing.calculateRawScore(containerContext, containerDetails)
-T.equal(containerDetails.priceHeuristic.model, "container_v2_pending",
-    "container pricing reset is exposed")
-T.equal(containerDetails.priceHeuristic.status, "pending",
-    "container pricing reset is marked pending")
-T.equal(containerScore, 14, "pending container pricing uses neutral anchor")
-T.equal(containerDetails.priceHeuristic.contentYieldOutputCount, 1,
+T.equal(containerDetails.priceHeuristic.model, "container_v2",
+    "container pricing model is exposed")
+T.equal(containerDetails.priceHeuristic.status, "ready",
+    "container pricing model is ready")
+T.truthy(containerScore > 14, "container capacity and portability raise its anchor")
+T.equal(containerDetails.priceHeuristic.yieldOutputCount, 1,
     "container heuristic exposes deterministic content yield evidence")
 containerDetails.rawScore = containerScore
-T.equal(MarketSense.Pricing.applyBalances(containerContext, containerDetails), 14,
-    "pending container pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(containerContext, containerDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(containerScore)),
+    "container pricing keeps heuristic score without legacy flat additions")
 
 local staleContainer = MarketSense.Pricing.applyOverridesOnly(containerContext, {
     fullType = containerContext.fullType,
@@ -366,7 +369,7 @@ local staleContainer = MarketSense.Pricing.applyOverridesOnly(containerContext, 
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleContainer.priceHeuristic.model, "container_v2_pending",
+T.equal(staleContainer.priceHeuristic.model, "container_v2",
     "cached legacy container score is rebuilt")
 T.truthy(staleContainer.price < 999, "cached legacy container dollars are discarded")
 
@@ -408,16 +411,17 @@ local electronicsDetails = {
 local electronicsScore = MarketSense.Pricing.calculateRawScore(
     electronicsContext, electronicsDetails
 )
-T.equal(electronicsDetails.priceHeuristic.model, "electronics_v2_pending",
-    "electronics pricing reset is exposed")
-T.equal(electronicsDetails.priceHeuristic.status, "pending",
-    "electronics pricing reset is marked pending")
-T.equal(electronicsScore, 14, "pending electronics pricing uses neutral anchor")
+T.equal(electronicsDetails.priceHeuristic.model, "electronics_v2",
+    "electronics pricing model is exposed")
+T.equal(electronicsDetails.priceHeuristic.status, "ready",
+    "electronics pricing model is ready")
+T.truthy(electronicsScore > 14, "electronics function raises its anchor")
 T.equal(electronicsDetails.priceHeuristic.deviceTransmitRange, 250,
     "electronics heuristic exposes radio device evidence")
 electronicsDetails.rawScore = electronicsScore
-T.equal(MarketSense.Pricing.applyBalances(electronicsContext, electronicsDetails), 14,
-    "pending electronics pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(electronicsContext, electronicsDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(electronicsScore)),
+    "electronics pricing keeps heuristic score without legacy flat additions")
 
 local staleElectronics = MarketSense.Pricing.applyOverridesOnly(electronicsContext, {
     fullType = electronicsContext.fullType,
@@ -427,7 +431,7 @@ local staleElectronics = MarketSense.Pricing.applyOverridesOnly(electronicsConte
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleElectronics.priceHeuristic.model, "electronics_v2_pending",
+T.equal(staleElectronics.priceHeuristic.model, "electronics_v2",
     "cached legacy electronics score is rebuilt")
 T.truthy(staleElectronics.price < 999,
     "cached legacy electronics dollars are discarded")
@@ -465,18 +469,19 @@ local medicalDetails = {
     classificationDetails = { source = "medical_display", tag = "FirstAid" },
 }
 local medicalScore = MarketSense.Pricing.calculateRawScore(medicalContext, medicalDetails)
-T.equal(medicalDetails.priceHeuristic.model, "medical_v2_pending",
-    "medical pricing reset is exposed")
-T.equal(medicalDetails.priceHeuristic.status, "pending",
-    "medical pricing reset is marked pending")
-T.equal(medicalScore, 18, "pending medical pricing uses neutral anchor")
+T.equal(medicalDetails.priceHeuristic.model, "medical_v2",
+    "medical pricing model is exposed")
+T.equal(medicalDetails.priceHeuristic.status, "ready",
+    "medical pricing model is ready")
+T.truthy(medicalScore > 18, "medical treatment raises its anchor")
 T.equal(medicalDetails.priceHeuristic.bandagePower, 1.0,
     "medical heuristic exposes treatment evidence")
 T.equal(medicalDetails.priceHeuristic.yieldOutputCount, 1,
     "medical heuristic exposes deterministic yield evidence")
 medicalDetails.rawScore = medicalScore
-T.equal(MarketSense.Pricing.applyBalances(medicalContext, medicalDetails), 18,
-    "pending medical pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(medicalContext, medicalDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(medicalScore)),
+    "medical pricing keeps heuristic score without legacy flat additions")
 
 local staleMedical = MarketSense.Pricing.applyOverridesOnly(medicalContext, {
     fullType = medicalContext.fullType,
@@ -486,7 +491,7 @@ local staleMedical = MarketSense.Pricing.applyOverridesOnly(medicalContext, {
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleMedical.priceHeuristic.model, "medical_v2_pending",
+T.equal(staleMedical.priceHeuristic.model, "medical_v2",
     "cached legacy medical score is rebuilt")
 T.truthy(staleMedical.price < 999,
     "cached legacy medical dollars are discarded")
@@ -538,11 +543,11 @@ local buildingDetails = {
     },
 }
 local buildingScore = MarketSense.Pricing.calculateRawScore(buildingContext, buildingDetails)
-T.equal(buildingDetails.priceHeuristic.model, "building_v2_pending",
-    "building pricing reset is exposed")
-T.equal(buildingDetails.priceHeuristic.status, "pending",
-    "building pricing reset is marked pending")
-T.equal(buildingScore, 5, "pending building pricing uses neutral anchor")
+T.equal(buildingDetails.priceHeuristic.model, "building_v2",
+    "building pricing model is exposed")
+T.equal(buildingDetails.priceHeuristic.status, "ready",
+    "building pricing model is ready")
+T.truthy(buildingScore > 5, "building utility raises its anchor")
 T.equal(buildingDetails.priceHeuristic.capabilities[1], "storage_surface",
     "building heuristic exposes verified capability evidence")
 T.equal(buildingDetails.priceHeuristic.worldContainerCapacity, 24,
@@ -550,8 +555,9 @@ T.equal(buildingDetails.priceHeuristic.worldContainerCapacity, 24,
 T.equal(buildingDetails.priceHeuristic.yieldOutputQuantity, 4,
     "building heuristic exposes deterministic bundle quantity")
 buildingDetails.rawScore = buildingScore
-T.equal(MarketSense.Pricing.applyBalances(buildingContext, buildingDetails), 5,
-    "pending building pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(buildingContext, buildingDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(buildingScore)),
+    "building pricing keeps heuristic score without legacy flat additions")
 
 local staleBuilding = MarketSense.Pricing.applyOverridesOnly(buildingContext, {
     fullType = buildingContext.fullType,
@@ -561,7 +567,7 @@ local staleBuilding = MarketSense.Pricing.applyOverridesOnly(buildingContext, {
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleBuilding.priceHeuristic.model, "building_v2_pending",
+T.equal(staleBuilding.priceHeuristic.model, "building_v2",
     "cached legacy building score is rebuilt")
 T.truthy(staleBuilding.price < 999,
     "cached legacy building dollars are discarded")
@@ -611,11 +617,11 @@ local resourceDetails = {
     },
 }
 local resourceScore = MarketSense.Pricing.calculateRawScore(resourceContext, resourceDetails)
-T.equal(resourceDetails.priceHeuristic.model, "resource_v2_pending",
-    "resource pricing reset is exposed")
-T.equal(resourceDetails.priceHeuristic.status, "pending",
-    "resource pricing reset is marked pending")
-T.equal(resourceScore, 5, "pending resource pricing uses neutral anchor")
+T.equal(resourceDetails.priceHeuristic.model, "resource_v2",
+    "resource pricing model is exposed")
+T.equal(resourceDetails.priceHeuristic.status, "ready",
+    "resource pricing model is ready")
+T.truthy(resourceScore > 5, "resource utility raises its anchor")
 T.equal(resourceDetails.priceHeuristic.materialFamily, "Metalworking",
     "resource heuristic exposes material family")
 T.equal(resourceDetails.priceHeuristic.materialForm, "bundle",
@@ -627,8 +633,9 @@ T.equal(resourceDetails.priceHeuristic.yieldOutputCount, 1,
 T.equal(resourceDetails.priceHeuristic.yieldOutputQuantity, 4,
     "resource heuristic exposes deterministic child quantity")
 resourceDetails.rawScore = resourceScore
-T.equal(MarketSense.Pricing.applyBalances(resourceContext, resourceDetails), 5,
-    "pending resource pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(resourceContext, resourceDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(resourceScore)),
+    "resource pricing keeps heuristic score without legacy flat additions")
 
 local staleResource = MarketSense.Pricing.applyOverridesOnly(resourceContext, {
     fullType = resourceContext.fullType,
@@ -638,7 +645,7 @@ local staleResource = MarketSense.Pricing.applyOverridesOnly(resourceContext, {
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleResource.priceHeuristic.model, "resource_v2_pending",
+T.equal(staleResource.priceHeuristic.model, "resource_v2",
     "cached legacy resource score is rebuilt")
 T.truthy(staleResource.price < 999,
     "cached legacy resource dollars are discarded")
@@ -700,11 +707,11 @@ local miscDetails = {
     },
 }
 local miscScore = MarketSense.Pricing.calculateRawScore(miscContext, miscDetails)
-T.equal(miscDetails.priceHeuristic.model, "misc_v2_pending",
-    "misc pricing reset is exposed")
-T.equal(miscDetails.priceHeuristic.status, "pending",
-    "misc pricing reset is marked pending")
-T.equal(miscScore, 2, "pending Misc pricing uses neutral fallback anchor")
+T.equal(miscDetails.priceHeuristic.model, "misc_v2",
+    "misc pricing model is exposed")
+T.equal(miscDetails.priceHeuristic.status, "ready",
+    "misc pricing model is ready")
+T.truthy(miscScore > 2, "verified Misc utility raises its anchor")
 T.equal(miscDetails.priceHeuristic.subtype, "MiscFishing",
     "misc heuristic exposes its subcategory")
 T.equal(miscDetails.priceHeuristic.signals[1], "fishing_lure",
@@ -716,8 +723,9 @@ T.equal(miscDetails.priceHeuristic.yieldOutputCount, 1,
 T.equal(miscDetails.priceHeuristic.yieldOutputQuantity, 6,
     "misc heuristic exposes deterministic child quantity")
 miscDetails.rawScore = miscScore
-T.equal(MarketSense.Pricing.applyBalances(miscContext, miscDetails), 2,
-    "pending Misc pricing ignores legacy flat additions")
+T.equal(MarketSense.Pricing.applyBalances(miscContext, miscDetails),
+    MarketSense.Core.round(MarketSense.Core.priceClamp(miscScore)),
+    "Misc pricing keeps heuristic score without legacy flat additions")
 
 local staleMisc = MarketSense.Pricing.applyOverridesOnly(miscContext, {
     fullType = miscContext.fullType,
@@ -727,7 +735,7 @@ local staleMisc = MarketSense.Pricing.applyOverridesOnly(miscContext, {
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleMisc.priceHeuristic.model, "misc_v2_pending",
+T.equal(staleMisc.priceHeuristic.model, "misc_v2",
     "cached legacy Misc score is rebuilt")
 T.truthy(staleMisc.price < 999,
     "cached legacy Misc dollars are discarded")
@@ -803,7 +811,7 @@ local hybridDetails = {
 local hybridScore = MarketSense.Pricing.calculateRawScore(toolContext, hybridDetails)
 T.equal(hybridDetails.priceHeuristic.recipeDemand.reusableRecipeCount, 2,
     "weapon/tool hybrids expose reusable recipe demand")
-T.truthy(hybridScore > 14,
+T.truthy(hybridScore > 10,
     "weapon/tool hybrids receive verified recipe utility")
 
 local staleTool = MarketSense.Pricing.applyOverridesOnly(toolContext, {
@@ -858,10 +866,10 @@ local brokenCondition = assert(api.GetPriceDetailsForInstance(
 ))
 T.equal(fullCondition.primary, "WeaponSpear", "instance pricing keeps spear leaf")
 T.equal(fullCondition.weaponEvidence.mechanicalClass, "WeaponSpear", "instance exposes melee evidence")
-T.equal(fullCondition.priceHeuristic.model, "weapon_v2_pending", "weapon pricing reset is exposed")
-T.equal(fullCondition.priceHeuristic.status, "pending", "weapon pricing reset is marked pending")
-T.equal(fullCondition.price, halfCondition.price, "pending weapon pricing ignores legacy condition score")
-T.equal(halfCondition.price, brokenCondition.price, "pending weapon pricing remains neutral")
+T.equal(fullCondition.priceHeuristic.model, "weapon_v2", "weapon pricing model is exposed")
+T.equal(fullCondition.priceHeuristic.status, "ready", "weapon pricing model is ready")
+T.truthy(fullCondition.price > halfCondition.price, "weapon condition affects price")
+T.truthy(halfCondition.price > brokenCondition.price, "broken weapon condition reduces price")
 T.equal(fullCondition.priceHeuristic.conditionRatio, 1, "full condition ratio is visible")
 T.equal(halfCondition.priceHeuristic.conditionRatio, 0.5, "half condition ratio is visible")
 
@@ -873,7 +881,7 @@ local staleWeapon = MarketSense.Pricing.applyOverridesOnly(weaponScriptItem.full
     rawScore = 999,
     price = 999,
 }, true)
-T.equal(staleWeapon.priceHeuristic.model, "weapon_v2_pending",
+T.equal(staleWeapon.priceHeuristic.model, "weapon_v2",
     "cached legacy weapon score is rebuilt")
 T.truthy(staleWeapon.price < 999, "cached legacy weapon dollars are discarded")
 

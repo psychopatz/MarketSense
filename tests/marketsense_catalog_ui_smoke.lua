@@ -105,10 +105,26 @@ local missingYieldText = Window.BuildYieldSummary({
 })
 T.equal(missingYieldText, "Yield: NOT_DETECTED (4326 recipes, 1875 sources indexed)",
     "catalog displays missing-yield index diagnostics")
+local foodHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "food_v2_bundle",
+        status = "ready",
+        subtype = "FoodNonPerishableBoxed",
+        role = "edible",
+        rationUnits = 1.25,
+        hungerChange = -0.3,
+        thirstChange = 0,
+        freshnessState = "definition_freshness",
+        yieldStatus = "resolved",
+    },
+})
+T.equal(foodHeuristicText,
+    "Pricing: ready | subtype=FoodNonPerishableBoxed | role=edible | ration=1.25 | hunger=-0.30 | thirst=0.00 | freshness=definition_freshness | yield=resolved",
+    "catalog displays food utility and valued bundle evidence")
 local weaponToolHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "weapon_v2_pending",
-        status = "pending",
+        model = "weapon_v2",
+        status = "ready",
         mechanicalClass = "WeaponSmallBlunt",
         role = "tool",
         recipeDemandScore = 0.91,
@@ -116,12 +132,12 @@ local weaponToolHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(weaponToolHeuristicText,
-    "Pricing: pending | class=WeaponSmallBlunt | recipes=53 | reusable=52 | demand=0.91 | role=tool",
+    "Pricing: ready | class=WeaponSmallBlunt | recipes=53 | reusable=52 | demand=0.91 | role=tool",
     "catalog displays tool recipe demand for weapon hybrids")
 local literatureHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "literature_v2_pending",
-        status = "pending",
+        model = "literature_v2",
+        status = "ready",
         subtype = "Literature.SkillBook",
         skill = "Carpentry",
         skillLevel = 3,
@@ -130,12 +146,12 @@ local literatureHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(literatureHeuristicText,
-    "Pricing: pending | subtype=Literature.SkillBook | skill=Carpentry | level=3 | recipes=2 | read=normal",
-    "catalog displays pending literature heuristic metadata")
+    "Pricing: ready | subtype=Literature.SkillBook | skill=Carpentry | level=3 | recipes=2 | read=normal",
+    "catalog displays literature heuristic metadata")
 local liquidHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "liquid_v2_pending",
-        status = "pending",
+        model = "liquid_v2",
+        status = "ready",
         subtype = "LiquidWater",
         fluidTypeString = "Water",
         fluidAmount = 2,
@@ -146,12 +162,12 @@ local liquidHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(liquidHeuristicText,
-    "Pricing: pending | subtype=LiquidWater | fluid=Water | amount=2 | primary=2 | ratio=1.00 | mixture=no | yield=not_detected",
-    "catalog displays pending liquid heuristic evidence")
+    "Pricing: ready | subtype=LiquidWater | fluid=Water | amount=2 | primary=2 | ratio=1.00 | mixture=no | yield=not_detected",
+    "catalog displays liquid heuristic evidence")
 local resourceHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "resource_v2_pending",
-        status = "pending",
+        model = "resource_v2",
+        status = "ready",
         subtype = "MaterialMetalworking",
         materialFamily = "Metalworking",
         materialForm = "ore",
@@ -162,12 +178,12 @@ local resourceHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(resourceHeuristicText,
-    "Pricing: pending | subtype=MaterialMetalworking | family=Metalworking | form=ore | stack=true | yield=resolved (1 outputs, qty=4)",
-    "catalog displays pending resource yield evidence")
+    "Pricing: ready | subtype=MaterialMetalworking | family=Metalworking | form=ore | stack=true | yield=resolved (1 outputs, qty=4)",
+    "catalog displays resource yield evidence")
 local miscHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "misc_v2_pending",
-        status = "pending",
+        model = "misc_v2",
+        status = "ready",
         subtype = "MiscFishing",
         signals = { "fishing_lure", "recipe_transform" },
         maxUses = 6,
@@ -178,12 +194,29 @@ local miscHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(miscHeuristicText,
-    "Pricing: pending | subtype=MiscFishing | signals=fishing_lure,recipe_transform | uses=6 | weight=1.5 | yield=resolved (1 outputs, qty=6)",
-    "catalog displays pending Misc utility and yield evidence")
+    "Pricing: ready | subtype=MiscFishing | signals=fishing_lure,recipe_transform | uses=6 | weight=1.5 | yield=resolved (1 outputs, qty=6)",
+    "catalog displays Misc utility and yield evidence")
+local miscBundleHeuristicText = Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "misc_v2_bundle",
+        status = "ready",
+        subtype = "Misc",
+        signals = { "recipe_transform" },
+        weight = 0.5,
+        yieldStatus = "resolved",
+        yieldOutputCount = 1,
+        yieldOutputQuantity = 6,
+        mode = "multi_output_bundle",
+        yieldValue = 12,
+    },
+})
+T.equal(miscBundleHeuristicText,
+    "Pricing: ready | subtype=Misc | signals=recipe_transform | uses=- | weight=0.5 | yield=resolved (1 outputs, qty=6) | mode=multi_output_bundle | value=12",
+    "catalog displays valued Misc bundle evidence")
 local clothingHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "clothing_v2_pending",
-        status = "pending",
+        model = "clothing_v2",
+        status = "ready",
         subtype = "ClothingOuterwear",
         bodyLocationToken = "jacket",
         biteDefense = 10,
@@ -192,8 +225,8 @@ local clothingHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(clothingHeuristicText,
-    "Pricing: pending | subtype=ClothingOuterwear | slot=jacket | bite=10 | scratch=20 | bullet=0",
-    "catalog displays pending clothing heuristic evidence")
+    "Pricing: ready | subtype=ClothingOuterwear | slot=jacket | bite=10 | scratch=20 | bullet=0",
+    "catalog displays clothing heuristic evidence")
 local toolHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
         model = "tool_v2",
@@ -219,22 +252,22 @@ T.equal(Window.BuildDetailSubtext({
     "catalog keeps pricing diagnostics visible beside yield diagnostics")
 local containerHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "container_v2_pending",
-        status = "pending",
+        model = "container_v2",
+        status = "ready",
         subtype = "ContainerBagBackpack",
         capacity = 27,
         weightReduction = 65,
         weight = 1.0,
-        contentYieldStatus = "not_detected",
+        yieldStatus = "not_detected",
     },
 })
 T.equal(containerHeuristicText,
-    "Pricing: pending | subtype=ContainerBagBackpack | capacity=27 | reduction=65 | weight=1.0 | yield=not_detected",
-    "catalog displays pending container heuristic evidence")
+    "Pricing: ready | subtype=ContainerBagBackpack | capacity=27 | reduction=65 | weight=1.0 | yield=not_detected",
+    "catalog displays container heuristic evidence")
 local electronicsHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "electronics_v2_pending",
-        status = "pending",
+        model = "electronics_v2",
+        status = "ready",
         subtype = "ElectronicsRadio",
         capabilities = { "radio_communication" },
         lightStrength = 1.5,
@@ -242,12 +275,12 @@ local electronicsHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(electronicsHeuristicText,
-    "Pricing: pending | subtype=ElectronicsRadio | capability=radio_communication | light=1.5 | device",
-    "catalog displays pending electronics heuristic evidence")
+    "Pricing: ready | subtype=ElectronicsRadio | capability=radio_communication | light=1.5 | device",
+    "catalog displays electronics heuristic evidence")
 local medicalHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "medical_v2_pending",
-        status = "pending",
+        model = "medical_v2",
+        status = "ready",
         subtype = "FirstAid",
         bandagePower = 1,
         reduceInfectionPower = 0,
@@ -255,12 +288,12 @@ local medicalHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(medicalHeuristicText,
-    "Pricing: pending | subtype=FirstAid | bandage=1 | infection=0 | effect=1 | yield=resolved",
-    "catalog displays pending medical heuristic evidence")
+    "Pricing: ready | subtype=FirstAid | bandage=1 | infection=0 | effect=1 | yield=resolved",
+    "catalog displays medical heuristic evidence")
 local buildingHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
-        model = "building_v2_pending",
-        status = "pending",
+        model = "building_v2",
+        status = "ready",
         subtype = "BuildingFurnitureStorage",
         capabilities = { "storage_surface" },
         capabilityEvidence = { "world.furniture.storage" },
@@ -272,8 +305,8 @@ local buildingHeuristicText = Window.BuildPriceHeuristicSummary({
     },
 })
 T.equal(buildingHeuristicText,
-    "Pricing: pending | subtype=BuildingFurnitureStorage | capability=storage_surface | evidence=world.furniture.storage | requirement=electricity | capacity=24 | world=available | yield=resolved",
-    "catalog displays pending building heuristic evidence")
+    "Pricing: ready | subtype=BuildingFurnitureStorage | capability=storage_surface | evidence=world.furniture.storage | requirement=electricity | capacity=24 | world=available | yield=resolved",
+    "catalog displays building heuristic evidence")
 T.equal(PsychopatzCore.DebugHub.testTool.id, "marketsense.itemCatalog",
     "catalog debug tool registration")
 local generatedWindow = {

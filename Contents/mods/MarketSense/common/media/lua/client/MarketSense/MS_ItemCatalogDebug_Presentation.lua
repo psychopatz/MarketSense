@@ -319,7 +319,7 @@ local function buildDetailSubtext(details)
     if yieldText and heuristicText then
         local model = details and details.priceHeuristic
             and tostring(details.priceHeuristic.model or "") or ""
-        if model == "tool_v2" or model == "weapon_v2_pending" then
+        if model == "tool_v2" or model == "weapon_v2" then
             diagnostics = heuristicText .. " | " .. yieldText
         else
             diagnostics = yieldText .. " | " .. heuristicText

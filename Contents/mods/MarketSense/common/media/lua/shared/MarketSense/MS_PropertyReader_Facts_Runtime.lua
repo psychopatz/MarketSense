@@ -145,6 +145,13 @@ local function read(scriptItem, instance, inventoryItem, definition)
     if lightStrength ~= nil then lightStrength = math.max(0, lightStrength) end
     if lightDistance ~= nil then lightDistance = math.max(0, lightDistance) end
 
+    -- Clothing modifiers are optional across game versions and Workshop
+    -- definitions. Preserve nil when the engine does not expose a signal.
+    local waterResistance = optionalNumber(instance, scriptItem, "getWaterResistance")
+    local runSpeedModifier = optionalNumber(instance, scriptItem, "getRunSpeedModifier")
+    local combatSpeedModifier = optionalNumber(instance, scriptItem, "getCombatSpeedModifier")
+    local neckProtectionModifier = optionalNumber(instance, scriptItem, "getNeckProtectionModifier")
+
     local device = Core.safeCall(instance, "getDeviceData", nil)
     local deviceData = nil
     if device ~= nil then
@@ -246,6 +253,10 @@ local function read(scriptItem, instance, inventoryItem, definition)
         lightCanEmit = lightCanEmit,
         lightUseBattery = lightUseBattery,
         lightHasBattery = lightHasBattery,
+        waterResistance = waterResistance,
+        runSpeedModifier = runSpeedModifier,
+        combatSpeedModifier = combatSpeedModifier,
+        neckProtectionModifier = neckProtectionModifier,
         deviceData = deviceData,
         foodAge = foodAge,
         hasRuntimeFoodAge = hasRuntimeFoodAge,

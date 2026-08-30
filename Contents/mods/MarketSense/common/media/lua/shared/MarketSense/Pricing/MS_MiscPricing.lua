@@ -6,19 +6,39 @@
 
 MarketSense = MarketSense or {}
 require "MarketSense/MS_Config"
+require "MarketSense/MS_Core"
+require "MarketSense/Pricing/MS_YieldResolver"
+require "MarketSense/Pricing/MS_TransformPricing"
+require "MarketSense/Pricing/MS_PricingUtils"
 
 MarketSense.MiscPricing = MarketSense.MiscPricing or {}
 
 local MiscPricing = MarketSense.MiscPricing
 local Config = MarketSense.ItemRuntimeConfig
+local Core = MarketSense.Core
+local YieldResolver = MarketSense.YieldResolver
+local TransformPricing = MarketSense.TransformPricing
+local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 
-local function configuredModel()
+local DEFAULTS = {
+    model = "misc_v2",
+    floor = 1.0,
+    ceiling = 250.0,
+    yieldMultiplier = 1.0,
+    yieldPremium = 0.0,
+}
+
+local function settings()
     local configured = Config and Config.miscPricing
-    local model = type(configured) == "table" and configured.model or nil
-    if type(model) ~= "string" or model == "" then
-        return "misc_v2_pending"
+    if type(configured) ~= "table" then
+        return DEFAULTS
     end
-    return model
+
+    local result = {}
+    for key, fallback in pairs(DEFAULTS) do
+        result[key] = configured[key] ~= nil and configured[key] or fallback
+    end
+    return result
 end
 
 local function copyList(value)
@@ -42,6 +62,7 @@ local function copyYieldOutputs(outputs)
             maxQuantity = output.maxQuantity,
             chance = output.chance,
             resolution = output.resolution,
+            inheritFoodAge = output.inheritFoodAge == true,
         }
     end
     return result, totalQuantity
@@ -51,7 +72,7 @@ local function addSignal(signals, name, enabled)
     if enabled then signals[#signals + 1] = name end
 end
 
-function MiscPricing.buildPendingHeuristic(ctx, details)
+function MiscPricing.buildHeuristic(ctx, details)
     ctx = ctx or {}
     details = details or {}
 
@@ -95,10 +116,11 @@ function MiscPricing.buildPendingHeuristic(ctx, details)
     addSignal(signals, "dung", ctx.isDung == true)
     addSignal(signals, "recipe_transform", hasRecipeSignal)
 
+    local c = settings()
     return {
-        model = configuredModel(),
-        status = "pending",
-        reason = "Legacy Misc flat additions removed; awaiting calibrated capability, fallback, and utility anchors.",
+        model = tostring(c.model or DEFAULTS.model),
+        status = "ready",
+        reason = "Misc evidence is retained for the deterministic utility fallback.",
         subtype = subtype,
         classifierSource = classification.source,
         classifierTag = classification.tag,
@@ -191,6 +213,102 @@ function MiscPricing.buildPendingHeuristic(ctx, details)
             "double-counting a parent package and its child outputs",
         },
     }
+end
+
+function MiscPricing.calculate(ctx, details, neutralScore)
+    ctx = ctx or {}
+    details = details or {}
+    local c = settings()
+    local yieldInfo = type(details.yieldResolution) == "table"
+        and details.yieldResolution or YieldResolver.resolve(ctx)
+    details.yieldResolution = yieldInfo
+
+    local heuristic = MiscPricing.buildHeuristic(ctx, details)
+    heuristic.positiveContributions = {}
+    heuristic.negativeContributions = {}
+    heuristic.yieldEvaluation = "not_detected"
+    heuristic.yieldBlockedReason = nil
+
+    local transformScore, transform = TransformPricing.evaluate(ctx, details, {
+        multiplier = c.yieldMultiplier,
+        premium = c.yieldPremium,
+        floor = c.floor,
+        ceiling = c.ceiling,
+    })
+    if transformScore ~= nil then
+        for key, value in pairs(transform) do heuristic[key] = value end
+        heuristic.model = "misc_v2_bundle"
+        heuristic.status = "ready"
+        heuristic.reason = "Deterministic transform valued from individualized child outputs."
+        heuristic.yieldEvaluation = "valued"
+        heuristic.positiveContributions = Core.deepCopy(transform.contributions)
+        heuristic.score = transformScore
+        return transformScore, heuristic
+    end
+
+    if type(transform) == "table" then
+        if transform.yieldStatus == "resolved" then
+            yieldInfo.evaluation = "fallback"
+            yieldInfo.fallbackReason = transform.reason or "yield evaluation failed"
+        end
+        heuristic.yieldEvaluation = "blocked"
+        heuristic.yieldBlockedReason = transform.reason
+            or ("yield status is " .. tostring(yieldInfo.status))
+        heuristic.blockedReasons = { heuristic.yieldBlockedReason }
+    end
+
+    local positives = {}
+    local negatives = {}
+    local subtype = tostring(heuristic.subtype or "Misc")
+    local capabilityCount = #heuristic.capabilities
+    local capabilityValue = math.min(8, capabilityCount * 2)
+    local familyValue = 0
+    if string.find(subtype, "Fishing", 1, true) then familyValue = 4
+    elseif string.find(subtype, "Fire", 1, true) then familyValue = 4
+    elseif string.find(subtype, "Safety", 1, true)
+        or string.find(subtype, "Security", 1, true) then familyValue = 3
+    elseif string.find(subtype, "Navigation", 1, true)
+        or string.find(subtype, "Utility", 1, true)
+        or string.find(subtype, "Household", 1, true) then familyValue = 2
+    elseif string.find(subtype, "Recreation", 1, true)
+        or string.find(subtype, "Entertainment", 1, true) then familyValue = 1.5
+    end
+    local usesValue = math.min(4, math.max(0, tonumber(ctx.maxUses) or 0) * 0.5)
+    local stackValue = math.min(4, math.max(0, tonumber(ctx.stackCount) or 0) * 0.15)
+    local waterValue = ctx.canStoreWater == true and 3 or 0
+    local fishingValue = ctx.isFishingLure == true and 2 or 0
+    -- A recipe signal is evidence that the item may be a transform, not a
+    -- value by itself. Exact transforms are valued above; blocked ones stay
+    -- diagnostic-only so an ambiguous package cannot receive a free premium.
+    local recipeValue = 0
+    local weightPenalty = math.min(8, math.max(0, tonumber(ctx.weight) or 0) * 0.8)
+    local stateFactor = Utils.runtimeStateFactor(ctx, { harmfulFactor = 0.12, wasteFactor = 0.3 })
+    Utils.addContribution(positives, "verified capability", capabilityValue, capabilityCount)
+    Utils.addContribution(positives, "verified Misc family", familyValue, subtype)
+    Utils.addContribution(positives, "reusable amount", usesValue, ctx.maxUses)
+    Utils.addContribution(positives, "stack quantity", stackValue, ctx.stackCount)
+    Utils.addContribution(positives, "water storage", waterValue, true)
+    Utils.addContribution(positives, "fishing utility", fishingValue, true)
+    Utils.addContribution(positives, "transform access", recipeValue, true)
+    Utils.addContribution(negatives, "weight burden", weightPenalty, ctx.weight)
+    Utils.addContribution(negatives, "decorative memento", subtype == "Memento" and 1.5 or 0, subtype)
+    Utils.addContribution(negatives, "junk identity", subtype == "Junk" and 1.0 or 0, subtype)
+    Utils.addContribution(negatives, "poison or waste state",
+        (ctx.isPoison or ctx.isDung) and 2 or 0, true)
+    local score, summary = Utils.scoreAnchors(neutralScore or 2, positives, negatives, {
+        stateFactor = stateFactor,
+        floor = c.floor,
+        ceiling = c.ceiling,
+    })
+    for key, value in pairs(summary) do heuristic[key] = value end
+    heuristic.model = "misc_v2"
+    heuristic.status = "ready"
+    heuristic.mode = "fallback"
+    heuristic.reason = "Misc utility anchors evaluated from verified metadata."
+    heuristic.positiveContributions = positives
+    heuristic.negativeContributions = negatives
+    heuristic.score = score
+    return score, heuristic
 end
 
 return MiscPricing

@@ -2,6 +2,8 @@ require "MarketSense/MS_Config"
 require "MarketSense/MS_TagUtils"
 require "MarketSense/MS_Core"
 require "MarketSense/Pricing/MS_YieldResolver"
+require "MarketSense/Pricing/MS_PricingUtils"
+require "MarketSense/Pricing/MS_TransformPricing"
 
 MarketSense = MarketSense or {}
 MarketSense.FoodPricing = MarketSense.FoodPricing or {}
@@ -11,6 +13,8 @@ local Config = MarketSense.ItemRuntimeConfig
 local TagUtils = MarketSense.TagUtils
 local Core = MarketSense.Core
 local YieldResolver = MarketSense.YieldResolver
+local Utils = require "MarketSense/Pricing/MS_PricingUtils"
+local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
     model = "food_v2",
@@ -153,100 +157,6 @@ local function roleMultiplier(ctx, details, c)
     return clamp(multiplier, 0.05, 1.50), role
 end
 
-local function copyPath(path)
-    local result = {}
-    for key, value in pairs(path or {}) do result[key] = value end
-    return result
-end
-
-local function inheritedFoodState(parent, child, output)
-    if output and output.inheritFoodAge == true and parent.hasRuntimeFoodAge == true then
-        child.foodAge = parent.foodAge
-        child.hasRuntimeFoodAge = true
-        child.hasRuntimeFoodState = parent.hasRuntimeFoodState == true
-        child.isRotten = parent.isRotten == true
-        child.isFrozen = parent.isFrozen == true
-    end
-    return child
-end
-
-local function calculateBundle(ctx, details, yieldInfo, c)
-    local Pricing = MarketSense.Pricing
-    if not Pricing or type(Pricing.calculateDetails) ~= "function" then
-        return nil, "pricing API unavailable"
-    end
-
-    local path = copyPath(details._yieldPath)
-    local total = 0
-    local contributions = {}
-    for _, output in ipairs(yieldInfo.outputs or {}) do
-        local quantity = number(output.quantity, 0)
-        local chance = number(output.chance, 1.0)
-        local fullType = tostring(output.fullType or "")
-        if fullType == "" then return nil, "output item is unresolved" end
-        if quantity <= 0 then return nil, "output quantity is not positive" end
-        if chance < 1.0 then
-            return nil, "probabilistic output is not deterministic"
-        end
-        if path[fullType] then return nil, "yield cycle detected" end
-
-        local childContext = MarketSense.PropertyReader
-            and MarketSense.PropertyReader.buildContext(fullType) or nil
-        if type(childContext) ~= "table" or childContext.item == nil then
-            return nil, "output item is unavailable: " .. fullType
-        end
-        childContext = inheritedFoodState(ctx, childContext, output)
-
-        local childPath = copyPath(path)
-        childPath[fullType] = true
-        local childDetails = Pricing.calculateDetails(
-            childContext, false, nil, { yieldPath = childPath }
-        )
-        local childYield = childDetails.yieldResolution
-        if type(childYield) == "table"
-            and childYield.status == "resolved"
-            and childYield.evaluation == "fallback" then
-            return nil, "nested bundle evaluation failed: " .. fullType
-        end
-        local unitValue = number(childDetails.rawScore, nil)
-        if unitValue == nil then
-            return nil, "output item did not produce a raw score: " .. fullType
-        end
-        local value = unitValue * quantity
-        total = total + value
-        contributions[#contributions + 1] = {
-            fullType = fullType,
-            quantity = quantity,
-            unitRawScore = unitValue,
-            contribution = value,
-            model = childDetails.priceHeuristic
-                and childDetails.priceHeuristic.model or nil,
-            role = childDetails.priceHeuristic
-                and childDetails.priceHeuristic.role or nil,
-        }
-    end
-
-    if #contributions == 0 then return nil, "yield has no outputs" end
-    local multiplier = number(c.bundleMultiplier, DEFAULTS.bundleMultiplier)
-    local premium = number(c.bundlePremium, DEFAULTS.bundlePremium)
-    local score = (total * multiplier) + premium
-    local floor = math.max(0, number(c.floor, DEFAULTS.floor) or DEFAULTS.floor)
-    local ceiling = math.max(floor, number(c.ceiling, DEFAULTS.ceiling) or DEFAULTS.ceiling)
-    score = clamp(score, floor, ceiling)
-    return score, {
-        model = tostring(c.model or DEFAULTS.model) .. "_bundle",
-        anchor = number(c.anchor, DEFAULTS.anchor),
-        mode = #contributions > 1 and "multi_output_bundle" or "bundle",
-        recipe = yieldInfo.recipe,
-        yieldResolution = Core.deepCopy(yieldInfo),
-        outputValue = total,
-        bundleMultiplier = multiplier,
-        bundlePremium = premium,
-        contributions = contributions,
-        score = score,
-    }
-end
-
 local function freshnessMultiplier(ctx, c)
     if ctx.hasRuntimeFoodAge ~= true or ctx.foodAge == nil then
         return 1.0, "definition_freshness"
@@ -325,13 +235,26 @@ function FoodPricing.calculate(ctx, details)
     details.yieldResolution = yieldInfo
 
     if yieldInfo.status == "resolved" then
-        local bundleScore, bundleHeuristic = calculateBundle(ctx, details, yieldInfo, c)
+        local bundleScore, bundleHeuristic = TransformPricing.evaluate(ctx, details, {
+            multiplier = c.bundleMultiplier,
+            premium = c.bundlePremium,
+            floor = c.floor,
+            ceiling = c.ceiling,
+        })
         if bundleScore ~= nil then
+            bundleHeuristic.model = Utils.bundleModel(c.model)
+            bundleHeuristic.status = "ready"
+            bundleHeuristic.anchor = number(c.anchor, DEFAULTS.anchor)
+            bundleHeuristic.reason = "Deterministic food transform valued from individualized child outputs."
+            Utils.addYieldEvidence(bundleHeuristic, details)
+            bundleHeuristic.positiveContributions = Core.deepCopy(bundleHeuristic.contributions)
+            bundleHeuristic.negativeContributions = {}
             details.priceHeuristic = bundleHeuristic
             return bundleScore
         end
         yieldInfo.evaluation = "fallback"
-        yieldInfo.fallbackReason = bundleHeuristic or "bundle evaluation failed"
+        yieldInfo.fallbackReason = type(bundleHeuristic) == "table"
+            and bundleHeuristic.reason or "bundle evaluation failed"
     end
 
     local hungerChange = signedValue(ctx, "hungerChange", "hunger")
@@ -393,8 +316,10 @@ function FoodPricing.calculate(ctx, details)
     local ceiling = math.max(floor, number(c.ceiling, DEFAULTS.ceiling) or DEFAULTS.ceiling)
     score = clamp(score, floor, ceiling)
 
-    details.priceHeuristic = {
+    local heuristic = {
         model = tostring(c.model or DEFAULTS.model),
+        status = "ready",
+        reason = "Food value combines nutrition, mood, role, freshness, shelf life, preparation, and bulk.",
         anchor = anchor,
         role = roleName,
         rationUnits = rationUnits,
@@ -421,8 +346,40 @@ function FoodPricing.calculate(ctx, details)
         foodDaysFresh = ctx.foodDaysFresh,
         foodDaysRotten = ctx.foodDaysRotten,
         isRotten = ctx.isRotten == true,
+        positiveContributions = {},
+        negativeContributions = {},
+        plannedPositiveAnchors = {
+            "hunger, thirst, and calorie delivery",
+            "mood relief and positive food effects",
+            "shelf life and preservation stability",
+            "cooked or otherwise prepared usefulness",
+            "deterministic child-item yield multiplied by quantity",
+        },
+        plannedNegativeAnchors = {
+            "stale, rotten, frozen, burnt, or harmful state",
+            "weight and bulk per ration delivered",
+            "ingredient, spice, seed, pet-food, or insect role multiplier",
+            "negative mood and nutrition effects",
+            "ambiguous or probabilistic package yield",
+        },
         score = score,
     }
+    Utils.addYieldEvidence(heuristic, details)
+    heuristic.yieldEvaluation = yieldInfo.status == "resolved"
+        and "blocked" or "not_detected"
+    heuristic.yieldBlockedReason = yieldInfo.status == "resolved"
+        and yieldInfo.fallbackReason or nil
+    local positives, negatives = heuristic.positiveContributions, heuristic.negativeContributions
+    Utils.addContribution(positives, "nutrition ration", rationUnits, rationUnits)
+    Utils.addContribution(positives, "mood benefit", moodBenefit * number(c.moodBenefitWeight, 0.015), moodBenefit)
+    Utils.addContribution(positives, "shelf life", math.max(0, shelfLife - 1) * 4, shelfLifeState)
+    Utils.addContribution(positives, "preparation", math.max(0, preparation - 1) * 4, preparation)
+    Utils.addContribution(negatives, "mood harm", moodHarm * number(c.moodPenaltyWeight, 0.020), moodHarm)
+    Utils.addContribution(negatives, "bulk burden", math.max(0, 1 - bulk) * 4, ctx.weight)
+    Utils.addContribution(negatives, "role discount", math.max(0, 1 - roleValue) * 5, roleName)
+    Utils.addContribution(negatives, "freshness loss", math.max(0, 1 - freshness) * 8, freshnessState)
+    heuristic.formula = "multiplicative_food_utility"
+    details.priceHeuristic = heuristic
     return score
 end
 

@@ -64,6 +64,7 @@ def run_catalog_checks(
         "MarketSenseFixture.ToolAnvil", "MarketSenseFixture.GardeningSpray",
         "MarketSenseFixture.GardeningShovel", "MarketSenseFixture.HollowBook",
         "MarketSenseFixture.HollowBookHandgun", "MarketSenseFixture.MiscFishing",
+        "MarketSenseFixture.MiscBundle", "MarketSenseFixture.MiscAmbiguousBundle",
         "MarketSenseFixture.MoveableShelf", "MarketSenseFixture.FoodMix",
         "MarketSenseFixture.ModFoodRecipe",
         "MarketSenseFixture.ComboWasherDryer", "MarketSenseFixture.LaundryBin",
@@ -457,6 +458,39 @@ def run_taxonomy_checks(
 def run_domain_checks(
     by_type: dict[str, dict[str, Any]], check: Check,
 ) -> None:
+    model_prefixes = {
+        "Food": "food_v2",
+        "Weapon": "weapon_v2",
+        "Literature": "literature_v2",
+        "Clothing": "clothing_v2",
+        "Container": "container_v2",
+        "Tool": "tool_v2",
+        "Electronics": "electronics_v2",
+        "Medical": "medical_v2",
+        "Building": "building_v2",
+        "Liquid": "liquid_v2",
+        "Resource": "resource_v2",
+        "Misc": "misc_v2",
+    }
+    heuristic_rows = [
+        row for row in by_type.values() if row.get("category") in model_prefixes
+    ]
+    ready_models = all(
+        isinstance(row.get("priceHeuristic"), dict)
+        and (row.get("priceHeuristic") or {}).get("status") == "ready"
+        and str((row.get("priceHeuristic") or {}).get("model") or "")
+        .startswith(model_prefixes[row.get("category")])
+        and isinstance((row.get("priceHeuristic") or {}).get("positiveContributions"), list)
+        and isinstance((row.get("priceHeuristic") or {}).get("negativeContributions"), list)
+        for row in heuristic_rows
+    )
+    check(
+        "all category heuristics are ready and auditable",
+        bool(heuristic_rows) and ready_models,
+        f"{sum(1 for row in heuristic_rows if row.get('priceHeuristic'))}/"
+        f"{len(heuristic_rows)} rows expose ready v2 positive/negative anchors",
+    )
+
     water = by_type.get("MarketSenseFixture.LiquidWater", {})
     water_two_liter = by_type.get("MarketSenseFixture.LiquidWaterTwoLiter", {})
     water_in_can = by_type.get("MarketSenseFixture.LiquidWaterInCan", {})
@@ -476,11 +510,11 @@ def run_domain_checks(
         and water_context.get("fluidTypeString") == "Water"
         and abs(float(water_context.get("fluidAmount", 0)) - 1.0) < 1e-9
         and abs(float(water_context.get("fluidCapacity", 0)) - 1.0) < 1e-9
-        and water.get("price") == 5
-        and water_two_liter.get("price") == 5
-        and water_in_can.get("price") == 5
-        and (water_two_liter.get("priceHeuristic") or {}).get("model") == "liquid_v2_pending"
-        and (water_two_liter.get("priceHeuristic") or {}).get("status") == "pending"
+        and water.get("price", 0) > 0
+        and water_two_liter.get("price", 0) > water.get("price", 0)
+        and water_in_can.get("price", 0) > 0
+        and (water_two_liter.get("priceHeuristic") or {}).get("model") == "liquid_v2"
+        and (water_two_liter.get("priceHeuristic") or {}).get("status") == "ready"
         and (water_two_liter.get("priceHeuristic") or {}).get("fluidPrimaryAmount") == 2
         and (water_two_liter.get("priceHeuristic") or {}).get("fluidFilledRatio") == 1
         and (water_two_liter.get("priceHeuristic") or {}).get("fluidIsMixture") is False
@@ -504,10 +538,10 @@ def run_domain_checks(
     resource_checks = (
         resource_ore.get("category") == "Resource"
         and resource_nails.get("category") == "Resource"
-        and resource_ore.get("price") == 5
-        and resource_nails.get("price") == 5
-        and resource_heuristic.get("model") == "resource_v2_pending"
-        and resource_heuristic.get("status") == "pending"
+        and resource_ore.get("price", 0) > 0
+        and resource_nails.get("price", 0) > 0
+        and resource_heuristic.get("model") == "resource_v2_bundle"
+        and resource_heuristic.get("status") == "ready"
         and resource_heuristic.get("materialFamily") == "Bundled"
         and resource_heuristic.get("materialForm") == "bundle"
         and resource_heuristic.get("unbundleCandidate") is True
@@ -524,18 +558,41 @@ def run_domain_checks(
     )
 
     misc_fishing = by_type.get("MarketSenseFixture.MiscFishing", {})
+    misc_bundle = by_type.get("MarketSenseFixture.MiscBundle", {})
+    misc_ambiguous = by_type.get("MarketSenseFixture.MiscAmbiguousBundle", {})
     misc_memento = by_type.get("MarketSenseFixture.NamespacedMemento", {})
     misc_heuristic = misc_fishing.get("priceHeuristic") or {}
     misc_signals = misc_heuristic.get("signals") or []
+    misc_bundle_audit = next(
+        (
+            entry for entry in (misc_bundle.get("priceAudit") or [])
+            if entry.get("label") == "misc_v2_bundle heuristic"
+        ),
+        {},
+    )
+    misc_bundle_audit_extra = misc_bundle_audit.get("extra") or {}
     misc_checks = (
         misc_fishing.get("category") == "Misc"
         and misc_fishing.get("primary") == "MiscFishing"
         and misc_fishing.get("categoryPath") == "Misc > Fishing > Fishing"
-        and misc_fishing.get("price") == 2
-        and misc_heuristic.get("model") == "misc_v2_pending"
-        and misc_heuristic.get("status") == "pending"
+        and misc_fishing.get("price", 0) > 2
+        and misc_heuristic.get("model") == "misc_v2"
+        and misc_heuristic.get("status") == "ready"
         and "fishing_lure" in misc_signals
-        and misc_memento.get("price") == 2
+        and misc_bundle.get("category") == "Misc"
+        and misc_bundle.get("price") == misc_fishing.get("price", 0) * 6
+        and (misc_bundle.get("priceHeuristic") or {}).get("model") == "misc_v2_bundle"
+        and (misc_bundle.get("priceHeuristic") or {}).get("status") == "ready"
+        and (misc_bundle.get("priceHeuristic") or {}).get("mode") == "multi_output_bundle"
+        and (misc_bundle.get("priceHeuristic") or {}).get("yieldValue")
+            == misc_fishing.get("price", 0) * 6
+        and len((misc_bundle.get("priceHeuristic") or {}).get("contributions") or []) == 1
+        and misc_bundle_audit_extra.get("yieldMode") == "multi_output_bundle"
+        and misc_bundle_audit_extra.get("yieldValue") == misc_fishing.get("price", 0) * 6
+        and misc_ambiguous.get("price") == 2
+        and (misc_ambiguous.get("priceHeuristic") or {}).get("yieldEvaluation") == "blocked"
+        and (misc_ambiguous.get("priceHeuristic") or {}).get("status") == "ready"
+        and misc_memento.get("price", 0) >= 1
         and (misc_memento.get("priceHeuristic") or {}).get("isMemento") is True
     )
     check(
@@ -543,6 +600,9 @@ def run_domain_checks(
         misc_checks,
         f"fishing={misc_fishing.get('price', '?')} model={misc_heuristic.get('model', '?')} "
         f"signals={','.join(str(signal) for signal in misc_signals)} "
+        f"bundle={misc_bundle.get('price', '?')} mode="
+        f"{(misc_bundle.get('priceHeuristic') or {}).get('mode', '?')} "
+        f"ambiguous={misc_ambiguous.get('price', '?')} "
         f"memento={misc_memento.get('price', '?')}",
     )
 
@@ -777,7 +837,7 @@ def run_pricing_checks(
             carton_resolution.get("status") == "resolved"
             and carton_resolution.get("candidateMethod") == "explicit_property"
             and carton_resolution.get("outputs", [{}])[0].get("quantity") == 4
-            and carton_heuristic.get("mode") == "bundle"
+            and carton_heuristic.get("mode") == "multi_output_bundle"
             and food_carton.get("price", 0) >= food_unit.get("price", 0) * 4
             and "resolved" in food_carton.get("yieldResolver", "")
         ),

@@ -1,97 +1,143 @@
-require "MarketSense/MS_Config"
-
 -- MarketSense medical pricing.
--- The numerical medical model is intentionally pending calibration.
+-- Treatment outcomes are the anchor; names, rarity, and loot origin are only
+-- explanatory evidence. Missing medical APIs remain neutral instead of being
+-- mistaken for a zero-effect treatment.
+
+require "MarketSense/MS_Config"
+require "MarketSense/MS_Core"
+require "MarketSense/Pricing/MS_PricingUtils"
+require "MarketSense/Pricing/MS_TransformPricing"
 
 MarketSense = MarketSense or {}
 MarketSense.MedicalPricing = MarketSense.MedicalPricing or {}
 
 local MedicalPricing = MarketSense.MedicalPricing
 local Config = MarketSense.ItemRuntimeConfig
+local Core = MarketSense.Core
+local Utils = require "MarketSense/Pricing/MS_PricingUtils"
+local TransformPricing = MarketSense.TransformPricing
 
-local function configuredModel()
-    local configured = Config and Config.medicalPricing
-    local model = type(configured) == "table" and configured.model or nil
-    if type(model) ~= "string" or model == "" then
-        return "medical_v2_pending"
-    end
-    return model
+local DEFAULTS = {
+    model = "medical_v2", anchor = 18.0, floor = 1.0, ceiling = 300.0,
+    bandageWeight = 6.0, infectionWeight = 7.0, alcoholWeight = 3.0,
+    painWeight = 0.08, fluWeight = 0.08, sicknessReliefWeight = 0.08,
+    medicalLootAnchor = 1.5, useWeight = 0.8, weightPenalty = 0.8,
+    harmfulPenalty = 4.0, conditionFloor = 0.20,
+    yieldMultiplier = 1.0, yieldPremium = 0.0,
+}
+
+local function number(value, fallback)
+    value = tonumber(value)
+    return value ~= nil and value or fallback
 end
 
-function MedicalPricing.buildPendingHeuristic(ctx, details)
+local function settings()
+    local configured = Config and Config.medicalPricing
+    if type(configured) ~= "table" then return DEFAULTS end
+    local result = {}
+    for key, fallback in pairs(DEFAULTS) do
+        result[key] = configured[key] ~= nil and configured[key] or fallback
+    end
+    return result
+end
+
+local function relief(value)
+    value = number(value, 0)
+    return math.max(0, -value)
+end
+
+function MedicalPricing.calculate(ctx, details)
     ctx = ctx or {}
     details = details or {}
-
-    local classification = type(details.classificationDetails) == "table"
-        and details.classificationDetails or {}
-    local yield = type(details.yieldResolution) == "table"
-        and details.yieldResolution or {}
-
-    return {
-        model = configuredModel(),
-        status = "pending",
-        reason = "Legacy medical scoring removed; awaiting calibrated treatment anchors.",
+    local c = settings()
+    local heuristic = {
+        model = tostring(c.model or DEFAULTS.model), status = "ready",
         subtype = details.primary or "Medical",
-        classifierSource = classification.source,
-        classifierTag = classification.tag,
-        displayCategory = ctx.displayCategory,
-        itemType = ctx.itemType,
-        lootType = ctx.lootType,
-        isMedicalLoot = ctx.isMedicalLoot == true,
-        canBandage = ctx.canBandage == true,
-        useSelf = ctx.useSelf,
-        bandagePower = ctx.bandagePower,
-        reduceInfectionPower = ctx.reduceInfectionPower,
-        alcoholPower = ctx.alcoholPower,
-        painReduction = ctx.painReduction,
-        fluReduction = ctx.fluReduction,
-        foodSicknessChange = ctx.foodSicknessChange,
-        conditionMax = ctx.conditionMax,
-        condition = ctx.condition,
-        conditionRatio = ctx.conditionRatio,
-        weight = ctx.weight,
-        useDelta = ctx.useDelta,
-        maxUses = ctx.maxUses,
-        remainingUsesRatio = ctx.remainingUsesRatio,
-        replaceOnUse = ctx.replaceOnUse,
-        replaceOnUseOn = ctx.replaceOnUseOn,
-        isDisappearOnUse = ctx.isDisappearOnUse,
-        yieldStatus = yield.status,
-        yieldRecipe = yield.recipe,
-        yieldOutputCount = type(yield.outputs) == "table" and #yield.outputs or 0,
-        staticMetricsAvailable = {
-            classification = details.primary ~= nil and details.primary ~= "",
-            medicalLoot = ctx.isMedicalLoot ~= nil,
-            bandagePower = ctx.bandagePower ~= nil,
-            infectionTreatment = ctx.reduceInfectionPower ~= nil,
-            alcoholPower = ctx.alcoholPower ~= nil,
-            symptomRelief = ctx.painReduction ~= nil or ctx.fluReduction ~= nil
-                or ctx.foodSicknessChange ~= nil,
-            bandageCapability = ctx.canBandage ~= nil,
-            conditionMax = ctx.conditionMax ~= nil,
-            weight = ctx.weight ~= nil,
-            uses = ctx.useDelta ~= nil or ctx.maxUses ~= nil,
-            replacement = ctx.replaceOnUse ~= nil or ctx.replaceOnUseOn ~= nil,
-            deterministicYield = details.yieldResolution ~= nil,
-        },
+        reason = "Medical value combines verified treatment outcomes, doses, and patient-facing utility.",
+        classifierSource = type(details.classificationDetails) == "table"
+            and details.classificationDetails.source or nil,
+        classifierTag = type(details.classificationDetails) == "table"
+            and details.classificationDetails.tag or nil,
+        isMedicalLoot = ctx.isMedicalLoot == true, canBandage = ctx.canBandage,
+        useSelf = ctx.useSelf, bandagePower = ctx.bandagePower,
+        reduceInfectionPower = ctx.reduceInfectionPower, alcoholPower = ctx.alcoholPower,
+        painReduction = ctx.painReduction, fluReduction = ctx.fluReduction,
+        foodSicknessChange = ctx.foodSicknessChange, conditionMax = ctx.conditionMax,
+        condition = ctx.condition, conditionRatio = ctx.conditionRatio,
+        weight = ctx.weight, useDelta = ctx.useDelta, maxUses = ctx.maxUses,
+        remainingUsesRatio = ctx.remainingUsesRatio, replaceOnUse = ctx.replaceOnUse,
+        replaceOnUseOn = ctx.replaceOnUseOn, isDisappearOnUse = ctx.isDisappearOnUse,
+        positiveContributions = {}, negativeContributions = {},
         plannedPositiveAnchors = {
             "verified treatment effect and patient-facing outcome",
             "wound coverage, bandage power, and infection reduction",
             "pain, flu, food-sickness, or other verified symptom relief",
             "deterministic doses, remaining uses, and replacement output",
             "sterility or clean-use state when mechanically verified",
-            "repair, crafting, or reusable medical utility when explicitly resolved",
-            "deterministic child-item yield multiplied by output quantity",
+            "exact child-item yield valued per output quantity",
         },
         plannedNegativeAnchors = {
             "weight, bulk, and handling cost per treatment delivered",
             "depleted uses, consumed-on-use state, or missing replacement",
-            "broken, damaged, expired, or unusable state when exposed",
-            "side effects, toxicity, addiction, or operating risk when evidenced",
-            "narrow treatment compatibility or patient-condition restrictions",
-            "ambiguous medical names, rarity, or display labels without effect evidence",
+            "broken, damaged, expired, or unusable state",
+            "side effects, toxicity, addiction, or operating risk",
+            "narrow treatment compatibility or patient restrictions",
+            "names or rarity without effect evidence",
         },
     }
+    Utils.addYieldEvidence(heuristic, details)
+
+    local transformScore, transform = TransformPricing.evaluate(ctx, details, {
+        multiplier = c.yieldMultiplier, premium = c.yieldPremium,
+        floor = c.floor, ceiling = c.ceiling,
+    })
+    if transformScore ~= nil then
+        for key, value in pairs(transform) do heuristic[key] = value end
+        heuristic.model = Utils.bundleModel(c.model)
+        heuristic.status = "ready"
+        heuristic.reason = "Deterministic transform valued from individualized child outputs."
+        heuristic.yieldEvaluation = "valued"
+        heuristic.positiveContributions = Core.deepCopy(transform.contributions)
+        heuristic.score = transformScore
+        details.priceHeuristic = heuristic
+        return transformScore
+    end
+    heuristic.yieldEvaluation = "blocked"
+    heuristic.yieldBlockedReason = type(transform) == "table" and transform.reason or nil
+
+    local positives, negatives = heuristic.positiveContributions, heuristic.negativeContributions
+    local bandage = math.min(8, number(ctx.bandagePower, 0) * number(c.bandageWeight, 6))
+    local infection = math.min(8, number(ctx.reduceInfectionPower, 0)
+        * number(c.infectionWeight, 7))
+    local alcohol = math.min(5, number(ctx.alcoholPower, 0) * number(c.alcoholWeight, 3))
+    local symptoms = math.min(8, number(ctx.painReduction, 0) * number(c.painWeight, 0.08)
+        + number(ctx.fluReduction, 0) * number(c.fluWeight, 0.08)
+        + relief(ctx.foodSicknessChange) * number(c.sicknessReliefWeight, 0.08))
+    local loot = ctx.isMedicalLoot == true and number(c.medicalLootAnchor, 1.5) or 0
+    local uses = math.min(5, math.max(0, number(ctx.maxUses, 0))
+        * number(c.useWeight, 0.8))
+    Utils.addContribution(positives, "bandage treatment", bandage, ctx.bandagePower)
+    Utils.addContribution(positives, "infection treatment", infection, ctx.reduceInfectionPower)
+    Utils.addContribution(positives, "alcohol treatment", alcohol, ctx.alcoholPower)
+    Utils.addContribution(positives, "symptom relief", symptoms, ctx.painReduction or ctx.fluReduction)
+    Utils.addContribution(positives, "medical classification", loot, ctx.isMedicalLoot)
+    Utils.addContribution(positives, "usable doses", uses, ctx.maxUses)
+
+    local weightPenalty = math.min(10, math.max(0, number(ctx.weight, 0))
+        * number(c.weightPenalty, 0.8))
+    local harmfulPenalty = (number(ctx.foodSicknessChange, 0) > 0
+        or ctx.isPoison == true) and number(c.harmfulPenalty, 4) or 0
+    Utils.addContribution(negatives, "weight burden", weightPenalty, ctx.weight)
+    Utils.addContribution(negatives, "harmful or toxic effect", harmfulPenalty, ctx.isPoison)
+    local stateFactor = Utils.runtimeStateFactor(ctx, { conditionFloor = c.conditionFloor })
+    local score, summary = Utils.scoreAnchors(c.anchor, positives, negatives, {
+        stateFactor = stateFactor, floor = c.floor, ceiling = c.ceiling,
+    })
+    for key, value in pairs(summary) do heuristic[key] = value end
+    heuristic.mode = "treatment_effects"
+    heuristic.score = score
+    details.priceHeuristic = heuristic
+    return score
 end
 
 return MedicalPricing
