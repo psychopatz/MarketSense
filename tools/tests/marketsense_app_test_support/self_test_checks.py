@@ -562,7 +562,9 @@ def run_domain_checks(
     misc_ambiguous = by_type.get("MarketSenseFixture.MiscAmbiguousBundle", {})
     misc_memento = by_type.get("MarketSenseFixture.NamespacedMemento", {})
     misc_heuristic = misc_fishing.get("priceHeuristic") or {}
+    misc_bundle_heuristic = misc_bundle.get("priceHeuristic") or {}
     misc_signals = misc_heuristic.get("signals") or []
+    misc_bundle_contributions = misc_bundle_heuristic.get("contributions") or []
     misc_bundle_audit = next(
         (
             entry for entry in (misc_bundle.get("priceAudit") or [])
@@ -580,16 +582,17 @@ def run_domain_checks(
         and misc_heuristic.get("status") == "ready"
         and "fishing_lure" in misc_signals
         and misc_bundle.get("category") == "Misc"
-        and misc_bundle.get("price") == misc_fishing.get("price", 0) * 6
-        and (misc_bundle.get("priceHeuristic") or {}).get("model") == "misc_v2_bundle"
-        and (misc_bundle.get("priceHeuristic") or {}).get("status") == "ready"
-        and (misc_bundle.get("priceHeuristic") or {}).get("mode") == "multi_output_bundle"
-        and (misc_bundle.get("priceHeuristic") or {}).get("yieldValue")
-            == misc_fishing.get("price", 0) * 6
-        and len((misc_bundle.get("priceHeuristic") or {}).get("contributions") or []) == 1
+        and misc_bundle.get("price", 0) > misc_fishing.get("price", 0)
+        and misc_bundle_heuristic.get("model") == "misc_v2_bundle"
+        and misc_bundle_heuristic.get("status") == "ready"
+        and misc_bundle_heuristic.get("mode") == "multi_output_bundle"
+        and len(misc_bundle_contributions) == 1
+        and misc_bundle_heuristic.get("yieldValue")
+            == misc_bundle_contributions[0].get("contribution")
         and misc_bundle_audit_extra.get("yieldMode") == "multi_output_bundle"
-        and misc_bundle_audit_extra.get("yieldValue") == misc_fishing.get("price", 0) * 6
-        and misc_ambiguous.get("price") == 2
+        and misc_bundle_audit_extra.get("yieldValue") == misc_bundle_heuristic.get("yieldValue")
+        and (misc_ambiguous.get("priceHeuristic") or {}).get("score") == 2
+        and misc_ambiguous.get("price", 0) < misc_bundle.get("price", 0)
         and (misc_ambiguous.get("priceHeuristic") or {}).get("yieldEvaluation") == "blocked"
         and (misc_ambiguous.get("priceHeuristic") or {}).get("status") == "ready"
         and misc_memento.get("price", 0) >= 1

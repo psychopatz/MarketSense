@@ -440,14 +440,66 @@ The base game supplies enough evidence to build useful weapon anchors, but not e
 
 The first Lua changes should therefore target correctness of evidence flow, especially firearm detection and two-hand state, before tuning numerical coefficients. Otherwise the tool will continue to produce confident-looking prices for the wrong pricing branch.
 
-## Implementation update
+## Current status after legacy reset
 
-The melee portion of this audit is now implemented in the Market Sense Lua driver:
+The previous melee/weapon score has been removed from the active pricing path.
+The retired behavior included raw damage/range/hit-count additions, maximum
+condition as a direct dollar value, subtype multipliers, automatic two-hand
+bonuses, firearm/explosive bonuses, and flat weapon sandbox/tag additions.
 
-- Native weapon categories resolve to dedicated nested leaves such as `Weapon > Melee > Spear`, `Weapon > Melee > Axe`, `Weapon > Melee > LongBlade`, `Weapon > Melee > SmallBlade`, `Weapon > Melee > SmallBlunt`, `Weapon > Melee > Improvised`, and `Weapon > Melee > Unarmed`.
-- `weaponEvidence` is retained separately from the market label, so a multi-purpose item can remain under `Building`, `Tool`, or `Misc` while still exposing its mechanical weapon class to future consumers.
-- Melee prices use bounded damage, range, hit-count, durability, weight, subtype, two-handed, and runtime-condition factors. Static definitions remain deterministic; concrete inventory instances can be evaluated with `MarketSense.GetPriceDetailsForInstance`.
-- The condition curve is intentionally bounded at a configurable floor (default `0.35`) and does not apply when live condition evidence is unavailable.
-- Runtime-only combat fields that are not exposed by the current 42.20 item-definition reader remain listed as unavailable instead of being guessed.
+The following evidence remains intentionally intact for the new implementation:
 
-The focused Lua smoke tests, Python harness smoke tests, and Kahlua compatibility scan pass after this implementation. Firearm/ammunition routing remains a separate follow-up from the melee pass.
+- Native weapon categories still resolve to leaves such as `Weapon > Melee > Spear`,
+  `Weapon > Melee > Axe`, and `Weapon > Melee > Unarmed`.
+- `weaponEvidence` still preserves mechanical class, mechanical family, market
+  role, native categories, and classifier confidence for multi-purpose items.
+- Static and runtime weapon fields are still read by `PropertyReader`; they are
+  now inputs waiting for a calibrated pricing model, not implicit prices.
+- Weapon rows expose `priceHeuristic.model = "weapon_v2_pending"` and
+  `status = "pending"` in the debug/export path. This makes the temporary
+  neutral category fallback visible instead of presenting the old score as
+  authoritative.
+- The cache pricing version is bumped so materialized prices from the retired
+  model cannot survive the reset.
+
+## Weapon pricing design to implement next
+
+The new module should use a deterministic feature vector with two separate
+axes:
+
+```text
+mechanical anchor = what the item does in combat
+market-role factor = what else the item does for the player
+state factor = current condition, broken state, loadout, and runtime evidence
+```
+
+The first implementation should calibrate a clean anchor for each mechanical
+family, then apply normalized performance and bounded factors:
+
+```text
+price = clamp(round(anchor[mechanicalClass]
+                    * performanceFactor
+                    * stateFactor
+                    * roleFactor), floor, ceiling)
+```
+
+Positive anchors should be effective damage throughput, target coverage,
+verified reach, hit chance, magazine/shot capacity, useful compatibility,
+critical/knockdown capability when exposed, durability capacity, and a
+separate value for ammunition or deterministic yield. Negative anchors should
+be weight relative to output, attack/aim/reload time, hand occupancy, current
+condition, broken or missing-part state, recoil/jam risk, ammunition scarcity,
+and unusable or fake-weapon status. These must be normalized and bounded so a
+single extreme field cannot dominate the price.
+
+Two-hand status must not be a universal bonus: it is a handling cost unless
+the weapon's verified output compensates for it. `ammoType` must not identify
+the weapon itself as ammunition; firearm routing must be resolved before the
+generic ammo branch. `weaponCategories` is the primary mechanical evidence,
+while display category and tags remain orthogonal market-role evidence.
+
+The next implementation slice is therefore: create a dedicated weapon pricing
+module, correct firearm/ammunition ordering and two-hand evidence, add separate
+availability flags for runtime metrics, calibrate clean family anchors, then
+add focused monotonicity and multi-role tests. No numerical weapon anchor is
+approved by this reset.

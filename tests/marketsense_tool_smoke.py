@@ -18,6 +18,7 @@ from marketsense_app.availability import (
     availability_counts,
     build_acquisition_index,
 )
+from marketsense_app.bridge import find_lua, run_lua
 from marketsense_app.evaluation import ScanOptions, load_cached_result, merge_scan_definitions
 from marketsense_app.heuristics import heuristic_coverage, heuristic_gap
 from marketsense_app.gui_filters import filter_rows, view_summary
@@ -34,9 +35,12 @@ from marketsense_app.lua_rules import (
 from marketsense_app.models import ItemDefinition, WorkshopMod
 from marketsense_app.review import review_count, review_row, searchable_text
 from marketsense_app.scan_scope import (
+    CATEGORY_SCOPE_CHOICES,
     candidate_definitions,
     normalize_category_filter,
+    row_matches_category,
 )
+from marketsense_app.scan_phases import emulate_pz_acquisition_flags
 from marketsense_app.runtime_comparison import compare_harness_to_runtime
 from marketsense_app.reporting import write_heuristic_gap_report, write_low_confidence_report
 from marketsense_app.recipe_parser import (
@@ -72,10 +76,32 @@ def main() -> int:
         "Base.ScopeWeapon", "Base", {"displayCategory": "Weapon"}, scope_mod, "weapon.txt"
     )
     assert normalize_category_filter("all categories") == ""
+    for theme in (
+        "Theme.Swimwear", "Theme.GrowingSeason", "Theme.HuntingSeason",
+        "Theme.FishingSeason", "Theme.Holiday",
+    ):
+        assert theme in CATEGORY_SCOPE_CHOICES
+        assert normalize_category_filter(theme.lower()) == theme
     assert [item.full_type for item in candidate_definitions(
         [scope_food, scope_weapon], "Food"
     )] == ["Base.ScopeFood"]
     assert len(candidate_definitions([scope_food, scope_weapon], "Weapon")) == 2
+    assert len(candidate_definitions([scope_food, scope_weapon], "Theme.Swimwear")) == 2
+    assert row_matches_category(
+        {"category": "Clothing", "themes": ["Summer", "Swimwear"]},
+        "Theme.Swimwear",
+    )
+    assert row_matches_category(
+        {"category": "Clothing", "expandedTags": ["Theme.Swimwear"]},
+        "Theme.Swimwear",
+    )
+    assert row_matches_category(
+        {"category": "Clothing", "descriptorEvidence": [{"tag": "Theme.Swimwear"}]},
+        "Theme.Swimwear",
+    )
+    assert not row_matches_category(
+        {"category": "Clothing", "themes": ["Summer"]}, "Theme.Swimwear"
+    )
     assert len(candidate_definitions([scope_food, scope_weapon], "unknown")) == 2
 
     liquid_pricing_root = (
@@ -91,6 +117,28 @@ def main() -> int:
     assert "PriceResourceFuelValue" not in sandbox_options
     assert "PriceResourceMaterialValue" not in sandbox_options
     assert "PriceMiscValue" not in sandbox_options
+    for option in (
+        "PriceThemeHighCalorieThreshold", "PriceThemeHighFatThreshold",
+        "PriceThemeHighProteinThreshold", "PriceThemeHighCarbohydrateThreshold",
+        "PriceThemeHydrationThreshold", "PriceThemeThirstThreshold",
+        "PriceThemeSummerMaxInsulation", "PriceThemeSummerMaxWindResistance",
+        "PriceThemeWinterMinInsulation", "PriceThemeWinterMinWindResistance",
+        "PriceThemeRainMinWaterResistance",
+        "PriceThemeHighCalorieValue", "PriceThemeHydratingValue",
+        "PriceThemeThirstInducingValue", "PriceThemeCommunicationValue",
+        "PriceThemeSummerValue", "PriceThemeSummerMult", "PriceThemeRainValue",
+        "PriceThemeRainMult", "StockThemeSummerMult", "StockThemeRainMult",
+        "StockThemeHighCalorieMult", "StockThemeCommunicationMult",
+        "PriceThemeSwimwearValue", "PriceThemeSwimwearMult",
+        "StockThemeSwimwearMult", "PriceThemeGrowingSeasonValue",
+        "PriceThemeGrowingSeasonMult", "StockThemeGrowingSeasonMult",
+        "PriceThemeHuntingSeasonValue", "PriceThemeHuntingSeasonMult",
+        "StockThemeHuntingSeasonMult", "PriceThemeFishingSeasonValue",
+        "PriceThemeFishingSeasonMult", "StockThemeFishingSeasonMult",
+        "PriceThemeHolidayValue", "PriceThemeHolidayMult",
+        "StockThemeHolidayMult",
+    ):
+        assert f"option MarketSense.{option}" in sandbox_options
 
     with TemporaryDirectory(prefix="marketsense-tool-smoke-") as temp_dir:
         root = Path(temp_dir)
@@ -195,7 +243,11 @@ tileset {
         (media / "lua" / "shared" / "Foraging" / "Categories").mkdir(parents=True)
         (scripts_root / "generated" / "recipes").mkdir(parents=True)
         (media / "lua" / "server" / "Items" / "ProceduralDistributions.lua").write_text(
-            'items = { "Looted", "9mmClip", 10, }', encoding="utf-8"
+            'items = { "Looted", 100, "9mmClip", 10, }', encoding="utf-8"
+        )
+        (media / "lua" / "server" / "Items" / "Distributions.lua").write_text(
+            'items = { "RareLoot", 1, "Looted", 10, "UnknownLoot", 100, }',
+            encoding="utf-8",
         )
         (media / "lua" / "shared" / "Foraging" / "Categories" / "Fruit.lua").write_text(
             'type = "Base.Foraged",', encoding="utf-8"
@@ -248,6 +300,7 @@ tileset {
             "Base.Foraged": ItemDefinition("Base.Foraged", "Base", {}, availability_mod, "foraged.txt"),
             "Base.Trapped": ItemDefinition("Base.Trapped", "Base", {}, availability_mod, "trapped.txt"),
             "Base.Crafted": ItemDefinition("Base.Crafted", "Base", {}, availability_mod, "crafted.txt"),
+            "Base.RareLoot": ItemDefinition("Base.RareLoot", "Base", {}, availability_mod, "rare_loot.txt"),
             "Base.DebugThing": ItemDefinition(
                 "Base.DebugThing", "Base", {"displayCategory": "Hidden"}, availability_mod, "debug.txt"
             ),
@@ -255,6 +308,7 @@ tileset {
         yield_definitions = dict(availability_definitions)
         for full_type in (
             "Base.EggCarton", "Base.Egg", "Base.ChanceBox", "Base.VariableBox",
+            "Base.RareLoot",
         ):
             yield_definitions[full_type] = ItemDefinition(
                 full_type, "Base", {}, availability_mod, "yield.txt"
@@ -302,8 +356,24 @@ tileset {
         assert availability_records["Base.Crafted"]["status"] == "obtainable"
         assert availability_records["Base.Trapped"]["status"] == "obtainable"
         assert availability_records["Base.DebugThing"]["status"] == "excluded"
+        assert availability_records["Base.9mmClip"]["rarity"] == "Rare"
+        assert availability_records["Base.9mmClip"]["raritySource"] == "loot_distribution"
+        assert availability_records["Base.9mmClip"]["rarityEvidence"]["weightedEntryCount"] == 1
+        rare_loot = availability_records["Base.RareLoot"]
+        assert rare_loot["rarity"] == "Rare"
+        assert rare_loot["rarityEvidence"]["averageRelativeWeight"] < 0.02
+        assert rare_loot["rarityEvidence"]["entryCount"] == 1
+        projected = emulate_pz_acquisition_flags(
+            list(availability_definitions.values()), availability_records,
+        )
+        projected_rows = run_lua(
+            find_lua(None), projected, emitted_types={"Base.RareLoot"},
+        )
+        projected_rare = projected_rows[0]
+        assert projected_rare["rarity"] == "Rare"
+        assert projected_rare["rarityEvidence"]["source"] == "loot_distribution"
         assert availability_counts(availability_records.values()) == {
-            "obtainable": 5, "uncertain": 0, "excluded": 1
+            "obtainable": 6, "uncertain": 0, "excluded": 1
         }
         cache_options = SimpleNamespace(
             filters=(), game_version="42.20", game_root=None, no_base_game=False,

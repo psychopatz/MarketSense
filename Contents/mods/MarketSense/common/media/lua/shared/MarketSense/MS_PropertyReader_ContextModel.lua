@@ -105,6 +105,10 @@ function ContextModel.build(facts, scriptItem, fullType, moduleName, typeName, i
     local lightCanEmit = facts.lightCanEmit
     local lightUseBattery = facts.lightUseBattery
     local lightHasBattery = facts.lightHasBattery
+    local insulation = facts.insulation
+    local insulationAvailable = facts.insulationAvailable == true or insulation ~= nil
+    local windResistance = facts.windResistance
+    local windResistanceAvailable = facts.windResistanceAvailable == true or windResistance ~= nil
     local waterResistance = facts.waterResistance
     local runSpeedModifier = facts.runSpeedModifier
     local combatSpeedModifier = facts.combatSpeedModifier
@@ -242,8 +246,10 @@ function ContextModel.build(facts, scriptItem, fullType, moduleName, typeName, i
         biteDefense = math.max(0, preferNumber(instance, scriptItem, "getBiteDefense", 0)),
         scratchDefense = math.max(0, preferNumber(instance, scriptItem, "getScratchDefense", 0)),
         bulletDefense = math.max(0, preferNumber(instance, scriptItem, "getBulletDefense", 0)),
-        insulation = math.max(0, preferNumber(instance, scriptItem, "getInsulation", 0)),
-        windResistance = math.max(0, preferNumber(instance, scriptItem, { "getWindresistance", "getWindResistance", "getWindresist" }, 0)),
+        insulation = insulation ~= nil and math.max(0, insulation) or nil,
+        insulationAvailable = insulationAvailable,
+        windResistance = windResistance ~= nil and math.max(0, windResistance) or nil,
+        windResistanceAvailable = windResistanceAvailable,
         bodyLocation = bodyLocation,
         bodyLocationLower = Core.lower(bodyLocation),
         bodyLocationToken = normalizeToken((string.match(Core.lower(bodyLocation), "([^:]+)$") or bodyLocation)),

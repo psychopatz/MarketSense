@@ -35,6 +35,9 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, i
         category = tagInfo.category, primary = tagInfo.primary,
         tags = Core.deepCopy(tagInfo.tags), expandedTags = Core.deepCopy(tagInfo.expandedTags),
         classificationDetails = Core.deepCopy(tagInfo.details or {}),
+        descriptorEvidence = Core.deepCopy((tagInfo.details or {}).descriptorEvidence),
+        descriptorRejected = Core.deepCopy((tagInfo.details or {}).descriptorRejected),
+        rarityEvidence = Core.deepCopy((tagInfo.details or {}).rarityEvidence),
         weaponEvidence = Core.deepCopy((tagInfo.details or {}).weaponEvidence),
         confidence = tagInfo.confidence, rawScore = 0, price = 0, stock = nil, source = "lazy",
     }

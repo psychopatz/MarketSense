@@ -1,11 +1,11 @@
-"""Conservative prefilters for bounded category audits.
+"""Conservative prefilters for bounded category and theme audits.
 
 The Lua classifier remains authoritative.  These hints only decide which
 definitions are sent through the expensive availability/property/Lua phases;
 the evaluator performs an exact category check on the returned rows afterward.
 Only Food currently has a validated source prefilter. Other named categories
-deliberately fall back to the complete universe until their source signals are
-proven not to omit classifier-derived rows.
+and all Theme.* scopes deliberately fall back to the complete universe until
+their source signals are proven not to omit classifier-derived rows.
 """
 
 from __future__ import annotations
@@ -17,6 +17,40 @@ from .models import ItemDefinition
 
 
 ALL_CATEGORY_LABEL = "All categories"
+THEME_SCOPE_CHOICES = (
+    "Theme.Combat",
+    "Theme.Industrial",
+    "Theme.Militia",
+    "Theme.Police",
+    "Theme.Primitive",
+    "Theme.Survival",
+    "Theme.Winter",
+    "Theme.Summer",
+    "Theme.Rain",
+    "Theme.Swimwear",
+    "Theme.GrowingSeason",
+    "Theme.HuntingSeason",
+    "Theme.FishingSeason",
+    "Theme.Holiday",
+    "Theme.Camouflage",
+    "Theme.Canvas",
+    "Theme.Cotton",
+    "Theme.Denim",
+    "Theme.Fur",
+    "Theme.Leather",
+    "Theme.Rubber",
+    "Theme.Silk",
+    "Theme.Thermal",
+    "Theme.Wool",
+    "Theme.HighCalorie",
+    "Theme.HighFat",
+    "Theme.HighProtein",
+    "Theme.HighCarbohydrate",
+    "Theme.Hydrating",
+    "Theme.ThirstInducing",
+    "Theme.Communication",
+)
+
 CATEGORY_SCOPE_CHOICES = (
     ALL_CATEGORY_LABEL,
     "Food",
@@ -31,7 +65,7 @@ CATEGORY_SCOPE_CHOICES = (
     "Tool",
     "Building",
     "Misc",
-)
+) + THEME_SCOPE_CHOICES
 
 # A prefilter is allowed only after comparing it with the authoritative Lua
 # category output on the current catalog. Food has complete coverage there;
@@ -76,8 +110,51 @@ def category_scope_label(value: str | None) -> str:
     return category or ALL_CATEGORY_LABEL
 
 
+def _theme_key(value: Any) -> str:
+    """Normalize Theme.X, X, and namespaced Theme.X values to one key."""
+
+    text = str(value or "").strip()
+    if ":" in text:
+        text = text.rsplit(":", 1)[-1]
+    normalized = _token(text)
+    if not normalized:
+        return ""
+    return normalized if normalized.startswith("theme") else f"theme{normalized}"
+
+
+def _iter_values(value: Any) -> Iterable[Any]:
+    if isinstance(value, (list, tuple, set)):
+        return value
+    return (value,)
+
+
+def _row_matches_theme(row: dict[str, Any], selected: str) -> bool:
+    wanted = _theme_key(selected)
+    if not wanted:
+        return False
+
+    for field in ("theme", "themes", "tags", "expandedTags"):
+        for value in _iter_values(row.get(field)):
+            if _theme_key(value) == wanted:
+                return True
+
+    metadata = row.get("metadata")
+    if isinstance(metadata, dict):
+        for field in ("theme", "themes"):
+            for value in _iter_values(metadata.get(field)):
+                if _theme_key(value) == wanted:
+                    return True
+
+    for evidence in _iter_values(row.get("descriptorEvidence")):
+        if isinstance(evidence, dict) and _theme_key(evidence.get("tag")) == wanted:
+            return True
+    return False
+
+
 def row_matches_category(row: dict[str, Any], category: str | None) -> bool:
     selected = normalize_category_filter(category)
+    if selected and _token(selected).startswith("theme"):
+        return _row_matches_theme(row, selected)
     return not selected or _token(row.get("category")) == _token(selected)
 
 

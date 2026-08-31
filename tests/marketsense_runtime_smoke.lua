@@ -155,6 +155,14 @@ _G.getScriptManager = function()
     }
 end
 _G.Fishing = { fishDefinitions = { { itemType = fishItem.fullType } } }
+_G.ProceduralDistributions = {
+    list = {
+        Harness = {
+            rolls = 1,
+            items = { "HarnessLoot", 1, "HarnessFish", 10 },
+        },
+    },
+}
 local availabilityState = availability.rebuild(collection)
 T.truthy(availabilityState.built, "availability index built")
 T.equal(availability.get(lootItem.fullType).status, "obtainable", "loot engine signal")
@@ -162,6 +170,11 @@ T.equal(availability.get(hiddenItem.fullType).status, "excluded", "hidden engine
 T.equal(availability.get(hiddenItem.fullType).obtainable, false, "excluded item is not obtainable")
 T.equal(availability.get(fishItem.fullType).status, "obtainable", "fishing runtime table")
 T.equal(availability.get(craftItem.fullType).status, "obtainable", "recipe output registry")
+local lootEvidence = availability.get(lootItem.fullType)
+T.equal(lootEvidence.rarity, "Rare", "single low-weight loot entry is rare")
+T.equal(lootEvidence.rarityEvidence.status, "observed", "loot rarity evidence status")
+T.equal(lootEvidence.rarityEvidence.weightedEntryCount, 1, "loot weight evidence")
 _G.Fishing = nil
+_G.ProceduralDistributions = nil
 
 T.finish("marketsense_runtime_smoke")

@@ -51,8 +51,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--category",
         default="",
         help=(
-            "Audit one top-level category (for example Food) instead of the "
-            "complete catalog; unknown categories fall back to a full scan."
+            "Audit one top-level category or Theme.* descriptor (for example "
+            "Food or Theme.Swimwear) instead of the complete catalog; unknown "
+            "scopes fall back to a full scan."
         ),
     )
     parser.add_argument(

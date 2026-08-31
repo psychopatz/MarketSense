@@ -233,6 +233,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "baseStock", "confidence", "source",
         "availabilityStatus", "availabilityConfidence", "availabilityChannels",
         "availabilityReason", "availabilityReferences", "availabilityExclusions",
+        "raritySource", "rarityEvidence",
         "reviewStatus", "reviewReason", "heuristicKind", "heuristicBucket",
         "heuristicReason", "yieldResolver", "yieldResolution",
         "moduleName", "typeName", "weight", "hunger", "thirst", "calories", "daysFresh",
@@ -263,6 +264,10 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             output["availabilityReason"] = availability.get("reason", "")
             output["availabilityReferences"] = ";".join(availability.get("references") or [])
             output["availabilityExclusions"] = ";".join(availability.get("exclusions") or [])
+            output["raritySource"] = availability.get("raritySource", "")
+            output["rarityEvidence"] = json.dumps(
+                availability.get("rarityEvidence") or {}, sort_keys=True
+            )
             output["tags"] = ";".join(row.get("tags") or [])
             output["baseStock"] = json.dumps(row.get("baseStock") or {}, sort_keys=True)
             output["definitionSources"] = ";".join(row.get("definitionSources") or [])

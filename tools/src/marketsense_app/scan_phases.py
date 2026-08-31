@@ -128,6 +128,18 @@ def emulate_pz_acquisition_flags(
         props = dict(definition.props)
         record = static_records.get(definition.full_type) or {}
         channels = set(record.get("channels") or [])
+        loot_evidence = record.get("rarityEvidence")
+        if isinstance(loot_evidence, dict) and loot_evidence.get("status") == "observed":
+            props["marketSenseLootEvidence"] = {
+                "status": loot_evidence.get("status"),
+                "source": loot_evidence.get("source"),
+                "sourceCount": loot_evidence.get("sourceCount"),
+                "entryCount": loot_evidence.get("entryCount"),
+                "weightedEntryCount": loot_evidence.get("weightedEntryCount"),
+                "weightSum": loot_evidence.get("weightSum"),
+                "relativeWeight": loot_evidence.get("relativeWeight"),
+                "references": loot_evidence.get("references") or [],
+            }
         if channels & {"loot", "farming", "fishing", "trapping", "animal", "scripted"}:
             props["canSpawnAsLoot"] = True
         if channels & {"craft", "evolved_recipe"}:

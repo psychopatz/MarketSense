@@ -13,6 +13,19 @@ local AutoTag     = MarketSense.AutoTag
 local Pricing     = MarketSense.Pricing
 local YieldResolver = MarketSense.YieldResolver
 local Availability = MarketSense.ItemAvailability
+
+local function descriptorValues(tags, prefix)
+    local values = {}
+    local marker = tostring(prefix or "") .. "."
+    for _, tag in ipairs(tags or {}) do
+        local text = tostring(tag or "")
+        if string.sub(text, 1, #marker) == marker then
+            values[#values + 1] = string.sub(text, #marker + 1)
+        end
+    end
+    return values
+end
+
 local function safeLog(...)
     if MarketSense.IsItemRuntimeDebugEnabled and MarketSense.IsItemRuntimeDebugEnabled()
         and type(MarketSense.Log) == "function" then
@@ -30,6 +43,10 @@ function Debug.inspectItem(fullType, withAudit)
         primary  = details.primary,
         tags     = details.tags,
         expandedTags = details.expandedTags,
+        themes = descriptorValues(details.expandedTags, "Theme"),
+        descriptorEvidence = details.descriptorEvidence,
+        descriptorRejected = details.descriptorRejected,
+        rarityEvidence = details.rarityEvidence,
         price    = details.price,
         rawScore = details.rawScore,
         weaponEvidence = details.weaponEvidence,

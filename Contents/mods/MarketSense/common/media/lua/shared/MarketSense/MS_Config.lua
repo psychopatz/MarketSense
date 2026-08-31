@@ -30,13 +30,26 @@ local defaults = {
         variationSalt = 1,
         variationAbsoluteOverrides = false,
     },
-    foodPricing = {},
+    foodPricing = {
+        highCalorieThreshold = 300.0,
+        highFatThreshold = 20.0,
+        highProteinThreshold = 20.0,
+        highCarbohydrateThreshold = 30.0,
+        hydrationThreshold = 0.10,
+        thirstThreshold = 0.10,
+    },
     liquidPricing = {},
     resourcePricing = {},
     miscPricing = {},
     weaponPricing = {},
     literaturePricing = {},
-    clothingPricing = {},
+    clothingPricing = {
+        summerMaxInsulation = 0.25,
+        summerMaxWindResistance = 0.25,
+        winterMinInsulation = 0.75,
+        winterMinWindResistance = 0.75,
+        rainMinWaterResistance = 0.50,
+    },
     containerPricing = {},
     electronicsPricing = {},
     medicalPricing = {},
@@ -156,6 +169,49 @@ function MarketSense.Config.applySandboxOptions()
         if vars.StockMultiplier ~= nil then
             runtime.stock.globalMultiplier = vars.StockMultiplier
         end
+
+        -- Food descriptor thresholds are kept with food pricing so the
+        -- classifier and the pricing/export diagnostics use one source of
+        -- truth. Sandbox values override the exported defaults at reload.
+        local foodPricing = runtime.foodPricing or {}
+        local thresholdKeys = {
+            { option = "PriceThemeHighCalorieThreshold", field = "highCalorieThreshold" },
+            { option = "PriceThemeHighFatThreshold", field = "highFatThreshold" },
+            { option = "PriceThemeHighProteinThreshold", field = "highProteinThreshold" },
+            { option = "PriceThemeHighCarbohydrateThreshold", field = "highCarbohydrateThreshold" },
+            { option = "PriceThemeHydrationThreshold", field = "hydrationThreshold" },
+            { option = "PriceThemeThirstThreshold", field = "thirstThreshold" },
+        }
+        for _, entry in ipairs(thresholdKeys) do
+            if vars[entry.option] ~= nil then
+                local value = tonumber(vars[entry.option])
+                if value ~= nil then
+                    foodPricing[entry.field] = math.max(0, value)
+                end
+            end
+        end
+        runtime.foodPricing = foodPricing
+
+        -- Seasonal clothing thresholds use the same exported pricing table
+        -- as the classifier. Missing protection metadata remains unavailable
+        -- and therefore never qualifies by numeric threshold alone.
+        local clothingPricing = runtime.clothingPricing or {}
+        local clothingThresholdKeys = {
+            { option = "PriceThemeSummerMaxInsulation", field = "summerMaxInsulation" },
+            { option = "PriceThemeSummerMaxWindResistance", field = "summerMaxWindResistance" },
+            { option = "PriceThemeWinterMinInsulation", field = "winterMinInsulation" },
+            { option = "PriceThemeWinterMinWindResistance", field = "winterMinWindResistance" },
+            { option = "PriceThemeRainMinWaterResistance", field = "rainMinWaterResistance" },
+        }
+        for _, entry in ipairs(clothingThresholdKeys) do
+            if vars[entry.option] ~= nil then
+                local value = tonumber(vars[entry.option])
+                if value ~= nil then
+                    clothingPricing[entry.field] = math.max(0, value)
+                end
+            end
+        end
+        runtime.clothingPricing = clothingPricing
         runtime.stock.categoryMultipliers = nil
     else
         runtime.sandboxVars = nil

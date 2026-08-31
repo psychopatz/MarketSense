@@ -316,6 +316,7 @@ local function buildDetailSubtext(details)
     local yieldText = yieldSummary(details)
     local heuristicText = PriceFormatting.priceHeuristicSummary(details)
     local marketText = PriceFormatting.marketModifierSummary(details)
+    local descriptorText = PriceFormatting.descriptorSummary(details)
     local diagnostics
     if yieldText and heuristicText then
         local model = details and details.priceHeuristic
@@ -332,6 +333,11 @@ local function buildDetailSubtext(details)
         diagnostics = diagnostics .. " | " .. marketText
     elseif marketText then
         diagnostics = marketText
+    end
+    if descriptorText and diagnostics then
+        diagnostics = diagnostics .. " | " .. descriptorText
+    elseif descriptorText then
+        diagnostics = descriptorText
     end
     if baseText and diagnostics then return baseText .. " | " .. diagnostics end
     return baseText or diagnostics
@@ -378,6 +384,7 @@ return {
     baseItemSummary = baseItemSummary,
     priceHeuristicSummary = PriceFormatting.priceHeuristicSummary,
     marketModifierSummary = PriceFormatting.marketModifierSummary,
+    descriptorSummary = PriceFormatting.descriptorSummary,
     buildDetailSubtext = buildDetailSubtext,
     drawMarketItemRow = drawMarketItemRow,
 }

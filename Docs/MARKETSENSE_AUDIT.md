@@ -20,7 +20,8 @@ audit found no category/tag setter calls against the underlying PZ item objects.
   by food, packaging, container, cooking, ammo, and post-label heuristics.
 - The property reader now recognizes current PZ method names including
   `Item:getItemType()`, `Item:getLevelSkillTrained()`, and the wind-resistance
-  variants. Live inventory stats take precedence over script defaults.
+  variants. Live inventory stats take precedence over script defaults, including
+  `InventoryItem:getCount()` for resource stack evidence.
 - `GetPriceDetails` rejects invalid IDs and recalculates when an audit is
   requested after a non-audit result was cached.
 - `GetRuntimeRules` now works on a fresh API load; registry `get` and
@@ -126,7 +127,7 @@ as JSONL or CSV with the original definition, runtime context, detector
 evidence, and price audit. Terminal reports print only bounded low-confidence
 and sandbox-setting chunks; complete candidate data is written to a file on
 request.
-The Sandbox pricing tab parses all 173 MarketSense 42.20 sandbox declarations,
+The Sandbox pricing tab parses all current MarketSense 42.20 sandbox declarations,
 persists local JSON overrides, injects the effective settings into the Lua
 bridge's `SandboxVars.MarketSense`, and exposes the applied runtime pricing
 values in the summary. The previously empty 42.20 `sandbox-options.txt` was
@@ -156,7 +157,8 @@ installed vanilla item scripts:
   `Liquid > Fuel > Fuel`, and `Liquid > Blood > Blood`.  Empty bottles,
   buckets, and other vessels remain `Container > Liquid > Liquid`.
 - The matcher uses deterministic longest fluid-name matches for vanilla and
-  Workshop names, then falls back to `Fluid.getCategories()` when an unknown
+  Workshop names, then falls back to the supported `FluidCategory.getList()` /
+  `Fluid:isCategory(...)` API when an unknown
   Workshop fluid has no known name.  Unresolved fluids become
   `Liquid > Unknown > Unknown` at 0.50 confidence so they remain visible for
   heuristic review instead of silently becoming Food or a generic container.
@@ -165,20 +167,62 @@ installed vanilla item scripts:
   definitions with multiple allowed fluids, it uses the first declared fluid
   only as a deterministic inspection representative; live runtime state is
   authoritative in-game.
-- Liquid pricing is decoupled in `Pricing/MS_FluidPricing.lua` and
-  `Pricing/MS_LiquidPricing_Data.lua`.  Exact fluid names have a base price per
-  litre (`Water = $5/L`), with primary-token defaults for new Workshop fluids.
-  The content value is `pricePerLiter * primaryFluidAmount`; vessel name, item
-  weight, and generic item descriptor additions do not change that base value.
-  Global pricing multipliers, explicit sandbox overrides, and item overrides
-  still apply through the normal pricing pipeline.
-- The offline inspector now exposes this as a separate `Liquid pricing` tab.
-  It edits sparse exact-fluid, family-fallback, and unknown-fallback values in
-  `Pricing/MS_LiquidPricing_Overrides_Data.lua`; it does not edit
-  `MS_PricingConfig_Data.lua` or any `SandboxVars.MarketSense` category value.
-  `Apply & rescan` causes the changed Lua data file to participate in normal
-  cache invalidation and evaluates the edited per-litre value through the same
-  `MS_FluidPricing.calculate` path.
+- The legacy per-litre liquid table, override module, and editor were removed.
+  They assigned prices from fluid names alone and could not safely account for
+  player utility, harmful state, mixtures, processing requirements, or package
+  yields.
+- Liquid pricing now enters the `liquid_v2_pending` evidence model. It records
+  measured amount, vessel capacity, primary-fluid amount, fill ratio, empty and
+  mixture state, fluid identity/categories, player-effect fields, runtime food
+  state, vessel weight, and deterministic yield evidence. Capacity is retained
+  for diagnostics but is never a value anchor by itself.
+- The numerical score is currently the neutral Liquid category anchor while
+  calibration is pending. Generic dotted descriptor/tag price additions are
+  excluded, and stale cached Liquid scores are rebuilt during override-only
+  refreshes. The resolver exposes the pending status and its evidence so the
+  next calibration can be based on observed mechanics rather than guessed
+  dollars per litre.
+
+## Resource pricing
+
+The old Resource score mixed weight with flat fuel, metal-family, wood,
+chemical, and material-tag dollars. It could not distinguish raw material from
+processed material or account for a package's resolved output quantity. The
+legacy Resource price additions, sandbox price options, and category bonuses
+are removed while Resource taxonomy and stock multipliers remain intact.
+
+Resource rows now use `resource_v2_pending`. The resolver exposes subtype and
+material family/form, classifier provenance, weight and stackability, condition
+and drainable-use state, depletion/replacement signals, fluid identity,
+craft/acquisition evidence, and generic deterministic yield outputs. Exact
+multi-output packages therefore remain visible for individualized child-value
+calibration; ambiguous or probabilistic yields are not treated as certain
+value. The score is the neutral Resource anchor until the utility/quantity/
+processing calibration described in
+`MARKETSENSE_RESOURCE_PRICING_AUDIT_42_20.md` is completed. Generic Resource
+tag/sandbox price additions are excluded and stale cached Resource scores are
+rebuilt during override-only refreshes.
+
+## Misc pricing
+
+Misc is the final fallback as well as the home for explicit utility families
+such as fishing, fire, safety, security, navigation, household, recreation,
+trapping, animal, memento, and junk items. Its old root `$17` addition, sandbox
+price option, and flat utility/material subtype bonuses were removed because
+they could not distinguish verified player utility from decorative or unknown
+mod content. Misc taxonomy and stock controls remain intact.
+
+Rows use the `misc_v2_pending` evidence model and expose subtype and
+classifier provenance, capabilities and requirements, world-object evidence,
+state flags, weight/stack/condition/use signals, and deterministic package
+outputs. Exact Misc transforms now use `misc_v2_bundle`: each child raw score
+is multiplied by its exact output quantity, and the parent package receives
+only that individualized output value. Ambiguous, probabilistic, cyclic, or
+unavailable outputs remain diagnostic-only and retain the neutral Misc anchor.
+Generic Misc tag/sandbox price additions are excluded and stale cached Misc
+scores are rebuilt during override-only refreshes. The remaining capability,
+fallback, and delivered-utility calibration is described in
+`MARKETSENSE_MISC_PRICING_AUDIT_42_20.md`.
 
 ## Availability gate
 
@@ -255,4 +299,4 @@ Verified on 2026-08-30 against the MarketSense Lua evaluator and registry code:
 - The mock harness cannot prove the live PZ event order, Java collection bridge,
   or actual `getAllItems()`/file-I/O behavior. A final in-game server test should
   run the registry hook, inspect `console.txt`, and confirm a generated
-  `MS_ItemsIndex.lua` is loaded by MarketSense.
+  `MS_ItemsIndex.txt` is loaded by MarketSense.

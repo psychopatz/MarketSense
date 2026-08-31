@@ -52,6 +52,10 @@ function methods.getDescription(self) if self._instance then return property(sel
 function methods.isHidden(self) return property(self, "hidden", false) end
 function methods.getObsolete(self) return property(self, "obsolete", false) end
 function methods.canSpawnAsLoot(self) return property(self, "canSpawnAsLoot", false) end
+-- Offline-only aggregate projected by scan_phases; absent in real PZ items.
+function methods.getMarketSenseLootEvidence(self)
+    return property(self, "marketSenseLootEvidence", nil)
+end
 function methods.canBeForaged(self) return property(self, "canBeForaged", false) end
 function methods.isCraftRecipeProduct(self) return property(self, "isCraftRecipeProduct", false) end
 function methods.getTags(self) return self._tags end
@@ -179,15 +183,21 @@ local numberMethods = {
     getMaxRange="maxRange", getMaxHitCount="maxHitCount", getConditionMax="conditionMax",
     getHitChance="hitChance", getAimingTime="aimingTime", getUseDelta="useDelta",
     getCapacity="capacity", getWeightReduction="weightReduction", getBiteDefense="biteDefense",
-    getScratchDefense="scratchDefense", getBulletDefense="bulletDefense", getInsulation="insulation",
-    getWindresist="windResistance", getWindresistance="windResistance",
-    getWindResistance="windResistance", getAlcoholPower="alcoholPower", getFatigueChange="fatigueChange",
+    getScratchDefense="scratchDefense", getBulletDefense="bulletDefense",
+    getAlcoholPower="alcoholPower", getFatigueChange="fatigueChange",
     getReduceInfectionPower="reduceInfectionPower", getBandagePower="bandagePower",
     getMechanicType="mechanicType", getCondition="condition", getAge="age", getHeat="heat",
 }
 for methodName, propertyName in pairs(numberMethods) do
     methods[methodName] = function(self) return property(self, propertyName, 0) end
 end
+-- Clothing protection is optional in script definitions. Keep missing values
+-- as nil so classifiers can distinguish "not measured" from a real zero.
+function methods.getInsulation(self) return property(self, "insulation", nil) end
+function methods.getWindresist(self) return property(self, "windResistance", nil) end
+function methods.getWindresistance(self) return property(self, "windResistance", nil) end
+function methods.getWindResistance(self) return property(self, "windResistance", nil) end
+function methods.getWaterResistance(self) return property(self, "waterResistance", nil) end
 
 local boolMethods = {
     isSpice="spice", isPoison="poison", canAge="canAge",
@@ -452,6 +462,18 @@ local function descriptorValue(tags, prefix)
     return ""
 end
 
+local function descriptorValues(tags, prefix)
+    local values = {}
+    local marker = tostring(prefix or "") .. "."
+    for _, tag in ipairs(tags or {}) do
+        local text = tostring(tag or "")
+        if string.sub(text, 1, #marker) == marker then
+            values[#values + 1] = string.sub(text, #marker + 1)
+        end
+    end
+    return values
+end
+
 local function printRuntimeMetadata()
     local runtime = MarketSense.ItemRuntimeConfig or {}
     local pricing = runtime.pricing or {}
@@ -576,6 +598,7 @@ local function rowJson(row)
     end
     fields[#fields + 1] = jsonString("tags") .. ":" .. jsonArray(row.tags)
     fields[#fields + 1] = jsonString("expandedTags") .. ":" .. jsonArray(row.expandedTags)
+    fields[#fields + 1] = jsonString("themes") .. ":" .. jsonArray(row.themes)
     fields[#fields + 1] = jsonString("definitionSources") .. ":" .. jsonArray(row.definitionSources)
     fields[#fields + 1] = jsonString("metadata") .. ":" .. jsonValue(row.metadata)
     fields[#fields + 1] = jsonString("stock") .. ":" .. jsonValue(row.stock)
@@ -586,6 +609,9 @@ local function rowJson(row)
     fields[#fields + 1] = jsonString("priceAudit") .. ":" .. jsonValue(row.priceAudit)
     fields[#fields + 1] = jsonString("marketPricing") .. ":" .. jsonValue(row.marketPricing)
     fields[#fields + 1] = jsonString("priceHeuristic") .. ":" .. jsonValue(row.priceHeuristic)
+    fields[#fields + 1] = jsonString("descriptorEvidence") .. ":" .. jsonValue(row.descriptorEvidence)
+    fields[#fields + 1] = jsonString("descriptorRejected") .. ":" .. jsonValue(row.descriptorRejected)
+    fields[#fields + 1] = jsonString("rarityEvidence") .. ":" .. jsonValue(row.rarityEvidence)
     fields[#fields + 1] = jsonString("yieldResolution") .. ":" .. jsonValue(row.yieldResolution)
     fields[#fields + 1] = jsonString("evaluator") .. ":" .. jsonValue(row.evaluator)
     fields[#fields + 1] = jsonString("availability") .. ":" .. jsonValue(row.availability)
@@ -640,11 +666,13 @@ for _, spec in ipairs(specs) do
         row.quality = descriptorValue(row.expandedTags, "Quality")
         row.rarity = descriptorValue(row.expandedTags, "Rarity")
         row.theme = descriptorValue(row.expandedTags, "Theme")
+        row.themes = descriptorValues(row.expandedTags, "Theme")
         row.origin = descriptorValue(row.expandedTags, "Origin")
         row.metadata = {
             quality = row.quality,
             rarity = row.rarity,
             theme = row.theme,
+            themes = row.themes,
             origin = row.origin,
         }
         row.weight, row.hunger, row.thirst = context.weight, context.hunger, context.thirst
@@ -673,6 +701,9 @@ for _, spec in ipairs(specs) do
         row.priceAudit = details.balanceAudit
         row.marketPricing = details.marketPricing
         row.priceHeuristic = details.priceHeuristic
+        row.descriptorEvidence = details.descriptorEvidence
+        row.descriptorRejected = details.descriptorRejected
+        row.rarityEvidence = details.rarityEvidence
         row.yieldResolution = details.yieldResolution
         row.yieldResolver = yieldResolverLabel(details.yieldResolution)
         row.evaluator = {

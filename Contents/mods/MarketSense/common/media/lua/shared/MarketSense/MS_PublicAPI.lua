@@ -23,6 +23,18 @@ local function invalidatePricingViews()
 end
 local API           = MarketSense
 
+local function descriptorValues(tags, prefix)
+    local values = {}
+    local marker = tostring(prefix or "") .. "."
+    for _, tag in ipairs(tags or {}) do
+        local text = tostring(tag or "")
+        if string.sub(text, 1, #marker) == marker then
+            values[#values + 1] = string.sub(text, #marker + 1)
+        end
+    end
+    return values
+end
+
 -- Stable semantic interface for future consumers.  This returns the
 -- world-object analysis without exposing or changing PZ's native item
 -- category fields.
@@ -75,6 +87,9 @@ function API.GetTags(fullType)
         category     = details.category,
         tags         = details.tags,
         expandedTags = details.expandedTags,
+        themes       = descriptorValues(details.expandedTags, "Theme"),
+        descriptorEvidence = details.descriptorEvidence,
+        rarityEvidence = details.rarityEvidence,
         weaponEvidence = details.weaponEvidence,
     }
 end

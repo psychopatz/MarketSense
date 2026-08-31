@@ -13,6 +13,9 @@ from .models import ItemDefinition
 from .script_parser import strip_comments
 from .workshop_paths import pz_version_int
 
+LOOT_WEIGHT_RE = re.compile(r"^\s*,?\s*([0-9]+(?:\.[0-9]+)?)\b")
+LOOT_ITEMS_BLOCK_RE = re.compile(r"\bitems\s*=\s*\{", re.IGNORECASE)
+
 def build_acquisition_index(
     definitions: Iterable[ItemDefinition],
     base_scripts_root: Path | None,
@@ -185,7 +188,7 @@ def _source_kind(relative: str, source: str) -> str | None:
     low = relative.casefold()
     name = Path(relative).name.casefold()
     if (
-        name in {"proceduraldistributions.lua", "suburbsdistributions.lua", "vehicledistributions.lua"}
+        name in {"distributions.lua", "proceduraldistributions.lua", "suburbsdistributions.lua", "vehicledistributions.lua"}
         or name.startswith("distribution_")
         or name.startswith("vehicledistribution_")
     ):
@@ -223,16 +226,78 @@ def _scan_loot(
     names: dict[str, set[str]],
     evidence: dict[str, AcquisitionEvidence],
 ) -> None:
+    handled_ranges: list[tuple[int, int]] = []
+    for block_match in LOOT_ITEMS_BLOCK_RE.finditer(source):
+        body_start = block_match.end()
+        body_end = _matching_brace(source, body_start - 1)
+        if body_end is None:
+            continue
+        handled_ranges.append((body_start, body_end))
+        _scan_loot_items_block(
+            source, body_start, body_end, path, media_root, source_label,
+            known_types, names, evidence,
+        )
+
+    def handled(offset: int) -> bool:
+        return any(start <= offset < end for start, end in handled_ranges)
+
+    # Fallback for mod tables assembled by helper functions instead of a
+    # literal `items = { ... }` block.
     for match in FULL_TYPE_RE.finditer(source):
+        if handled(match.start()):
+            continue
         full_type = match.group(0)
         if full_type in known_types:
-            _add(evidence, full_type, "loot", _reference(path, media_root, source_label, source, match.start()))
+            reference = _reference(path, media_root, source_label, source, match.start())
+            _add_loot(evidence, full_type, reference, _loot_weight(source, match.end()))
     # PZ's distribution tables use module-less strings such as "CannedLeek".
     # Only quoted strings are accepted here; table keys and prose are not loot.
     for match in QUOTED_STRING_RE.finditer(source):
+        if handled(match.start()):
+            continue
         token = match.group(1)
+        weight = _loot_weight(source, match.end())
         for full_type in _candidate_names(token, names, "base" if source_label == "base" else None):
-            _add(evidence, full_type, "loot", _reference(path, media_root, source_label, source, match.start()))
+            reference = _reference(path, media_root, source_label, source, match.start())
+            _add_loot(evidence, full_type, reference, weight)
+
+
+def _scan_loot_items_block(
+    source: str,
+    body_start: int,
+    body_end: int,
+    path: Path,
+    media_root: Path,
+    source_label: str,
+    known_types: set[str],
+    names: dict[str, set[str]],
+    evidence: dict[str, AcquisitionEvidence],
+) -> None:
+    occurrences: list[tuple[int, str, float | None, list[str]]] = []
+    for match in FULL_TYPE_RE.finditer(source, body_start, body_end):
+        candidates = [match.group(0)] if match.group(0) in known_types else []
+        occurrences.append((match.start(), match.group(0), _loot_weight(source, match.end()), candidates))
+    for match in QUOTED_STRING_RE.finditer(source, body_start, body_end):
+        token = match.group(1)
+        candidates = _candidate_names(token, names, "base" if source_label == "base" else None)
+        occurrences.append((match.start(), token, _loot_weight(source, match.end()), candidates))
+
+    occurrences.sort(key=lambda item: item[0])
+    if not occurrences:
+        return
+    complete_weights = all(weight is not None for _, _, weight, _ in occurrences)
+    total_weight = sum(
+        float(weight) for _, _, weight, _ in occurrences if weight is not None
+    )
+    reference_path = _reference(path, media_root, source_label, source, body_start)
+    for offset, _token, weight, candidates in occurrences:
+        relative_weight = None
+        if complete_weights and total_weight > 0 and weight is not None:
+            relative_weight = float(weight) / total_weight
+        for full_type in candidates:
+            _add_loot(
+                evidence, full_type, reference_path, weight, relative_weight
+            )
 
 
 def _scan_recipes(
@@ -378,6 +443,24 @@ def _candidate_names(
 
 def _add(evidence: dict[str, AcquisitionEvidence], full_type: str, channel: str, reference: str) -> None:
     evidence.setdefault(full_type, AcquisitionEvidence()).add(channel, reference)
+
+
+def _add_loot(
+    evidence: dict[str, AcquisitionEvidence],
+    full_type: str,
+    reference: str,
+    weight: float | None,
+    relative_weight: float | None = None,
+) -> None:
+    evidence.setdefault(full_type, AcquisitionEvidence()).add_loot(
+        reference, weight, relative_weight
+    )
+
+
+def _loot_weight(source: str, offset: int) -> float | None:
+    """Read the numeric weight immediately after a PZ item-list entry."""
+    match = LOOT_WEIGHT_RE.match(source[offset:])
+    return float(match.group(1)) if match else None
 
 
 def _reference(path: Path, media_root: Path, source_label: str, source: str, offset: int) -> str:

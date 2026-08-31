@@ -147,6 +147,9 @@ local function read(scriptItem, instance, inventoryItem, definition)
 
     -- Clothing modifiers are optional across game versions and Workshop
     -- definitions. Preserve nil when the engine does not expose a signal.
+    local insulation = optionalNumber(instance, scriptItem, "getInsulation")
+    local windResistance = optionalNumber(instance, scriptItem,
+        { "getWindresist", "getWindresistance", "getWindResistance" })
     local waterResistance = optionalNumber(instance, scriptItem, "getWaterResistance")
     local runSpeedModifier = optionalNumber(instance, scriptItem, "getRunSpeedModifier")
     local combatSpeedModifier = optionalNumber(instance, scriptItem, "getCombatSpeedModifier")
@@ -253,6 +256,10 @@ local function read(scriptItem, instance, inventoryItem, definition)
         lightCanEmit = lightCanEmit,
         lightUseBattery = lightUseBattery,
         lightHasBattery = lightHasBattery,
+        insulation = insulation,
+        insulationAvailable = insulation ~= nil,
+        windResistance = windResistance,
+        windResistanceAvailable = windResistance ~= nil,
         waterResistance = waterResistance,
         runSpeedModifier = runSpeedModifier,
         combatSpeedModifier = combatSpeedModifier,

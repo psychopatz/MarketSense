@@ -54,6 +54,12 @@ class AcquisitionEvidence:
 
     channels: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
     exclusions: list[str] = field(default_factory=list)
+    loot_sources: set[str] = field(default_factory=set)
+    loot_entry_count: int = 0
+    loot_weighted_entry_count: int = 0
+    loot_weight_sum: float = 0.0
+    loot_relative_weighted_entry_count: int = 0
+    loot_relative_weight_sum: float = 0.0
 
     def add(self, channel: str, reference: str) -> None:
         references = self.channels.setdefault(channel, [])
@@ -63,6 +69,71 @@ class AcquisitionEvidence:
     def add_exclusion(self, signal: str) -> None:
         if signal not in self.exclusions:
             self.exclusions.append(signal)
+
+    def add_loot(
+        self,
+        reference: str,
+        weight: float | None = None,
+        relative_weight: float | None = None,
+    ) -> None:
+        """Record one loot-table entry without treating it as global probability."""
+        self.add("loot", reference)
+        self.loot_entry_count += 1
+        reference_text = str(reference or "")
+        source = reference_text.split(":", 1)[0]
+        if source:
+            self.loot_sources.add(source)
+        if weight is not None and weight >= 0:
+            self.loot_weighted_entry_count += 1
+            self.loot_weight_sum += float(weight)
+        if relative_weight is not None and relative_weight >= 0:
+            self.loot_relative_weighted_entry_count += 1
+            self.loot_relative_weight_sum += float(relative_weight)
+
+    def loot_rarity(self) -> tuple[str, str, float]:
+        """Return a conservative rarity bucket derived from loot presence."""
+        if self.loot_entry_count <= 0:
+            return "Common", "fallback_default", 0.20 if self.channels else 0.05
+
+        source_count = len(self.loot_sources)
+        entries = self.loot_entry_count
+        relative_count = self.loot_relative_weighted_entry_count
+        average_relative = (
+            self.loot_relative_weight_sum / relative_count
+            if relative_count else None
+        )
+        # A missing chance is evidence of presence, not evidence of rarity.
+        # Keep the count-based Uncommon bucket in that case.
+        rare_weight = average_relative is not None and average_relative <= 0.10
+        uncommon_weight = average_relative is None or average_relative <= 0.25
+        if entries <= 1 and source_count <= 1 and rare_weight:
+            rarity = "Rare"
+        elif entries <= 4 and source_count <= 2 and uncommon_weight:
+            rarity = "Uncommon"
+        else:
+            rarity = "Common"
+        confidence = min(0.96, 0.62 + 0.06 * min(source_count, 3)
+                        + 0.03 * min(entries, 4))
+        return rarity, "loot_distribution", confidence
+
+    def loot_dict(self) -> dict[str, Any]:
+        rarity, source, confidence = self.loot_rarity()
+        return {
+            "status": "observed" if self.loot_entry_count > 0 else "not_detected",
+            "rarity": rarity,
+            "source": source,
+            "confidence": confidence,
+            "sourceCount": len(self.loot_sources),
+            "entryCount": self.loot_entry_count,
+            "weightedEntryCount": self.loot_weighted_entry_count,
+            "weightSum": round(self.loot_weight_sum, 4),
+            "relativeWeight": round(self.loot_relative_weight_sum, 6),
+            "averageRelativeWeight": (
+                round(self.loot_relative_weight_sum / self.loot_relative_weighted_entry_count, 6)
+                if self.loot_relative_weighted_entry_count else None
+            ),
+            "references": list(self.channels.get("loot", [])),
+        }
 
     def status(self) -> str:
         if self.exclusions:
@@ -99,6 +170,9 @@ class AcquisitionEvidence:
             },
             "exclusions": list(self.exclusions),
             "reason": reason,
+            "rarity": self.loot_rarity()[0],
+            "raritySource": self.loot_rarity()[1],
+            "rarityEvidence": self.loot_dict(),
         }
 
 

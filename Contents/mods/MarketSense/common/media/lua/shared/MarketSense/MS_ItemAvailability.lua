@@ -19,7 +19,7 @@ MarketSense.ItemAvailability = MarketSense.ItemAvailability or {}
 local Availability = MarketSense.ItemAvailability
 local Core = MarketSense.Core
 
-Availability.VERSION = 1
+Availability.VERSION = 2
 Availability.CHANNEL_LABELS = {
     loot = "loot/distribution",
     craft = "craft recipe output",
@@ -104,12 +104,14 @@ local function resolveItem(value)
     local token = trim(value)
     if token == "" then return nil, "" end
 
-    local indexed = Availability.state.itemsByFullType[token]
+    local itemsByFullType = Availability.state.itemsByFullType or {}
+    local itemsByName = Availability.state.itemsByName or {}
+    local indexed = itemsByFullType[token]
     if indexed then return indexed, fullTypeOf(indexed) end
     if string.find(token, ".", 1, true) == nil then
-        local baseItem = Availability.state.itemsByFullType["Base." .. token]
+        local baseItem = itemsByFullType["Base." .. token]
         if baseItem then return baseItem, fullTypeOf(baseItem) end
-        local byName = Availability.state.itemsByName[token]
+        local byName = itemsByName[token]
         if byName and #byName == 1 then
             return byName[1], fullTypeOf(byName[1])
         end
@@ -135,6 +137,11 @@ local function ensureRecord(fullType)
         references = {},
         exclusions = {},
         engineSignals = {},
+        lootSources = {},
+        lootEntryCount = 0,
+        lootWeightedEntryCount = 0,
+        lootWeightSum = 0,
+        lootRelativeWeightSum = 0,
     }
     Availability.state.records[fullType] = record
     return record
@@ -148,6 +155,60 @@ local function addChannel(fullType, channel, reference)
     local record = ensureRecord(fullType)
     record.channels[channel] = true
     addUnique(record.references, reference or ("runtime:" .. channel))
+end
+
+local function addLootEvidence(fullType, source, reference, weight, relativeWeight)
+    fullType = trim(fullType)
+    if fullType == "" then return end
+
+    local record = ensureRecord(fullType)
+    addChannel(fullType, "loot", reference or ("runtime:" .. tostring(source or "loot")))
+    source = trim(source)
+    if source ~= "" then record.lootSources[source] = true end
+    record.lootEntryCount = (record.lootEntryCount or 0) + 1
+
+    weight = tonumber(weight)
+    if weight ~= nil and weight >= 0 then
+        record.lootWeightedEntryCount = (record.lootWeightedEntryCount or 0) + 1
+        record.lootWeightSum = (record.lootWeightSum or 0) + weight
+        relativeWeight = tonumber(relativeWeight)
+        if relativeWeight ~= nil and relativeWeight >= 0 then
+            record.lootRelativeWeightSum = (record.lootRelativeWeightSum or 0) + relativeWeight
+        end
+    end
+end
+
+-- The offline evaluator projects the static scanner's aggregate loot evidence
+-- onto this optional bridge-only item method. Import it lazily from get(),
+-- after real PZ distributions have been scanned, so real PZ distributions are
+-- authoritative and the bridge cannot double-count them.
+local function importProjectedLootEvidence(item)
+    local imported = callValue(item, "getMarketSenseLootEvidence")
+    if type(imported) ~= "table" or imported.status ~= "observed" then return end
+
+    local entryCount = tonumber(imported.entryCount) or 0
+    local fullType = fullTypeOf(item)
+    if fullType == "" or entryCount <= 0 then return end
+
+    local record = ensureRecord(fullType)
+    if (tonumber(record.lootEntryCount) or 0) > 0 then return end
+
+    addChannel(fullType, "loot", "offline:" .. tostring(imported.source or "loot_distribution"))
+    local references = imported.references
+    if type(references) == "table" then
+        for _, reference in ipairs(references) do
+            addUnique(record.references, reference)
+        end
+    end
+
+    local sourceCount = math.max(1, tonumber(imported.sourceCount) or 1)
+    for index = 1, sourceCount do
+        record.lootSources["imported:" .. tostring(index)] = true
+    end
+    record.lootEntryCount = entryCount
+    record.lootWeightedEntryCount = tonumber(imported.weightedEntryCount) or 0
+    record.lootWeightSum = tonumber(imported.weightSum) or 0
+    record.lootRelativeWeightSum = tonumber(imported.relativeWeight) or 0
 end
 
 local function addExclusion(fullType, reason)
@@ -284,20 +345,59 @@ local function scanEvolvedRecipes(manager)
     end)
 end
 
-local function scanRuntimeTable(value, channel, source, seen, depth)
+local function scanLootList(value, source, path)
+    if type(value) ~= "table" then return end
+
+    local length = #value
+    if length < 2 then return end
+    local entries = {}
+    local totalWeight = 0
+    for index = 1, length, 2 do
+        local itemName = value[index]
+        local weight = tonumber(value[index + 1])
+        if weight ~= nil then totalWeight = totalWeight + math.max(0, weight) end
+        if type(itemName) == "string" then
+            local item = resolveItem(itemName)
+            if item then
+                weight = weight and math.max(0, weight) or nil
+                entries[#entries + 1] = {
+                    fullType = fullTypeOf(item),
+                    weight = weight,
+                }
+            end
+        end
+    end
+
+    for _, entry in ipairs(entries) do
+        local relativeWeight
+        if totalWeight > 0 and entry.weight ~= nil then
+            relativeWeight = entry.weight / totalWeight
+        end
+        local lootSource = tostring(source) .. ":" .. tostring(path or "items")
+        addLootEvidence(entry.fullType, lootSource,
+            "runtime:" .. tostring(source) .. ":" .. tostring(path or "items"),
+            entry.weight, relativeWeight)
+    end
+end
+
+local function scanRuntimeTable(value, channel, source, seen, depth, path)
     if type(value) ~= "table" or depth > 10 then return end
     seen = seen or {}
     if seen[value] then return end
     seen[value] = true
 
-    for _, child in pairs(value) do
-        if type(child) == "string" then
+    for key, child in pairs(value) do
+        local keyText = tostring(key or "")
+        if channel == "loot" and keyText == "items" and type(child) == "table" then
+            scanLootList(child, source, path and (path .. ".items") or "items")
+        elseif type(child) == "string" then
             local item = resolveItem(child)
             if item then
                 addChannel(fullTypeOf(item), channel, "runtime:" .. source)
             end
         elseif type(child) == "table" then
-            scanRuntimeTable(child, channel, source, seen, depth + 1)
+            local childPath = path and (path .. "." .. keyText) or keyText
+            scanRuntimeTable(child, channel, source, seen, depth + 1, childPath)
         end
     end
 end
@@ -324,9 +424,58 @@ local function scanRuntimeSources()
         local value = _G[source.name]
         if type(value) == "table" then
             Availability.state.sourceCount = Availability.state.sourceCount + 1
-            scanRuntimeTable(value, source.channel, source.name, {}, 0)
+            scanRuntimeTable(value, source.channel, source.name, {}, 0, source.name)
         end
     end
+end
+
+local function lootRarity(record)
+    local entries = tonumber(record and record.lootEntryCount) or 0
+    local sources = 0
+    for _ in pairs(record and record.lootSources or {}) do sources = sources + 1 end
+
+    if entries <= 0 then
+        return "Common", "fallback_default", 0.20, {
+            status = "not_detected",
+            rarity = "Common",
+            source = "fallback_default",
+            confidence = 0.20,
+            sourceCount = sources,
+            entryCount = 0,
+            weightedEntryCount = 0,
+            weightSum = 0,
+            relativeWeight = 0,
+        }
+    end
+
+    local weighted = tonumber(record.lootWeightedEntryCount) or 0
+    local relative = tonumber(record.lootRelativeWeightSum) or 0
+    local averageRelative = weighted > 0 and relative / weighted or nil
+    -- A missing chance proves presence only; do not call an unweighted entry
+    -- Rare without normalized local loot-table evidence.
+    local rareWeight = averageRelative ~= nil and averageRelative <= 0.10
+    local uncommonWeight = averageRelative == nil or averageRelative <= 0.25
+    local rarity = "Common"
+    if entries <= 1 and sources <= 1 and rareWeight then
+        rarity = "Rare"
+    elseif entries <= 4 and sources <= 2 and uncommonWeight then
+        rarity = "Uncommon"
+    end
+
+    local confidence = math.min(0.96, 0.62 + 0.06 * math.min(sources, 3)
+        + 0.03 * math.min(entries, 4))
+    return rarity, "loot_distribution", confidence, {
+        status = "observed",
+        rarity = rarity,
+        source = "loot_distribution",
+        confidence = confidence,
+        sourceCount = sources,
+        entryCount = entries,
+        weightedEntryCount = weighted,
+        weightSum = tonumber(record.lootWeightSum) or 0,
+        relativeWeight = relative,
+        averageRelativeWeight = averageRelative,
+    }
 end
 
 function Availability.register(fullType, channel, reference)
@@ -400,16 +549,21 @@ function Availability.get(fullType)
     Availability.ensureBuilt()
     local item, resolved = resolveItem(fullType)
     resolved = resolved ~= "" and resolved or trim(fullType)
+    if item then importProjectedLootEvidence(item) end
     local record = Availability.state.records[resolved]
     local channels = {}
     local references = {}
     local exclusions = {}
     local engineSignals = {}
+    local recordRarity, raritySource, rarityConfidence, rarityEvidence
     if record then
         for channel in pairs(record.channels) do channels[#channels + 1] = channel end
         references = copyList(record.references)
         exclusions = copyList(record.exclusions)
         engineSignals = copyList(record.engineSignals)
+        recordRarity, raritySource, rarityConfidence, rarityEvidence = lootRarity(record)
+    else
+        recordRarity, raritySource, rarityConfidence, rarityEvidence = lootRarity(nil)
     end
     table.sort(channels)
     table.sort(references)
@@ -439,6 +593,10 @@ function Availability.get(fullType)
         references = references,
         exclusions = exclusions,
         engineSignals = engineSignals,
+        rarity = recordRarity,
+        raritySource = raritySource,
+        rarityConfidence = rarityConfidence,
+        rarityEvidence = rarityEvidence,
         reason = reason,
         source = "MarketSense.ItemAvailability v" .. tostring(Availability.VERSION),
     }

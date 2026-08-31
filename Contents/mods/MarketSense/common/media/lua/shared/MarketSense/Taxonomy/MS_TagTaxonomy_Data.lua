@@ -68,6 +68,6 @@ pricingHeuristicVersion = 22,
         "Origin.Vanilla",
         "Quality.Luxury","Quality.Standard","Quality.Sterile","Quality.Waste",
         "Rarity.Common","Rarity.Legendary","Rarity.Rare","Rarity.Uncommon",
-        "Theme.Combat","Theme.Industrial","Theme.Militia","Theme.Police","Theme.Primitive","Theme.Survival","Theme.Winter",
+        "Theme.Combat","Theme.Industrial","Theme.Militia","Theme.Police","Theme.Primitive","Theme.Survival","Theme.Winter","Theme.Summer","Theme.Rain","Theme.Swimwear","Theme.GrowingSeason","Theme.HuntingSeason","Theme.FishingSeason","Theme.Holiday",
     },
 }

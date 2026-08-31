@@ -724,6 +724,116 @@ option MarketSense.StockFoodNonPerishableMult
     translation = MarketSense.StockFoodNonPerishableMult,
 }
 
+option MarketSense.PriceThemeHighCalorieThreshold
+{
+    type = double,
+    default = 300.0,
+    min = 0.0,
+    max = 100000.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceThemeHighCalorieThreshold,
+}
+
+option MarketSense.PriceThemeHighFatThreshold
+{
+    type = double,
+    default = 20.0,
+    min = 0.0,
+    max = 100000.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceThemeHighFatThreshold,
+}
+
+option MarketSense.PriceThemeHighProteinThreshold
+{
+    type = double,
+    default = 20.0,
+    min = 0.0,
+    max = 100000.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceThemeHighProteinThreshold,
+}
+
+option MarketSense.PriceThemeHighCarbohydrateThreshold
+{
+    type = double,
+    default = 30.0,
+    min = 0.0,
+    max = 100000.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceThemeHighCarbohydrateThreshold,
+}
+
+option MarketSense.PriceThemeHydrationThreshold
+{
+    type = double,
+    default = 0.10,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceThemeHydrationThreshold,
+}
+
+option MarketSense.PriceThemeThirstThreshold
+{
+    type = double,
+    default = 0.10,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceThemeThirstThreshold,
+}
+
+option MarketSense.PriceThemeSummerMaxInsulation
+{
+    type = double,
+    default = 0.25,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceThemeSummerMaxInsulation,
+}
+
+option MarketSense.PriceThemeSummerMaxWindResistance
+{
+    type = double,
+    default = 0.25,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceThemeSummerMaxWindResistance,
+}
+
+option MarketSense.PriceThemeWinterMinInsulation
+{
+    type = double,
+    default = 0.75,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceThemeWinterMinInsulation,
+}
+
+option MarketSense.PriceThemeWinterMinWindResistance
+{
+    type = double,
+    default = 0.75,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceThemeWinterMinWindResistance,
+}
+
+option MarketSense.PriceThemeRainMinWaterResistance
+{
+    type = double,
+    default = 0.50,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceThemeRainMinWaterResistance,
+}
+
 option MarketSense.StockLiteratureMult
 {
     type = double,
@@ -1207,7 +1317,7 @@ option MarketSense.StockThemeSurvivalMult
 option MarketSense.PriceThemeWinterValue
 {
     type = integer,
-    default = 15,
+    default = 0,
     min = -1000000,
     max = 1000000,
     page = MarketSenseTheme,
@@ -1232,6 +1342,726 @@ option MarketSense.StockThemeWinterMult
     max = 100.0,
     page = MarketSenseTheme,
     translation = MarketSense.StockThemeWinterMult,
+}
+
+option MarketSense.PriceThemeSummerValue
+{
+    type = integer,
+    default = 0,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeSummerValue,
+}
+
+option MarketSense.PriceThemeSummerMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeSummerMult,
+}
+
+option MarketSense.StockThemeSummerMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeSummerMult,
+}
+
+option MarketSense.PriceThemeRainValue
+{
+    type = integer,
+    default = 0,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeRainValue,
+}
+
+option MarketSense.PriceThemeRainMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeRainMult,
+}
+
+option MarketSense.StockThemeRainMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeRainMult,
+}
+
+option MarketSense.PriceThemeSwimwearValue
+{
+    type = integer,
+    default = 0,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeSwimwearValue,
+}
+
+option MarketSense.PriceThemeSwimwearMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeSwimwearMult,
+}
+
+option MarketSense.StockThemeSwimwearMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeSwimwearMult,
+}
+
+option MarketSense.PriceThemeGrowingSeasonValue
+{
+    type = integer,
+    default = 0,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeGrowingSeasonValue,
+}
+
+option MarketSense.PriceThemeGrowingSeasonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeGrowingSeasonMult,
+}
+
+option MarketSense.StockThemeGrowingSeasonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeGrowingSeasonMult,
+}
+
+option MarketSense.PriceThemeHuntingSeasonValue
+{
+    type = integer,
+    default = 0,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHuntingSeasonValue,
+}
+
+option MarketSense.PriceThemeHuntingSeasonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHuntingSeasonMult,
+}
+
+option MarketSense.StockThemeHuntingSeasonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeHuntingSeasonMult,
+}
+
+option MarketSense.PriceThemeFishingSeasonValue
+{
+    type = integer,
+    default = 0,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeFishingSeasonValue,
+}
+
+option MarketSense.PriceThemeFishingSeasonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeFishingSeasonMult,
+}
+
+option MarketSense.StockThemeFishingSeasonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeFishingSeasonMult,
+}
+
+option MarketSense.PriceThemeHolidayValue
+{
+    type = integer,
+    default = 0,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHolidayValue,
+}
+
+option MarketSense.PriceThemeHolidayMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHolidayMult,
+}
+
+option MarketSense.StockThemeHolidayMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeHolidayMult,
+}
+
+option MarketSense.PriceThemeCamouflageValue
+{
+    type = integer,
+    default = 3,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCamouflageValue,
+}
+
+option MarketSense.PriceThemeCamouflageMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCamouflageMult,
+}
+
+option MarketSense.StockThemeCamouflageMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeCamouflageMult,
+}
+
+option MarketSense.PriceThemeCanvasValue
+{
+    type = integer,
+    default = 3,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCanvasValue,
+}
+
+option MarketSense.PriceThemeCanvasMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCanvasMult,
+}
+
+option MarketSense.StockThemeCanvasMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeCanvasMult,
+}
+
+option MarketSense.PriceThemeCottonValue
+{
+    type = integer,
+    default = 1,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCottonValue,
+}
+
+option MarketSense.PriceThemeCottonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCottonMult,
+}
+
+option MarketSense.StockThemeCottonMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeCottonMult,
+}
+
+option MarketSense.PriceThemeDenimValue
+{
+    type = integer,
+    default = 4,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeDenimValue,
+}
+
+option MarketSense.PriceThemeDenimMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeDenimMult,
+}
+
+option MarketSense.StockThemeDenimMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeDenimMult,
+}
+
+option MarketSense.PriceThemeFurValue
+{
+    type = integer,
+    default = 9,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeFurValue,
+}
+
+option MarketSense.PriceThemeFurMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeFurMult,
+}
+
+option MarketSense.StockThemeFurMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeFurMult,
+}
+
+option MarketSense.PriceThemeLeatherValue
+{
+    type = integer,
+    default = 8,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeLeatherValue,
+}
+
+option MarketSense.PriceThemeLeatherMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeLeatherMult,
+}
+
+option MarketSense.StockThemeLeatherMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeLeatherMult,
+}
+
+option MarketSense.PriceThemeRubberValue
+{
+    type = integer,
+    default = 3,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeRubberValue,
+}
+
+option MarketSense.PriceThemeRubberMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeRubberMult,
+}
+
+option MarketSense.StockThemeRubberMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeRubberMult,
+}
+
+option MarketSense.PriceThemeSilkValue
+{
+    type = integer,
+    default = 10,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeSilkValue,
+}
+
+option MarketSense.PriceThemeSilkMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeSilkMult,
+}
+
+option MarketSense.StockThemeSilkMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeSilkMult,
+}
+
+option MarketSense.PriceThemeThermalValue
+{
+    type = integer,
+    default = 4,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeThermalValue,
+}
+
+option MarketSense.PriceThemeThermalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeThermalMult,
+}
+
+option MarketSense.StockThemeThermalMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeThermalMult,
+}
+
+option MarketSense.PriceThemeWoolValue
+{
+    type = integer,
+    default = 5,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeWoolValue,
+}
+
+option MarketSense.PriceThemeWoolMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeWoolMult,
+}
+
+option MarketSense.StockThemeWoolMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeWoolMult,
+}
+
+option MarketSense.PriceThemeHighCalorieValue
+{
+    type = integer,
+    default = 2,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighCalorieValue,
+}
+
+option MarketSense.PriceThemeHighCalorieMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighCalorieMult,
+}
+
+option MarketSense.StockThemeHighCalorieMult
+{
+    type = double,
+    default = 0.9,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeHighCalorieMult,
+}
+
+option MarketSense.PriceThemeHighFatValue
+{
+    type = integer,
+    default = 1,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighFatValue,
+}
+
+option MarketSense.PriceThemeHighFatMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighFatMult,
+}
+
+option MarketSense.StockThemeHighFatMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeHighFatMult,
+}
+
+option MarketSense.PriceThemeHighProteinValue
+{
+    type = integer,
+    default = 3,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighProteinValue,
+}
+
+option MarketSense.PriceThemeHighProteinMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighProteinMult,
+}
+
+option MarketSense.StockThemeHighProteinMult
+{
+    type = double,
+    default = 0.9,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeHighProteinMult,
+}
+
+option MarketSense.PriceThemeHighCarbohydrateValue
+{
+    type = integer,
+    default = 1,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighCarbohydrateValue,
+}
+
+option MarketSense.PriceThemeHighCarbohydrateMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHighCarbohydrateMult,
+}
+
+option MarketSense.StockThemeHighCarbohydrateMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeHighCarbohydrateMult,
+}
+
+option MarketSense.PriceThemeHydratingValue
+{
+    type = integer,
+    default = 3,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHydratingValue,
+}
+
+option MarketSense.PriceThemeHydratingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeHydratingMult,
+}
+
+option MarketSense.StockThemeHydratingMult
+{
+    type = double,
+    default = 0.9,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeHydratingMult,
+}
+
+option MarketSense.PriceThemeThirstInducingValue
+{
+    type = integer,
+    default = -3,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeThirstInducingValue,
+}
+
+option MarketSense.PriceThemeThirstInducingMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeThirstInducingMult,
+}
+
+option MarketSense.StockThemeThirstInducingMult
+{
+    type = double,
+    default = 1.1,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeThirstInducingMult,
+}
+
+option MarketSense.PriceThemeCommunicationValue
+{
+    type = integer,
+    default = 2,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCommunicationValue,
+}
+
+option MarketSense.PriceThemeCommunicationMult
+{
+    type = double,
+    default = 1.0,
+    min = 0.0,
+    max = 10.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.PriceThemeCommunicationMult,
+}
+
+option MarketSense.StockThemeCommunicationMult
+{
+    type = double,
+    default = 0.85,
+    min = 0.0,
+    max = 100.0,
+    page = MarketSenseTheme,
+    translation = MarketSense.StockThemeCommunicationMult,
 }
 
 option MarketSense.StockToolCookwareMult

@@ -249,7 +249,44 @@ local function marketModifierSummary(details)
         tonumber(pricing.itemAdd) or 0, variation, source)
 end
 
+local function descriptorSummary(details)
+    local parts = {}
+    local rarity = details and details.rarityEvidence
+    if type(rarity) == "table" and rarity.rarity then
+        local source = tostring(rarity.source or "unknown")
+        local evidenceCount = tonumber(rarity.entryCount)
+        if source == "loot_distribution" and evidenceCount then
+            parts[#parts + 1] = string.format("Rarity: %s (%s, %d loot entries/%d sources)",
+                tostring(rarity.rarity), source, evidenceCount,
+                tonumber(rarity.sourceCount) or 0)
+        else
+            parts[#parts + 1] = string.format("Rarity: %s (%s)",
+                tostring(rarity.rarity), source)
+        end
+    end
+
+    local themes = {}
+    for _, evidence in ipairs(details and details.descriptorEvidence or {}) do
+        local tag = tostring(evidence.tag or "")
+        if string.sub(tag, 1, 6) == "Theme." then
+            local label = tag
+            if evidence.field and evidence.token then
+                label = label .. "[" .. tostring(evidence.field)
+                    .. ":" .. tostring(evidence.value or evidence.token)
+                    .. (evidence.value ~= nil and evidence.threshold ~= nil
+                        and " threshold=" .. tostring(evidence.threshold) or "") .. "]"
+            end
+            themes[#themes + 1] = label
+        end
+    end
+    if #themes > 0 then
+        parts[#parts + 1] = "Themes: " .. table.concat(themes, ", ")
+    end
+    return #parts > 0 and table.concat(parts, " | ") or nil
+end
+
 return {
     priceHeuristicSummary = priceHeuristicSummary,
     marketModifierSummary = marketModifierSummary,
+    descriptorSummary = descriptorSummary,
 }

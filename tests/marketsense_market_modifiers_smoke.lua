@@ -56,9 +56,14 @@ T.equal(noVariation, 20, "variation can be disabled without changing the raw sco
 Config.sandboxVars = {
     PriceRarityRareValue = 5,
     PriceRarityRareMult = 2,
+    PriceThemeSwimwearValue = 7,
+    PriceThemeSwimwearMult = 1.5,
 }
 local sandboxed = evaluate("Base.SandboxedFood", { "Rarity.Rare" })
 T.equal(sandboxed, 50, "typed sandbox addition and multiplier apply once")
+local seasonalSandboxed = evaluate("Base.SeasonalSwimwear", { "Theme.Swimwear" })
+T.equal(seasonalSandboxed, 40.5,
+    "new seasonal theme sandbox addition and multiplier apply")
 Config.sandboxVars = nil
 
 DB.registerItem("Base.ExactModifierTest", { price = 77, reason = "test exact" })

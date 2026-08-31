@@ -34,11 +34,13 @@ and Workshop items, merges matching Workshop definitions over their vanilla
 definition, and passes the complete discovered universe to the pricing
 evaluator/list. The GUI's `Skip vanilla`, mod, and availability controls are
 fast filters over that cached result; they do not create a Workshop-only scan.
-Use `--category Food` (or the GUI's `Category (scan)` control) to restrict the
-expensive availability/Lua pass to one top-level category. The Food source hint
-is conservative and the Lua result is checked exactly before it is returned;
-other category names remain exact output filters until their source signals are
-validated for safe pruning.
+Use `--category Food` or a `Theme.*` descriptor such as `--category
+Theme.Swimwear` (also available in the GUI's `Category (scan)` control) to
+restrict the result. Food uses a conservative source hint; Theme.* scopes run
+the complete candidate universe because themes are derived by Lua, then apply
+an exact filter to emitted theme tags and descriptor evidence. Other category
+names remain exact output filters until their source signals are validated for
+safe pruning.
 
 ```bash
 ./tools/run.sh                 # Tk GUI
@@ -59,9 +61,12 @@ the review filter can be combined with search.
 The Scan settings mod filter is a combobox populated from detected Workshop
 metadata. It defaults to `All`. `Category (scan)` defaults to `All categories`;
 selecting `Food` bounds the expensive evaluator candidate set and gets its own
-cache entry. Other category names still produce exact category-only output but
-conservatively keep the full candidate universe until their source signals are
-validated for pruning. The first scan builds the selected scope's cached
+cache entry. Selecting a `Theme.*` entry (for example `Theme.GrowingSeason`)
+evaluates the complete candidate universe and then returns only rows carrying
+that theme, preserving mod-defined and runtime-derived detections. Other
+category names still produce exact category-only output but conservatively keep
+the full candidate universe until their source signals are validated for
+pruning. The first scan builds the selected scope's cached
 universe; the mod filter, `Skip vanilla`, `Availability`, and `Max items`
 controls then filter that in-memory result instantly. Selecting a mod matches
 its stable ID emitted by the Lua bridge, so it does not trigger another
