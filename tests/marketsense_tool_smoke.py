@@ -586,7 +586,7 @@ tileset {
 
     specs = load_sandbox_option_specs()
     assert len(specs) >= 3
-    assert next(spec for spec in specs if spec.key == "PriceMultiplier").default == 1.0
+    assert next(spec for spec in specs if spec.key == "PriceMultiplierPercent").default == 0
     assert not any(spec.key.startswith("PriceLiterature") for spec in specs)
     assert not any(spec.key == "PriceWeaponValue" for spec in specs)
     assert not any(spec.key == "PriceWeaponExplosiveValue" for spec in specs)
@@ -639,7 +639,7 @@ tileset {
     )
     effective = effective_sandbox_settings({"PriceGlobalValue": 123}, specs)
     assert effective["PriceGlobalValue"] == 123
-    assert effective["PriceMultiplier"] == 1.0
+    assert effective["PriceMultiplierPercent"] == 0
     assert "PriceWeaponSpearValue" not in effective
 
     with TemporaryDirectory(prefix="marketsense-result-cache-") as temp_dir:

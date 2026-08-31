@@ -47,6 +47,27 @@ return {
         ["Theme.ThirstInducing"] = { add = -3, reason = "Thirst-inducing food penalty" },
         ["Theme.Communication"] = { add = 2, reason = "Two-way communication utility" },
     },
+    -- Subcategory adjustments are intentionally small dollar offsets. The
+    -- category band establishes the broad economy; the heuristic still
+    -- decides the item's position inside that band.
+    subcategoryModifiers = {
+        ["Food.NonPerishable"] = { add = 25, reason = "Shelf-stable food branch" },
+        ["Food.Perishable"] = { add = -10, reason = "Perishable food branch" },
+        ["Liquid.Water"] = { add = -5, reason = "Common water supply" },
+        ["Liquid.Alcohol"] = { add = 20, reason = "Alcohol scarcity and utility" },
+        ["Liquid.Fuel"] = { add = 30, reason = "Fuel scarcity and utility" },
+        ["Weapon.Ranged"] = { add = 35, reason = "Ranged weapon branch" },
+        ["Weapon.Ammo"] = { add = 15, reason = "Ammunition branch" },
+        ["Container.Bag"] = { add = 25, reason = "Portable storage branch" },
+        ["Tool.Mechanics"] = { add = 25, reason = "Mechanics tool branch" },
+        ["Tool.Gardening"] = { add = 10, reason = "Gardening tool branch" },
+        ["Medical.FirstAid"] = { add = 30, reason = "First-aid branch" },
+        ["Literature.SkillBook"] = { add = 25, reason = "Skill-book branch" },
+        ["Resource.Fuel"] = { add = 30, reason = "Fuel resource branch" },
+        ["Resource.Material"] = { add = 15, reason = "Crafting material branch" },
+        ["Building.Survival"] = { add = 35, reason = "Survival building branch" },
+        ["Building.Moveable"] = { add = 20, reason = "Moveable building branch" },
+    },
     categoryModifiers = {},
     itemModifiers = {},
 }

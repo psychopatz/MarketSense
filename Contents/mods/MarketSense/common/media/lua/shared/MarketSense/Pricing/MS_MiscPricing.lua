@@ -23,8 +23,7 @@ local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local DEFAULTS = {
     model = "misc_v2",
     floor = 1.0,
-    ceiling = 250.0,
-    yieldMultiplier = 1.0,
+    yieldMultiplier = 0.85,
     yieldPremium = 0.0,
 }
 
@@ -233,7 +232,6 @@ function MiscPricing.calculate(ctx, details, neutralScore)
         multiplier = c.yieldMultiplier,
         premium = c.yieldPremium,
         floor = c.floor,
-        ceiling = c.ceiling,
     })
     if transformScore ~= nil then
         for key, value in pairs(transform) do heuristic[key] = value end
@@ -298,7 +296,6 @@ function MiscPricing.calculate(ctx, details, neutralScore)
     local score, summary = Utils.scoreAnchors(neutralScore or 2, positives, negatives, {
         stateFactor = stateFactor,
         floor = c.floor,
-        ceiling = c.ceiling,
     })
     for key, value in pairs(summary) do heuristic[key] = value end
     heuristic.model = "misc_v2"

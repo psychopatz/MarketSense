@@ -17,12 +17,12 @@ local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
-    model = "electronics_v2", anchor = 14.0, floor = 1.0, ceiling = 300.0,
+    model = "electronics_v2", anchor = 28.0, floor = 1.0,
     capabilityWeight = 2.0, lightStrengthWeight = 1.0, lightDistanceWeight = 0.12,
     radioRangeWeight = 0.08, radioAnchor = 2.0, highTierAnchor = 2.0,
     portableAnchor = 1.5, weightPenalty = 0.8, powerPenalty = 2.0,
     missingBatteryPenalty = 3.0, conditionFloor = 0.20,
-    yieldMultiplier = 1.0, yieldPremium = 0.0,
+    yieldMultiplier = 0.90, yieldPremium = 0.0,
 }
 
 local function number(value, fallback)
@@ -95,7 +95,7 @@ function ElectronicsPricing.calculate(ctx, details)
 
     local transformScore, transform = TransformPricing.evaluate(ctx, details, {
         multiplier = c.yieldMultiplier, premium = c.yieldPremium,
-        floor = c.floor, ceiling = c.ceiling,
+        floor = c.floor,
     })
     if transformScore ~= nil then
         for key, value in pairs(transform) do heuristic[key] = value end
@@ -134,8 +134,12 @@ function ElectronicsPricing.calculate(ctx, details)
 
     local weightPenalty = math.min(12, math.max(0, number(ctx.weight, 0))
         * number(c.weightPenalty, 0.8))
-    local powerPenalty = (capabilityData.powerSource ~= nil
-        or device.isBatteryPowered == true) and number(c.powerPenalty, 2) or 0
+    local hasPowerSource = (type(capabilityData.powerSource) == "string"
+        and capabilityData.powerSource ~= "")
+        or type(capabilityData.powerSource) == "number"
+        or capabilityData.powerSource == true
+    local powerPenalty = (hasPowerSource or device.isBatteryPowered == true)
+        and number(c.powerPenalty, 2) or 0
     local batteryPenalty = device.isBatteryPowered == true and device.hasBattery == false
         and number(c.missingBatteryPenalty, 3) or 0
     Utils.addContribution(negatives, "weight burden", weightPenalty, ctx.weight)
@@ -143,7 +147,7 @@ function ElectronicsPricing.calculate(ctx, details)
     Utils.addContribution(negatives, "missing battery", batteryPenalty, device.hasBattery)
     local stateFactor = Utils.runtimeStateFactor(ctx, { conditionFloor = c.conditionFloor })
     local score, summary = Utils.scoreAnchors(c.anchor, positives, negatives, {
-        stateFactor = stateFactor, floor = c.floor, ceiling = c.ceiling,
+        stateFactor = stateFactor, floor = c.floor,
     })
     for key, value in pairs(summary) do heuristic[key] = value end
     heuristic.mode = "functional_electronics"

@@ -45,6 +45,10 @@ end
 PsychopatzWindow = WindowBase
 
 package.preload["ISUI/ISTextEntryBox"] = function() return true end
+package.preload["ISUI/ISComboBox"] = function()
+    ISComboBox = ISComboBox or {}
+    return ISComboBox
+end
 package.preload["MarketSense/MS_PublicAPI"] = function() return MarketSense end
 package.preload["PsychopatzCore/UI/PsychopatzUI"] = function() return UI end
 package.preload["PsychopatzCore/UI/PsychopatzDebugHubWindow"] = function()
@@ -74,6 +78,87 @@ T.equal(path({
     category = "Container", primary = "ContainerBag",
     expandedTags = { "ContainerBag", "Container" },
 }), "Container/Bag", "container category path")
+
+local gardeningDescription = Window.BuildDisplayTags({
+    category = "Building",
+    subcategory = "Gardening",
+    leaf = "PestControl",
+    primary = "GardeningPestControl",
+    tags = {
+        "GardeningPestControl", "Quality.Standard", "Origin.Vanilla",
+        "Rarity.Common", "Theme.GrowingSeason",
+    },
+    expandedTags = {
+        "GardeningPestControl", "Gardening", "Building",
+        "Quality.Standard", "Origin.Vanilla", "Rarity.Common",
+        "Theme.GrowingSeason",
+    },
+    sourceModId = "Vanilla",
+})
+T.equal(gardeningDescription,
+    "Category: Building > Gardening > Pest Control | Quality: Standard | Rarity: Common | Theme: Growing Season | Origin: Vanilla",
+    "catalog description groups canonical taxonomy and descriptors without duplicate origin")
+T.truthy(not string.find(gardeningDescription, "Vanilla.*Vanilla"),
+    "catalog description does not repeat vanilla origin")
+
+local cachedRows = {
+    {
+        fullType = "Base.TinnedFish",
+        category = "Food",
+        subcategory = "Seafood",
+        primary = "FoodSeafoodPerishable",
+        expandedTags = { "FoodSeafoodPerishable", "FoodSeafood", "Food",
+            "Theme.Survival" },
+        sourceModId = "Vanilla",
+    },
+    {
+        fullType = "Brita.Rifle",
+        category = "Weapon",
+        subcategory = "Ranged",
+        primary = "FirearmRifle",
+        expandedTags = { "FirearmRifle", "Firearm", "WeaponRanged", "Weapon",
+            "Theme.Combat" },
+        sourceModId = "Brita",
+    },
+}
+local filterOptions = Window.BuildFilterOptions(cachedRows)
+local filterOptionsByKey = {}
+for _, option in ipairs(filterOptions) do
+    filterOptionsByKey[option.key] = option
+end
+T.truthy(filterOptionsByKey["all"] ~= nil,
+    "catalog filter includes all-items option")
+T.truthy(filterOptionsByKey["category\31food"] ~= nil,
+    "catalog filter includes category options")
+T.truthy(filterOptionsByKey["subcategory\31food.seafood"] ~= nil,
+    "catalog filter includes subcategory options")
+T.truthy(filterOptionsByKey["theme\31survival"] ~= nil,
+    "catalog filter includes theme options")
+T.truthy(filterOptionsByKey["origin\31vanilla"] ~= nil,
+    "catalog filter includes origin options")
+T.truthy(Window.MatchesFilter(cachedRows[1],
+    { kind = "subcategory", value = "Food.Seafood" }),
+    "subcategory filter matches cached row")
+T.truthy(Window.MatchesFilter(cachedRows[1],
+    { kind = "theme", value = "Survival" }),
+    "theme filter matches cached row")
+T.truthy(not Window.MatchesFilter(cachedRows[1],
+    { kind = "origin", value = "Brita" }),
+    "origin filter excludes other cached rows")
+local filteredView = {
+    allItems = cachedRows,
+    visibleItems = {},
+    filterSelection = { kind = "category", value = "Food" },
+    search = { getText = function() return "" end },
+    itemList = {
+        setItems = function(self, items) self.items = items end,
+    },
+}
+Window.refreshVisibleItems(filteredView)
+T.equal(#filteredView.itemList.items, 1,
+    "catalog filter updates visible rows from the cached snapshot")
+T.equal(filteredView.itemList.items[1].fullType, "Base.TinnedFish",
+    "catalog filter keeps the matching cached row")
 local yieldText = Window.BuildYieldSummary({
     yieldResolution = {
         status = "resolved",
@@ -284,6 +369,30 @@ T.equal(Window.BuildDetailSubtext({
 }),
     "Pricing: ready | subtype=ToolBlacksmith | recipes=53 | reusable=52 | criticality=high | demand=0.91 | Yield: NOT_DETECTED (1 recipes, 2 sources indexed)",
     "catalog keeps pricing diagnostics visible beside yield diagnostics")
+local detailLines = Window.BuildDetailLines({
+    category = "Food",
+    categoryPath = { "Food", "Perishable", "Vegetables" },
+    rarity = "Common",
+    themes = { "HighCalorie", "HighFat" },
+}, {
+    priceHeuristic = {
+        model = "food_v2", role = "spice", foodCondition = "fresh",
+        score = 12.5, rationUnits = 0.55, hungerChange = -0.1,
+        thirstChange = 0,
+        categoryBand = { category = "Food", min = 50, max = 500 },
+    },
+    marketPricing = {
+        subcategoryAdd = -10, tagAdd = 11,
+        variationMultiplier = 0.98,
+    },
+    yieldResolution = { status = "not_detected", recipeCount = 2, sourceCount = 1 },
+})
+T.equal(detailLines[1].label, "Classification",
+    "catalog detail lines expose organized classification")
+T.truthy(string.find(detailLines[3].value, "raw=12.5", 1, true) ~= nil,
+    "catalog labels raw heuristic values as non-price data")
+T.truthy(string.find(detailLines[4].value, "band=Food $50-$500", 1, true) ~= nil,
+    "catalog detail lines separate the reference band from the catalog price")
 local containerHeuristicText = Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
         model = "container_v2",

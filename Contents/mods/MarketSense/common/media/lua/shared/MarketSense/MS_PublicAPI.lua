@@ -253,6 +253,15 @@ function API.RegisterMarketCategoryModifier(category, rule)
     return result
 end
 
+function API.RegisterMarketSubcategoryModifier(subcategory, rule)
+    if not MarketModifiers or type(MarketModifiers.registerSubcategory) ~= "function" then
+        return nil
+    end
+    local result = MarketModifiers.registerSubcategory(subcategory, rule)
+    invalidatePricingViews()
+    return result
+end
+
 function API.RegisterMarketItemModifier(fullType, rule)
     if not MarketModifiers or type(MarketModifiers.registerItem) ~= "function" then
         return nil

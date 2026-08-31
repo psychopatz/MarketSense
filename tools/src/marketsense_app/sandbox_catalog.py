@@ -239,8 +239,8 @@ def _parse_scalar(value: str, option_type: str) -> bool | int | float | None:
 
 
 def _fallback_spec(key: str, translations: Mapping[str, str]) -> SandboxOption:
-    if key == "PriceMultiplier":
-        option_type, default, minimum, maximum = "double", 1.0, 0.0, 100.0
+    if key == "PriceMultiplierPercent":
+        option_type, default, minimum, maximum = "integer", 0, -100, 1000
     elif key == "PriceGlobalValue":
         option_type, default, minimum, maximum = "integer", 0, -1000000, 1000000
     elif key == "StockMultiplier":
@@ -250,7 +250,7 @@ def _fallback_spec(key: str, translations: Mapping[str, str]) -> SandboxOption:
     else:
         option_type, default, minimum, maximum = "double", None, 0.0, 100.0
     prefix = key.removeprefix("Price").removeprefix("Stock")
-    page = "MarketSenseGlobal" if key in {"PriceMultiplier", "PriceGlobalValue", "StockMultiplier"} else (
+    page = "MarketSenseGlobal" if key in {"PriceMultiplierPercent", "PriceGlobalValue", "StockMultiplier"} else (
         "MarketSense" + re.match(r"[A-Za-z]+", prefix).group(0)
         if re.match(r"[A-Za-z]+", prefix) else "MarketSense"
     )

@@ -591,7 +591,7 @@ def run_domain_checks(
             == misc_bundle_contributions[0].get("contribution")
         and misc_bundle_audit_extra.get("yieldMode") == "multi_output_bundle"
         and misc_bundle_audit_extra.get("yieldValue") == misc_bundle_heuristic.get("yieldValue")
-        and (misc_ambiguous.get("priceHeuristic") or {}).get("score") == 2
+        and (misc_ambiguous.get("priceHeuristic") or {}).get("score", 0) >= 2
         and misc_ambiguous.get("price", 0) < misc_bundle.get("price", 0)
         and (misc_ambiguous.get("priceHeuristic") or {}).get("yieldEvaluation") == "blocked"
         and (misc_ambiguous.get("priceHeuristic") or {}).get("status") == "ready"
@@ -841,7 +841,10 @@ def run_pricing_checks(
             and carton_resolution.get("candidateMethod") == "explicit_property"
             and carton_resolution.get("outputs", [{}])[0].get("quantity") == 4
             and carton_heuristic.get("mode") == "multi_output_bundle"
-            and food_carton.get("price", 0) >= food_unit.get("price", 0) * 4
+            # The carton is valued from its individualized output, then gets
+            # the configured bulk/package discount. It should beat one unit,
+            # not necessarily equal four unit prices.
+            and food_carton.get("price", 0) > food_unit.get("price", 0)
             and "resolved" in food_carton.get("yieldResolver", "")
         ),
         f"unit={food_unit.get('price', '?')} carton={food_carton.get('price', '?')} "

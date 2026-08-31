@@ -17,10 +17,10 @@ local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
-    model = "container_v2", anchor = 14.0, floor = 1.0, ceiling = 300.0,
-    capacityWeight = 0.85, reductionWeight = 0.07, wearableAnchor = 2.0,
+    model = "container_v2", anchor = 28.0, floor = 1.0,
+    capacityWeight = 1.05, reductionWeight = 0.09, wearableAnchor = 4.0,
     specialAnchor = 2.0, weightPenalty = 0.75, conditionFloor = 0.20,
-    yieldMultiplier = 1.0, yieldPremium = 0.0,
+    yieldMultiplier = 0.90, yieldPremium = 0.0,
 }
 
 local function number(value, fallback)
@@ -94,7 +94,7 @@ function ContainerPricing.calculate(ctx, details)
 
     local transformScore, transform = TransformPricing.evaluate(ctx, details, {
         multiplier = c.yieldMultiplier, premium = c.yieldPremium,
-        floor = c.floor, ceiling = c.ceiling,
+        floor = c.floor,
     })
     if transformScore ~= nil then
         for key, value in pairs(transform) do heuristic[key] = value end
@@ -115,7 +115,9 @@ function ContainerPricing.calculate(ctx, details)
     local reduction = math.max(0, number(ctx.weightReduction, 0))
     local capacityValue = math.min(14, math.sqrt(capacity) * number(c.capacityWeight, 0.85))
     local reductionValue = math.min(8, reduction * number(c.reductionWeight, 0.07))
-    local wearableValue = ctx.canBeEquipped and number(c.wearableAnchor, 2) or 0
+    local wearable = ctx.canBeEquipped == true
+        or (type(ctx.canBeEquipped) == "string" and ctx.canBeEquipped ~= "")
+    local wearableValue = wearable and number(c.wearableAnchor, 2) or 0
     local specialValue = specialAnchor(ctx, details, c)
     Utils.addContribution(positives, "usable capacity", capacityValue, capacity)
     Utils.addContribution(positives, "carry-weight reduction", reductionValue, reduction)
@@ -129,7 +131,7 @@ function ContainerPricing.calculate(ctx, details)
     Utils.addContribution(negatives, "no measured storage", noStoragePenalty, capacity)
     local stateFactor = Utils.runtimeStateFactor(ctx, { conditionFloor = c.conditionFloor })
     local score, summary = Utils.scoreAnchors(c.anchor, positives, negatives, {
-        stateFactor = stateFactor, floor = c.floor, ceiling = c.ceiling,
+        stateFactor = stateFactor, floor = c.floor,
     })
     for key, value in pairs(summary) do heuristic[key] = value end
     heuristic.mode = "storage_capacity"

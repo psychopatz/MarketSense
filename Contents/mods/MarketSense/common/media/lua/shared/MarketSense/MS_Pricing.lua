@@ -1,6 +1,7 @@
 require "MarketSense/MS_Core"
 require "MarketSense/MS_Config"
 require "MarketSense/MS_Stock"
+require "MarketSense/signatures/tags/MS_TagMapper"
 require "MarketSense/Pricing/MS_YieldResolver"
 
 MarketSense = MarketSense or {}
@@ -8,6 +9,7 @@ MarketSense.Pricing = MarketSense.Pricing or {}
 
 local Pricing = MarketSense.Pricing
 local Core = MarketSense.Core
+local TagMapper = MarketSense.TagMapper
 local DB = MarketSense.HeuristicsDB
 local YieldResolver = MarketSense.YieldResolver
 
@@ -17,6 +19,16 @@ require "MarketSense/Pricing/MS_PricingRaw"
 require "MarketSense/Pricing/MS_PricingBalances"
 require "MarketSense/Pricing/MS_PricingOverrides"
 local applyTagOverrideIfPresent = Pricing.applyTagOverrideIfPresent
+
+local function attachHierarchy(details)
+    local definition = TagMapper and TagMapper.getDefinition
+        and TagMapper.getDefinition(details.primary) or nil
+    if type(definition) ~= "table" then return details end
+    details.subcategory = definition.subcategory or "General"
+    details.leaf = definition.leaf or details.primary
+    details.primaryPrefix = definition.primaryPrefix
+    return details
+end
 
 function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, internal)
     local ctx
@@ -33,6 +45,7 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, i
         fullType = ctx.fullType, moduleName = ctx.moduleName, typeName = ctx.typeName,
         sourceModId = ctx.sourceModId, sourceModName = ctx.sourceModName,
         category = tagInfo.category, primary = tagInfo.primary,
+        subcategory = "General", leaf = tagInfo.primary,
         tags = Core.deepCopy(tagInfo.tags), expandedTags = Core.deepCopy(tagInfo.expandedTags),
         classificationDetails = Core.deepCopy(tagInfo.details or {}),
         descriptorEvidence = Core.deepCopy((tagInfo.details or {}).descriptorEvidence),
@@ -51,7 +64,9 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, i
     details.yieldResolution = YieldResolver.resolve(ctx)
 
     local audit = withAudit and {} or nil
+    attachHierarchy(details)
     applyTagOverrideIfPresent(ctx, details)
+    attachHierarchy(details)
     details.rawScore = Pricing.calculateRawScore(ctx, details)
     details.price    = Pricing.applyBalances(ctx, details, audit)
     details.stock    = MarketSense.Stock.calculate(ctx.fullType, ctx, details)

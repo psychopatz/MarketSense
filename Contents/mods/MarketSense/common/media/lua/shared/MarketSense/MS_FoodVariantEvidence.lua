@@ -30,6 +30,28 @@ local function trim(value)
     return Core.trim and Core.trim(value) or tostring(value or "")
 end
 
+local function isFoodItem(context)
+    local itemType = lower(context.itemTypeToken or context.itemType)
+    local category = lower(context.displayCategory)
+    return context.isFoodInstance == true
+        or context.hasFoodNutritionEvidence == true
+        or trim(context.foodTypeToken or context.foodType) ~= ""
+        or string.find(itemType, "food", 1, true) ~= nil
+        or string.find(category, "food", 1, true) ~= nil
+end
+
+local function hasTag(context, marker)
+    marker = lower(marker)
+    for _, tag in ipairs(context.normalizedTagList or {}) do
+        if lower(tag) == marker then return true end
+    end
+    for _, tag in ipairs(context.tags or {}) do
+        local normalized = string.gsub(lower(tag), "[^%w]", "")
+        if normalized == marker then return true end
+    end
+    return false
+end
+
 local function endsWith(value, suffix)
     return string.sub(value, -#suffix) == suffix
 end
@@ -50,30 +72,32 @@ local function hasNutrition(context)
 end
 
 local function isPackagedFood(context)
-    local text = table.concat({
-        lower(context.fullType), lower(context.displayName), lower(context.description),
-        lower(context.openingRecipe), lower(context.doubleClickRecipe),
-        lower(context.replaceOnUse), lower(context.replaceOnUseOn),
-        lower(context.replaceOnDeplete), lower(context.replaceOnCooked), lower(context.onCooked),
+    local hasDefinitionRelation = trim(context.openingRecipe) ~= ""
+        or trim(context.doubleClickRecipe) ~= ""
+        or trim(context.replaceOnUse) ~= ""
+        or trim(context.replaceOnUseOn) ~= ""
+        or trim(context.replaceOnDeplete) ~= ""
+        or trim(context.replaceOnCooked) ~= ""
+        or trim(context.onCooked) ~= ""
+    local canonicalPreservedTag = hasTag(context, "preservedfood")
+        or hasTag(context, "pickledfood")
+        or hasTag(context, "foodpreserved")
+    local foodName = table.concat({
+        lower(context.fullType), lower(context.displayName),
     }, " ")
+    local namedFoodPackage = isFoodItem(context)
+        and (string.find(foodName, "canned", 1, true) ~= nil
+            or string.find(foodName, "pickle", 1, true) ~= nil
+            or string.find(foodName, "preserv", 1, true) ~= nil)
     return context.isCannedFood == true
         or context.isPackaged == true
-        or string.find(text, "canned", 1, true) ~= nil
-        or string.find(text, "pickle", 1, true) ~= nil
-        or string.find(text, "preserv", 1, true) ~= nil
-        or string.find(text, "jar", 1, true) ~= nil
-        or string.find(text, "opencannedfood", 1, true) ~= nil
+        or canonicalPreservedTag
+        or hasDefinitionRelation
+        or namedFoodPackage
 end
 
 local function isFood(context)
-    local itemType = lower(context.itemTypeToken or context.itemType)
-    local category = lower(context.displayCategory)
-    return context.isFoodInstance == true
-        or context.hasFoodNutritionEvidence == true
-        or (context.foodTypeToken or "") ~= ""
-        or string.find(itemType, "food", 1, true) ~= nil
-        or string.find(category, "food", 1, true) ~= nil
-        or isPackagedFood(context)
+    return isFoodItem(context)
 end
 
 local function addCandidate(candidates, seen, fullType, relation, priority)
@@ -138,18 +162,20 @@ local function different(left, right)
     return math.abs((tonumber(left) or 0) - (tonumber(right) or 0)) > 0.0001
 end
 
-local function copyField(context, field, value, copied)
+local function copyField(context, field, value, copied, sources, sourceFullType)
     if value == nil then return end
     context[field] = value
     if type(context.foodFacts) == "table" then
         context.foodFacts[field] = value
     end
     copied[#copied + 1] = field
+    sources[field] = sourceFullType
 end
 
 local function mergeNutrition(context, variant, force)
     local copied = {}
     local conflicts = {}
+    local sources = {}
     for _, field in ipairs(VALUE_FIELDS) do
         local variantValue = tonumber(variant[field.key])
         local baseValue = tonumber(context[field.key])
@@ -160,7 +186,8 @@ local function mergeNutrition(context, variant, force)
                 }
             end
             if force or baseValue == nil or baseValue == 0 then
-                copyField(context, field.key, variantValue, copied)
+                copyField(context, field.key, variantValue, copied, sources,
+                    variant.fullType)
             end
         end
 
@@ -180,26 +207,30 @@ local function mergeNutrition(context, variant, force)
                     }
                 end
                 if force or baseMagnitude == nil or baseMagnitude == 0 then
-                    copyField(context, field.magnitude, variantMagnitude, copied)
+                    copyField(context, field.magnitude, variantMagnitude, copied,
+                        sources, variant.fullType)
                 end
             end
         end
     end
 
-    if force and trim(variant.foodType) ~= "" then
-        if trim(context.foodType) == "" or trim(context.foodType) ~= trim(variant.foodType) then
-            if trim(context.foodType) ~= "" then
-                conflicts[#conflicts + 1] = {
-                    field = "foodType", base = context.foodType,
-                    variant = variant.foodType,
-                }
-            end
-            copyField(context, "foodType", variant.foodType, copied)
-            context.foodTypeLower = lower(variant.foodType)
-            context.foodTypeToken = string.gsub(lower(variant.foodType), "[^%w]", "")
+    if trim(variant.foodType) ~= ""
+        and (force or trim(context.foodType) == "")
+    then
+        if force and trim(context.foodType) ~= ""
+            and trim(context.foodType) ~= trim(variant.foodType)
+        then
+            conflicts[#conflicts + 1] = {
+                field = "foodType", base = context.foodType,
+                variant = variant.foodType,
+            }
         end
+        copyField(context, "foodType", variant.foodType, copied, sources,
+            variant.fullType)
+        context.foodTypeLower = lower(variant.foodType)
+        context.foodTypeToken = string.gsub(lower(variant.foodType), "[^%w]", "")
     end
-    return copied, conflicts
+    return copied, conflicts, sources
 end
 
 local function candidateSummary(spec, context)
@@ -207,6 +238,9 @@ local function candidateSummary(spec, context)
         fullType = spec.fullType,
         relation = spec.relation,
         priority = spec.priority,
+        authority = spec.relation == "recipe_output" and "recipe_output"
+            or spec.relation == "definition_reference" and "definition_reference"
+            or "name_hint",
         nutritionFields = nutritionStrength(context),
         hidden = context.isHidden == true,
         obsolete = context.isObsolete == true,
@@ -225,6 +259,12 @@ end
 function Evidence.apply(context, buildContext, yieldInfo)
     if type(context) ~= "table" then return context end
     if isOpenVariant(context.fullType) then
+        -- The opened definition is the edible source of truth, but its
+        -- condition is worse than the sealed package. Keep this state on the
+        -- context so pricing can apply the opened-food penalty even when the
+        -- item has no live inventory age yet.
+        context.isOpenedFood = true
+        context.foodConditionState = "opened"
         context.foodVariantEvidence = { status = "not_applicable" }
         return context
     end
@@ -238,7 +278,7 @@ function Evidence.apply(context, buildContext, yieldInfo)
     -- cached not-detected/heuristic result is already complete.
     local existing = context.foodVariantEvidence
     local hasRecipeOutput = hasOpenYieldOutput(yieldInfo)
-    if type(existing) == "table"
+    if type(existing) == "table" and existing.status ~= "not_detected"
         and (existing.relation == "recipe_output" or not hasRecipeOutput)
     then
         return context
@@ -272,15 +312,24 @@ function Evidence.apply(context, buildContext, yieldInfo)
         return context
     end
 
-    local force = isPackagedFood(context) or best.spec.relation == "recipe_output"
-    local copied, conflicts = mergeNutrition(context, best.context, force)
+    -- Explicit recipe/replacement metadata is authoritative for a sealed
+    -- package's edible form. A name-only suffix is only a fill-in hint and
+    -- never overwrites non-zero parent metadata.
+    local force = best.spec.relation == "recipe_output"
+        or best.spec.relation == "definition_reference"
+    local copied, conflicts, fieldSources = mergeNutrition(context, best.context, force)
     local evidence = {
         status = #copied > 0 and "verified" or "corroborated",
         sourceFullType = best.spec.fullType,
         relation = best.spec.relation,
-        confidence = best.spec.relation == "recipe_output" and 1.0 or 0.90,
+        authority = best.spec.relation == "recipe_output" and "recipe_output"
+            or best.spec.relation == "definition_reference" and "definition_reference"
+            or "name_hint",
+        confidence = best.spec.relation == "recipe_output" and 1.0
+            or best.spec.relation == "definition_reference" and 0.95 or 0.75,
         applied = #copied > 0,
         fields = copied,
+        fieldSources = fieldSources,
         conflicts = conflicts,
         candidates = summaries,
     }

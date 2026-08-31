@@ -386,9 +386,15 @@ def print_diagnostic_sections(
     runtime_sandbox = sandbox.get("runtime") or {}
     runtime_pricing = runtime_sandbox.get("pricing") or {}
     print("SANDBOX PRICING")
+    multiplier = runtime_pricing.get("baseMultiplierPercent")
+    multiplier_text = (
+        f"{format_number(multiplier)}%"
+        if multiplier is not None
+        else format_number(runtime_pricing.get("baseMultiplier"))
+    )
     print(
         f"  overrides={len(requested_sandbox)} | effective settings={len(effective_sandbox)} | "
-        f"price_multiplier={format_number(runtime_pricing.get('baseMultiplier'))} | "
+        f"price_multiplier={multiplier_text} | "
         f"global_price_add={format_number(runtime_pricing.get('globalValue'))}"
     )
     if requested_sandbox:

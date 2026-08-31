@@ -21,9 +21,9 @@ local number = Utils.number
 
 local DEFAULTS = {
     model = "weapon_v2",
-    anchor = 18.0,
+    anchor = 42.0,
+    ammoAnchor = 8.0,
     floor = 1.0,
-    ceiling = 300.0,
     damageWeight = 4.0,
     rangeWeight = 2.0,
     hitWeight = 2.0,
@@ -33,6 +33,8 @@ local DEFAULTS = {
     weightPenalty = 1.25,
     twoHandPenalty = 2.0,
     conditionFloor = 0.15,
+    yieldMultiplier = 0.75,
+    yieldPremium = 0.0,
 }
 
 local function settings()
@@ -64,6 +66,11 @@ function WeaponPricing.calculate(ctx, details)
     details = details or {}
     local c = settings()
     local evidence = details.weaponEvidence or {}
+    local primary = tostring(details.primary or "Weapon")
+    local isAmmo = string.sub(primary, 1, 4) == "Ammo"
+    local anchor = isAmmo
+        and number(c.ammoAnchor, DEFAULTS.ammoAnchor)
+        or number(c.anchor, DEFAULTS.anchor)
     local demand, demandContribution = ToolPricing.recipeEvidence(ctx)
     demandContribution = math.min(number(c.recipeDemandCap, DEFAULTS.recipeDemandCap),
         number(demandContribution, 0))
@@ -72,7 +79,7 @@ function WeaponPricing.calculate(ctx, details)
         model = tostring(c.model or DEFAULTS.model),
         status = "ready",
         reason = "Weapon value combines normalized combat performance, condition, and verified recipe demand.",
-        subtype = details.primary or "Weapon",
+        subtype = primary,
         mechanicalClass = evidence.mechanicalClass or details.primary or "Weapon",
         mechanicalFamily = evidence.mechanicalFamily,
         marketRole = evidence.marketRole,
@@ -87,6 +94,7 @@ function WeaponPricing.calculate(ctx, details)
         recipeDemandScore = demand.recipeDemandScore,
         recipeCriticality = demand.criticality,
         recipeContribution = demandContribution,
+        isAmmo = isAmmo,
         minDamage = ctx.minDamage,
         maxDamage = ctx.maxDamage,
         maxRange = ctx.maxRange,
@@ -118,7 +126,6 @@ function WeaponPricing.calculate(ctx, details)
         multiplier = c.yieldMultiplier,
         premium = c.yieldPremium,
         floor = c.floor,
-        ceiling = c.ceiling,
     })
     if transformScore ~= nil then
         for key, value in pairs(transform) do heuristic[key] = value end
@@ -142,7 +149,15 @@ function WeaponPricing.calculate(ctx, details)
     local range = math.min(8, number(ctx.maxRange, 0) * number(c.rangeWeight, 2))
     local hitCount = math.min(6, math.max(0, number(ctx.maxHit, 1) - 1)
         * number(c.hitWeight, 2))
-    local reliability = math.min(5, math.max(0, number(ctx.reliability, 0))
+    -- ContextModel currently exposes hit chance through the legacy
+    -- reliability field. Do not count that same signal twice.
+    local reliabilitySignal = number(ctx.reliability, 0)
+    if ctx.hitChance ~= nil
+        and math.abs(reliabilitySignal - number(ctx.hitChance, 0)) <= 0.0001
+    then
+        reliabilitySignal = 0
+    end
+    local reliability = math.min(5, math.max(0, reliabilitySignal)
         * number(c.reliabilityWeight, 0.04))
     local hitChance = math.min(5, math.max(0, number(ctx.hitChance, 0))
         * number(c.hitChanceWeight, 0.03))
@@ -150,7 +165,7 @@ function WeaponPricing.calculate(ctx, details)
     Utils.addContribution(positives, "damage throughput", damage, averageDamage)
     Utils.addContribution(positives, "reach", range, ctx.maxRange)
     Utils.addContribution(positives, "multi-target coverage", hitCount, ctx.maxHit)
-    Utils.addContribution(positives, "reliability", reliability, ctx.reliability)
+    Utils.addContribution(positives, "reliability", reliability, reliabilitySignal)
     Utils.addContribution(positives, "accuracy", hitChance, ctx.hitChance)
     Utils.addContribution(positives, "weapon family", family, evidence.mechanicalFamily)
     Utils.addContribution(positives, "verified recipe demand", demandContribution,
@@ -169,10 +184,9 @@ function WeaponPricing.calculate(ctx, details)
         conditionFloor = c.conditionFloor,
         usesFloor = 0.25,
     })
-    local score, summary = Utils.scoreAnchors(c.anchor, positives, negatives, {
+    local score, summary = Utils.scoreAnchors(anchor, positives, negatives, {
         stateFactor = stateFactor,
         floor = c.floor,
-        ceiling = c.ceiling,
     })
     for key, value in pairs(summary) do heuristic[key] = value end
     heuristic.mode = "combat_performance"

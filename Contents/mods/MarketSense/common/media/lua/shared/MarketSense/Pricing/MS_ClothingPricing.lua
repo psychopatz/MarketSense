@@ -18,12 +18,12 @@ local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
-    model = "clothing_v2", anchor = 4.0, floor = 1.0, ceiling = 250.0,
+    model = "clothing_v2", anchor = 10.0, floor = 1.0,
     biteWeight = 7.0, scratchWeight = 5.0, bulletWeight = 5.0,
     insulationWeight = 0.12, windWeight = 0.05, waterWeight = 0.04,
     temperatureWeight = 0.04, accessoryAnchor = 1.0, weightPenalty = 0.65,
     speedPenalty = 4.0, neckPenalty = 1.0, conditionFloor = 0.20,
-    yieldMultiplier = 1.0, yieldPremium = 0.0,
+    yieldMultiplier = 0.90, yieldPremium = 0.0,
 }
 
 local function number(value, fallback)
@@ -85,7 +85,7 @@ function ClothingPricing.calculate(ctx, details)
 
     local transformScore, transform = TransformPricing.evaluate(ctx, details, {
         multiplier = c.yieldMultiplier, premium = c.yieldPremium,
-        floor = c.floor, ceiling = c.ceiling,
+        floor = c.floor,
     })
     if transformScore ~= nil then
         for key, value in pairs(transform) do heuristic[key] = value end
@@ -130,7 +130,7 @@ function ClothingPricing.calculate(ctx, details)
     Utils.addContribution(negatives, "neck or coverage penalty", neckPenalty, ctx.neckProtectionModifier)
     local stateFactor = Utils.runtimeStateFactor(ctx, { conditionFloor = c.conditionFloor })
     local score, summary = Utils.scoreAnchors(c.anchor, positives, negatives, {
-        stateFactor = stateFactor, floor = c.floor, ceiling = c.ceiling,
+        stateFactor = stateFactor, floor = c.floor,
     })
     for key, value in pairs(summary) do heuristic[key] = value end
     heuristic.mode = "protection_and_coverage"

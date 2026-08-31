@@ -17,11 +17,11 @@ local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
-    model = "building_v2", anchor = 5.0, floor = 1.0, ceiling = 400.0,
+    model = "building_v2", anchor = 12.0, floor = 1.0,
     capabilityWeight = 2.2, worldUtilityAnchor = 2.0, capacityWeight = 0.35,
     moveableAnchor = 2.0, familyAnchor = 2.0, requirementPenalty = 0.8,
     weightPenalty = 0.6, stationaryPenalty = 1.0, conditionFloor = 0.20,
-    yieldMultiplier = 1.0, yieldPremium = 0.0,
+    yieldMultiplier = 0.90, yieldPremium = 0.0,
 }
 
 local function number(value, fallback)
@@ -106,7 +106,7 @@ function BuildingPricing.calculate(ctx, details)
 
     local transformScore, transform = TransformPricing.evaluate(ctx, details, {
         multiplier = c.yieldMultiplier, premium = c.yieldPremium,
-        floor = c.floor, ceiling = c.ceiling,
+        floor = c.floor,
     })
     if transformScore ~= nil then
         for key, value in pairs(transform) do heuristic[key] = value end
@@ -125,7 +125,8 @@ function BuildingPricing.calculate(ctx, details)
     local positives, negatives = heuristic.positiveContributions, heuristic.negativeContributions
     local capabilityValue = math.min(12, #capabilities * number(c.capabilityWeight, 2.2))
     local worldUtility = world.available == true and number(c.worldUtilityAnchor, 2) or 0
-    local capacity = math.max(number(ctx.capacity, 0), number(world.containerCapacity, 0))
+    local capacity = world.available == true
+        and math.max(number(ctx.capacity, 0), number(world.containerCapacity, 0)) or 0
     local storageValue = math.min(8, math.sqrt(math.max(0, capacity))
         * number(c.capacityWeight, 0.35))
     local moveableValue = ctx.isMoveable == true and number(c.moveableAnchor, 2) or 0
@@ -147,7 +148,7 @@ function BuildingPricing.calculate(ctx, details)
     Utils.addContribution(negatives, "stationary placement burden", stationaryPenalty, world.objectClass)
     local stateFactor = Utils.runtimeStateFactor(ctx, { conditionFloor = c.conditionFloor })
     local score, summary = Utils.scoreAnchors(c.anchor, positives, negatives, {
-        stateFactor = stateFactor, floor = c.floor, ceiling = c.ceiling,
+        stateFactor = stateFactor, floor = c.floor,
     })
     for key, value in pairs(summary) do heuristic[key] = value end
     heuristic.mode = "placed_object_utility"

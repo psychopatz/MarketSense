@@ -486,8 +486,15 @@ local function printRuntimeMetadata()
                 minPrice = pricing.minPrice,
                 maxPrice = pricing.maxPrice,
                 baseMultiplier = pricing.baseMultiplier,
+                baseMultiplierPercent = pricing.baseMultiplierPercent,
                 globalValue = pricing.globalValue,
-                openedPenalty = pricing.openedPenalty,
+                contrastPercent = pricing.contrastPercent,
+                variationPercent = pricing.variationPercent,
+                categoryBands = pricing.categoryBands,
+            },
+            foodPricing = {
+                openedPenalty = (runtime.foodPricing or {}).openedPenalty,
+                sealedPreservationMultiplier = (runtime.foodPricing or {}).sealedPreservationMultiplier,
             },
             stock = {
                 globalMultiplier = stock.globalMultiplier,

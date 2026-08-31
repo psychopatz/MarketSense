@@ -1,13 +1,13 @@
 VERSION = 1,
 
-option MarketSense.PriceMultiplier
+option MarketSense.PriceMultiplierPercent
 {
-    type = double,
-    default = 1.0,
-    min = 0.0,
-    max = 100.0,
+    type = integer,
+    default = 0,
+    min = -100,
+    max = 1000,
     page = MarketSenseGlobal,
-    translation = MarketSense.PriceMultiplier,
+    translation = MarketSense.PriceMultiplierPercent,
 }
 
 option MarketSense.PriceGlobalValue
@@ -20,14 +20,454 @@ option MarketSense.PriceGlobalValue
     translation = MarketSense.PriceGlobalValue,
 }
 
-option MarketSense.PriceContrastStrength
+option MarketSense.PriceFoodOpenedMultiplierPercent
 {
-    type = double,
-    default = 0.08,
-    min = 0.0,
-    max = 0.50,
+    type = integer,
+    default = 72,
+    min = 0,
+    max = 150,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodOpenedMultiplierPercent,
+}
+
+option MarketSense.PriceFoodSealedPreservationPercent
+{
+    type = integer,
+    default = 120,
+    min = 0,
+    max = 200,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceFoodSealedPreservationPercent,
+}
+
+option MarketSense.PriceCategoryFoodMin
+{
+    type = integer,
+    default = 50,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceCategoryFoodMin,
+}
+
+option MarketSense.PriceCategoryFoodMax
+{
+    type = integer,
+    default = 500,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceCategoryFoodMax,
+}
+
+option MarketSense.PriceCategoryBeverageMin
+{
+    type = integer,
+    default = 25,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceCategoryBeverageMin,
+}
+
+option MarketSense.PriceCategoryBeverageMax
+{
+    type = integer,
+    default = 350,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceCategoryBeverageMax,
+}
+
+option MarketSense.PriceCategoryLiquidMin
+{
+    type = integer,
+    default = 15,
+    min = 0,
+    max = 1000000,
     page = MarketSenseGlobal,
-    translation = MarketSense.PriceContrastStrength,
+    translation = MarketSense.PriceCategoryLiquidMin,
+}
+
+option MarketSense.PriceCategoryLiquidMax
+{
+    type = integer,
+    default = 400,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceCategoryLiquidMax,
+}
+
+option MarketSense.PriceCategoryWeaponMin
+{
+    type = integer,
+    default = 40,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceCategoryWeaponMin,
+}
+
+option MarketSense.PriceCategoryWeaponMax
+{
+    type = integer,
+    default = 2000,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceCategoryWeaponMax,
+}
+
+option MarketSense.PriceCategoryMedicalMin
+{
+    type = integer,
+    default = 40,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceCategoryMedicalMin,
+}
+
+option MarketSense.PriceCategoryMedicalMax
+{
+    type = integer,
+    default = 1200,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceCategoryMedicalMax,
+}
+
+option MarketSense.PriceCategoryToolMin
+{
+    type = integer,
+    default = 25,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceCategoryToolMin,
+}
+
+option MarketSense.PriceCategoryToolMax
+{
+    type = integer,
+    default = 1000,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceCategoryToolMax,
+}
+
+option MarketSense.PriceCategoryContainerMin
+{
+    type = integer,
+    default = 20,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceCategoryContainerMin,
+}
+
+option MarketSense.PriceCategoryContainerMax
+{
+    type = integer,
+    default = 700,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceCategoryContainerMax,
+}
+
+option MarketSense.PriceCategoryClothingMin
+{
+    type = integer,
+    default = 10,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceCategoryClothingMin,
+}
+
+option MarketSense.PriceCategoryClothingMax
+{
+    type = integer,
+    default = 500,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseClothing,
+    translation = MarketSense.PriceCategoryClothingMax,
+}
+
+option MarketSense.PriceCategoryElectronicsMin
+{
+    type = integer,
+    default = 25,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceCategoryElectronicsMin,
+}
+
+option MarketSense.PriceCategoryElectronicsMax
+{
+    type = integer,
+    default = 750,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseElectronics,
+    translation = MarketSense.PriceCategoryElectronicsMax,
+}
+
+option MarketSense.PriceCategoryLiteratureMin
+{
+    type = integer,
+    default = 10,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseLiterature,
+    translation = MarketSense.PriceCategoryLiteratureMin,
+}
+
+option MarketSense.PriceCategoryLiteratureMax
+{
+    type = integer,
+    default = 300,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseLiterature,
+    translation = MarketSense.PriceCategoryLiteratureMax,
+}
+
+option MarketSense.PriceCategoryResourceMin
+{
+    type = integer,
+    default = 10,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceCategoryResourceMin,
+}
+
+option MarketSense.PriceCategoryResourceMax
+{
+    type = integer,
+    default = 700,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceCategoryResourceMax,
+}
+
+option MarketSense.PriceCategoryBuildingMin
+{
+    type = integer,
+    default = 20,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceCategoryBuildingMin,
+}
+
+option MarketSense.PriceCategoryBuildingMax
+{
+    type = integer,
+    default = 800,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceCategoryBuildingMax,
+}
+
+option MarketSense.PriceCategoryMiscMin
+{
+    type = integer,
+    default = 5,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseMisc,
+    translation = MarketSense.PriceCategoryMiscMin,
+}
+
+option MarketSense.PriceCategoryMiscMax
+{
+    type = integer,
+    default = 300,
+    min = 0,
+    max = 1000000,
+    page = MarketSenseMisc,
+    translation = MarketSense.PriceCategoryMiscMax,
+}
+
+option MarketSense.PriceSubcategoryFoodNonPerishableValue
+{
+    type = integer,
+    default = 25,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceSubcategoryFoodNonPerishableValue,
+}
+
+option MarketSense.PriceSubcategoryFoodPerishableValue
+{
+    type = integer,
+    default = -10,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseFood,
+    translation = MarketSense.PriceSubcategoryFoodPerishableValue,
+}
+
+option MarketSense.PriceSubcategoryLiquidWaterValue
+{
+    type = integer,
+    default = -5,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceSubcategoryLiquidWaterValue,
+}
+
+option MarketSense.PriceSubcategoryLiquidAlcoholValue
+{
+    type = integer,
+    default = 20,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceSubcategoryLiquidAlcoholValue,
+}
+
+option MarketSense.PriceSubcategoryLiquidFuelValue
+{
+    type = integer,
+    default = 30,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceSubcategoryLiquidFuelValue,
+}
+
+option MarketSense.PriceSubcategoryWeaponRangedValue
+{
+    type = integer,
+    default = 35,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceSubcategoryWeaponRangedValue,
+}
+
+option MarketSense.PriceSubcategoryWeaponAmmoValue
+{
+    type = integer,
+    default = 15,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseWeapon,
+    translation = MarketSense.PriceSubcategoryWeaponAmmoValue,
+}
+
+option MarketSense.PriceSubcategoryContainerBagValue
+{
+    type = integer,
+    default = 25,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseContainer,
+    translation = MarketSense.PriceSubcategoryContainerBagValue,
+}
+
+option MarketSense.PriceSubcategoryToolMechanicsValue
+{
+    type = integer,
+    default = 25,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceSubcategoryToolMechanicsValue,
+}
+
+option MarketSense.PriceSubcategoryToolGardeningValue
+{
+    type = integer,
+    default = 10,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseTool,
+    translation = MarketSense.PriceSubcategoryToolGardeningValue,
+}
+
+option MarketSense.PriceSubcategoryMedicalFirstAidValue
+{
+    type = integer,
+    default = 30,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseMedical,
+    translation = MarketSense.PriceSubcategoryMedicalFirstAidValue,
+}
+
+option MarketSense.PriceSubcategoryLiteratureSkillBookValue
+{
+    type = integer,
+    default = 25,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseLiterature,
+    translation = MarketSense.PriceSubcategoryLiteratureSkillBookValue,
+}
+
+option MarketSense.PriceSubcategoryResourceFuelValue
+{
+    type = integer,
+    default = 30,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceSubcategoryResourceFuelValue,
+}
+
+option MarketSense.PriceSubcategoryResourceMaterialValue
+{
+    type = integer,
+    default = 15,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseResource,
+    translation = MarketSense.PriceSubcategoryResourceMaterialValue,
+}
+
+option MarketSense.PriceSubcategoryBuildingSurvivalValue
+{
+    type = integer,
+    default = 35,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceSubcategoryBuildingSurvivalValue,
+}
+
+option MarketSense.PriceSubcategoryBuildingMoveableValue
+{
+    type = integer,
+    default = 20,
+    min = -1000000,
+    max = 1000000,
+    page = MarketSenseBuilding,
+    translation = MarketSense.PriceSubcategoryBuildingMoveableValue,
+}
+
+option MarketSense.PriceContrastPercent
+{
+    type = integer,
+    default = 8,
+    min = 0,
+    max = 50,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceContrastPercent,
 }
 
 option MarketSense.PriceVariationEnabled
@@ -38,14 +478,14 @@ option MarketSense.PriceVariationEnabled
     translation = MarketSense.PriceVariationEnabled,
 }
 
-option MarketSense.PriceVariationStrength
+option MarketSense.PriceVariationPercent
 {
-    type = double,
-    default = 0.08,
-    min = 0.0,
-    max = 0.50,
+    type = integer,
+    default = 8,
+    min = 0,
+    max = 50,
     page = MarketSenseGlobal,
-    translation = MarketSense.PriceVariationStrength,
+    translation = MarketSense.PriceVariationPercent,
 }
 
 option MarketSense.PriceVariationSalt

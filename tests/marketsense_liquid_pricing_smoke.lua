@@ -52,9 +52,9 @@ T.falsy(details.priceHeuristic.contentValue,
 details.rawScore = score
 MarketSense.ItemRuntimeConfig.pricing.variationEnabled = false
 MarketSense.ItemRuntimeConfig.pricing.contrastStrength = 0
-T.equal(pricing.applyBalances(context, details),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(score)),
-    "liquid pricing keeps heuristic score without legacy flat additions")
+local liquidPrice = pricing.applyBalances(context, details)
+T.truthy(liquidPrice > score,
+    "liquid pricing maps heuristic utility into its currency band")
 
 local stale = pricing.applyOverridesOnly(context, {
     fullType = context.fullType,

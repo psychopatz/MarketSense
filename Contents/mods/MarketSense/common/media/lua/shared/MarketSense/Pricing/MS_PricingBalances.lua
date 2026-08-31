@@ -10,6 +10,7 @@ MarketSense.Pricing = MarketSense.Pricing or {}
 local Pricing = MarketSense.Pricing
 local Config = MarketSense.ItemRuntimeConfig
 local DB = MarketSense.HeuristicsDB
+local Core = MarketSense.Core
 local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local MarketModifiers = require "MarketSense/Pricing/MS_MarketModifiers"
 local addAudit = Utils.addAudit
@@ -52,6 +53,11 @@ function Pricing.applyBalances(ctx, details, audit)
                 yieldBlockedReason = details.priceHeuristic.yieldBlockedReason,
                 yieldMode = details.priceHeuristic.mode,
                 yieldValue = details.priceHeuristic.yieldValue,
+                yieldMultiplier = details.priceHeuristic.yieldMultiplier,
+                yieldPremium = details.priceHeuristic.yieldPremium,
+                quantityExponent = details.priceHeuristic.quantityExponent,
+                aggregateFloor = details.priceHeuristic.aggregateFloor,
+                aggregateCeiling = details.priceHeuristic.aggregateCeiling,
                 yieldContributions = details.priceHeuristic.contributions,
                 positiveContributions = details.priceHeuristic.positiveContributions,
                 negativeContributions = details.priceHeuristic.negativeContributions,
@@ -133,6 +139,21 @@ function Pricing.applyBalances(ctx, details, audit)
             })
     end
 
+    -- Convert the heuristic score into the configured root-category currency
+    -- band before applying semantic category, subcategory, theme, rarity,
+    -- condition, and stock modifiers. The band is a normal-price reference,
+    -- not a final ceiling.
+    local itemEntry = DB.getItem(ctx.fullType)
+    local hasExactPrice = itemEntry and itemEntry.price ~= nil
+    if not hasExactPrice then
+        local bandSummary = {}
+        working = MarketModifiers.applyCategoryBand(working, details, audit, bandSummary)
+        details.priceBandApplied = true
+        if details.priceHeuristic and bandSummary.categoryBand then
+            details.priceHeuristic.categoryBand = Core.deepCopy(bandSummary.categoryBand)
+        end
+    end
+
     -- Typed category/tag/item modifiers are applied exactly once before the
     -- global controls. Bundle scores are already aggregate yield scores, so
     -- the seed variation is applied once to that aggregate here.
@@ -147,7 +168,6 @@ function Pricing.applyBalances(ctx, details, audit)
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
 
-    local itemEntry = DB.getItem(ctx.fullType)
     if itemEntry and itemEntry.price ~= nil then
         local overridePrice = details.marketPricing
             and details.marketPricing.overridePrice or itemEntry.price

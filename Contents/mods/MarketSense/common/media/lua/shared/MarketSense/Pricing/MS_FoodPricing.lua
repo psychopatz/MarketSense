@@ -24,9 +24,8 @@ end
 
 local DEFAULTS = {
     model = "food_v2",
-    anchor = 10.0,
+    anchor = 55.0,
     floor = 1.0,
-    ceiling = 250.0,
     -- Food.getHungerChange/getThirstChange expose native values. Item scripts
     -- store those two fields in hundredths (for example -30 becomes -0.30).
     hungerScale = 0.30,
@@ -51,6 +50,10 @@ local DEFAULTS = {
     freshnessFloor = 0.45,
     rottenMultiplier = 0.08,
     ingredientMultiplier = 0.35,
+    sealedReserveMultiplier = 0.95,
+    sealedPreservationMultiplier = 1.20,
+    openedPenalty = 0.72,
+    candyMultiplier = 0.60,
     spiceMultiplier = 0.65,
     insectMultiplier = 0.78,
     petFoodMultiplier = 0.25,
@@ -63,6 +66,9 @@ local DEFAULTS = {
     burntMultiplier = 0.45,
     harmfulChangeMultiplier = 0.015,
     harmfulChangeFloor = 0.65,
+    -- A crisis market prices sealed rations and dependable bulk supplies
+    -- close to the value of their contents, with the quantity curve handling
+    -- the package discount.
     bundleMultiplier = 1.0,
     bundlePremium = 0.0,
 }
@@ -92,6 +98,41 @@ end
 
 local function tagPresent(details, tag)
     return TagUtils.hasTag(details.expandedTags or details.tags or {}, tag)
+end
+
+local function isOpenedFood(ctx)
+    if ctx and (ctx.isOpenedFood == true or ctx.isOpened == true) then
+        return true
+    end
+    local fullType = string.lower(tostring(ctx and ctx.fullType or ""))
+    return string.sub(fullType, -5) == "open"
+        or string.sub(fullType, -6) == "opened"
+end
+
+local function hasVariantNutrition(ctx, details)
+    -- Native nutrition is not variant evidence: ordinary fresh food also has
+    -- hasFoodNutritionEvidence=true. Only trust the explicit opened-variant
+    -- audit, otherwise a normal ingredient could be upgraded to a sealed
+    -- package by accident.
+    local evidence = ctx and ctx.foodVariantEvidence or nil
+    if type(evidence) ~= "table" then
+        evidence = details and details.foodVariantEvidence or nil
+    end
+    if type(evidence) ~= "table" then return false end
+    return (evidence.status == "verified" or evidence.status == "corroborated")
+        and type(evidence.fields) == "table" and #evidence.fields > 0
+end
+
+local function hasOpenedYield(yieldInfo)
+    for _, output in ipairs(yieldInfo and yieldInfo.outputs or {}) do
+        local fullType = string.lower(tostring(output and output.fullType or ""))
+        if string.sub(fullType, -5) == "open"
+            or string.sub(fullType, -6) == "opened"
+        then
+            return true
+        end
+    end
+    return false
 end
 
 local function signedValue(ctx, signedKey, magnitudeKey)
@@ -131,12 +172,37 @@ end
 local function roleMultiplier(ctx, details, c)
     local multiplier = 1.0
     local role = "edible"
+    local opened = isOpenedFood(ctx)
+    local variantNutrition = hasVariantNutrition(ctx, details)
+    local sealedVariant = not opened and variantNutrition
 
     local hasResolvedYield = details.yieldResolution
         and details.yieldResolution.status == "resolved"
-    if ctx.isCantEat == true and not hasResolvedYield then
-        multiplier = number(c.ingredientMultiplier, DEFAULTS.ingredientMultiplier)
-        role = "ingredient"
+    if ctx.isCantEat == true and not opened and not hasResolvedYield then
+        if tagPresent(details, "FoodNonPerishableCanned")
+            or tagPresent(details, "FoodPreserved")
+            or tagPresent(details, "FoodPreservedPickled")
+            or sealedVariant
+        then
+            -- A sealed package inherits the edible nutrition that the
+            -- opened variant exposes. Only fall back to reserve pricing when
+            -- the package has no trustworthy nutrition source.
+            if variantNutrition then
+                multiplier = 1.0
+                role = "sealed_food"
+            else
+                multiplier = number(c.sealedReserveMultiplier,
+                    DEFAULTS.sealedReserveMultiplier)
+                role = "sealed_food_reserve"
+            end
+        else
+            multiplier = number(c.ingredientMultiplier, DEFAULTS.ingredientMultiplier)
+            role = "ingredient"
+        end
+    end
+    if opened then
+        multiplier = number(c.openedPenalty, DEFAULTS.openedPenalty)
+        role = "opened_food"
     end
     if tagPresent(details, "FoodSeed") then
         multiplier = math.min(multiplier, number(c.seedMultiplier, DEFAULTS.seedMultiplier))
@@ -152,12 +218,28 @@ local function roleMultiplier(ctx, details, c)
         role = "spice"
     end
 
-    if tagPresent(details, "FoodPreserved") or tagPresent(details, "FoodPreservedPickled") then
+    if not opened and (tagPresent(details, "FoodPreserved")
+        or tagPresent(details, "FoodPreservedPickled"))
+    then
         multiplier = multiplier * number(c.preservedMultiplier, DEFAULTS.preservedMultiplier)
-    elseif tagPresent(details, "FoodNonPerishableCanned") or ctx.isCannedFood == true then
-        multiplier = multiplier * number(c.cannedMultiplier, DEFAULTS.cannedMultiplier)
-    elseif ctx.isPackaged == true then
+    elseif not opened and (tagPresent(details, "FoodNonPerishableCanned")
+        or ctx.isCannedFood == true or sealedVariant)
+    then
+        if sealedVariant then
+            multiplier = multiplier * number(c.sealedPreservationMultiplier,
+                DEFAULTS.sealedPreservationMultiplier)
+        else
+            multiplier = multiplier * number(c.cannedMultiplier, DEFAULTS.cannedMultiplier)
+        end
+    elseif not opened and ctx.isPackaged == true then
         multiplier = multiplier * number(c.packagedMultiplier, DEFAULTS.packagedMultiplier)
+    end
+
+    if tagPresent(details, "FoodPerishableCandy")
+        or tagPresent(details, "FoodNonPerishableCandy")
+    then
+        multiplier = multiplier * number(c.candyMultiplier, DEFAULTS.candyMultiplier)
+        role = "candy"
     end
 
     return clamp(multiplier, 0.05, 1.50), role
@@ -248,17 +330,38 @@ function FoodPricing.calculate(ctx, details)
     end
 
     if yieldInfo.status == "resolved" then
+        local bundleMultiplier = number(c.bundleMultiplier, DEFAULTS.bundleMultiplier)
+        if (ctx.isCantEat == true or hasVariantNutrition(ctx, details))
+            and not isOpenedFood(ctx)
+            and (tagPresent(details, "FoodNonPerishableCanned")
+                or tagPresent(details, "FoodPreserved")
+                or tagPresent(details, "FoodPreservedPickled")
+                or ctx.isCannedFood == true
+                or hasVariantNutrition(ctx, details))
+        then
+            -- The deterministic child is often the opened item. Remove its
+            -- opened-state discount before applying the sealed preservation
+            -- premium so a package does not inherit the wrong condition.
+            bundleMultiplier = bundleMultiplier
+                * number(c.sealedPreservationMultiplier,
+                    DEFAULTS.sealedPreservationMultiplier)
+            if hasOpenedYield(yieldInfo) then
+                bundleMultiplier = bundleMultiplier / math.max(0.05,
+                    number(c.openedPenalty, DEFAULTS.openedPenalty))
+            end
+        end
         local bundleScore, bundleHeuristic = TransformPricing.evaluate(ctx, details, {
-            multiplier = c.bundleMultiplier,
+            multiplier = bundleMultiplier,
             premium = c.bundlePremium,
             floor = c.floor,
-            ceiling = c.ceiling,
         })
         if bundleScore ~= nil then
             bundleHeuristic.model = Utils.bundleModel(c.model)
             bundleHeuristic.status = "ready"
             bundleHeuristic.anchor = number(c.anchor, DEFAULTS.anchor)
             bundleHeuristic.reason = "Deterministic food transform valued from individualized child outputs."
+            bundleHeuristic.foodCondition = isOpenedFood(ctx) and "opened"
+                or ctx.isCantEat == true and "sealed" or "fresh"
             bundleHeuristic.foodVariantEvidence = Core.deepCopy(ctx.foodVariantEvidence)
             Utils.addYieldEvidence(bundleHeuristic, details)
             bundleHeuristic.positiveContributions = Core.deepCopy(bundleHeuristic.contributions)
@@ -289,7 +392,9 @@ function FoodPricing.calculate(ctx, details)
         + thirstUnits * number(c.thirstWeight, DEFAULTS.thirstWeight)
         + calorieUnits * number(c.caloriesWeight, DEFAULTS.caloriesWeight)
     local roleValue, roleName = roleMultiplier(ctx, details, c)
-    if ctx.isCantEat == true then
+    local opened = isOpenedFood(ctx)
+    local inheritedNutrition = hasVariantNutrition(ctx, details)
+    if ctx.isCantEat == true and not opened and not inheritedNutrition then
         local recipes = countEvolvedRecipes(ctx)
         rationUnits = number(c.minimumRationUnits, DEFAULTS.minimumRationUnits)
             + math.min(4, recipes) * 0.05
@@ -327,8 +432,7 @@ function FoodPricing.calculate(ctx, details)
     local score = anchor * rationUnits * roleValue * mood * shelfLife * freshness * bulk
         * preparation * harmfulChangeMult
     local floor = math.max(0, number(c.floor, DEFAULTS.floor) or DEFAULTS.floor)
-    local ceiling = math.max(floor, number(c.ceiling, DEFAULTS.ceiling) or DEFAULTS.ceiling)
-    score = clamp(score, floor, ceiling)
+    score = math.max(floor, score)
 
     local heuristic = {
         model = tostring(c.model or DEFAULTS.model),
@@ -351,6 +455,7 @@ function FoodPricing.calculate(ctx, details)
         moodBenefit = moodBenefit,
         moodHarm = moodHarm,
         roleMultiplier = roleValue,
+        foodCondition = opened and "opened" or (ctx.isCantEat == true and "sealed" or "fresh"),
         shelfLifeMultiplier = shelfLife,
         shelfLifeState = shelfLifeState,
         freshnessMultiplier = freshness,

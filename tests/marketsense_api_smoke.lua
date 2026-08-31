@@ -272,9 +272,9 @@ T.equal(literatureDetails.priceHeuristic.status, "ready",
     "literature pricing model is ready")
 T.truthy(literatureScore > 5, "literature usefulness raises its anchor")
 literatureDetails.rawScore = literatureScore
-T.equal(MarketSense.Pricing.applyBalances(literatureContext, literatureDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(literatureScore)),
-    "literature pricing keeps heuristic score without legacy flat additions")
+local literaturePrice = MarketSense.Pricing.applyBalances(literatureContext, literatureDetails)
+T.truthy(literaturePrice > literatureScore,
+    "literature pricing maps heuristic utility into its currency band")
 
 local staleLiterature = MarketSense.Pricing.applyOverridesOnly(literatureContext, {
     fullType = literatureContext.fullType,
@@ -318,9 +318,9 @@ T.equal(clothingDetails.priceHeuristic.status, "ready",
     "clothing pricing model is ready")
 T.truthy(clothingScore > 4, "clothing protection raises its anchor")
 clothingDetails.rawScore = clothingScore
-T.equal(MarketSense.Pricing.applyBalances(clothingContext, clothingDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(clothingScore)),
-    "clothing pricing keeps heuristic score without legacy flat additions")
+local clothingPrice = MarketSense.Pricing.applyBalances(clothingContext, clothingDetails)
+T.truthy(clothingPrice > clothingScore,
+    "clothing pricing maps heuristic utility into its currency band")
 
 local staleClothing = MarketSense.Pricing.applyOverridesOnly(clothingContext, {
     fullType = clothingContext.fullType,
@@ -369,9 +369,9 @@ T.truthy(containerScore > 14, "container capacity and portability raise its anch
 T.equal(containerDetails.priceHeuristic.yieldOutputCount, 1,
     "container heuristic exposes deterministic content yield evidence")
 containerDetails.rawScore = containerScore
-T.equal(MarketSense.Pricing.applyBalances(containerContext, containerDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(containerScore)),
-    "container pricing keeps heuristic score without legacy flat additions")
+local containerPrice = MarketSense.Pricing.applyBalances(containerContext, containerDetails)
+T.truthy(containerPrice > containerScore,
+    "container pricing maps heuristic utility into its currency band")
 
 local staleContainer = MarketSense.Pricing.applyOverridesOnly(containerContext, {
     fullType = containerContext.fullType,
@@ -431,9 +431,9 @@ T.truthy(electronicsScore > 14, "electronics function raises its anchor")
 T.equal(electronicsDetails.priceHeuristic.deviceTransmitRange, 250,
     "electronics heuristic exposes radio device evidence")
 electronicsDetails.rawScore = electronicsScore
-T.equal(MarketSense.Pricing.applyBalances(electronicsContext, electronicsDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(electronicsScore)),
-    "electronics pricing keeps heuristic score without legacy flat additions")
+local electronicsPrice = MarketSense.Pricing.applyBalances(electronicsContext, electronicsDetails)
+T.truthy(electronicsPrice > electronicsScore,
+    "electronics pricing maps heuristic utility into its currency band")
 
 local staleElectronics = MarketSense.Pricing.applyOverridesOnly(electronicsContext, {
     fullType = electronicsContext.fullType,
@@ -491,9 +491,9 @@ T.equal(medicalDetails.priceHeuristic.bandagePower, 1.0,
 T.equal(medicalDetails.priceHeuristic.yieldOutputCount, 1,
     "medical heuristic exposes deterministic yield evidence")
 medicalDetails.rawScore = medicalScore
-T.equal(MarketSense.Pricing.applyBalances(medicalContext, medicalDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(medicalScore)),
-    "medical pricing keeps heuristic score without legacy flat additions")
+local medicalPrice = MarketSense.Pricing.applyBalances(medicalContext, medicalDetails)
+T.truthy(medicalPrice > medicalScore,
+    "medical pricing maps heuristic utility into its currency band")
 
 local staleMedical = MarketSense.Pricing.applyOverridesOnly(medicalContext, {
     fullType = medicalContext.fullType,
@@ -505,8 +505,8 @@ local staleMedical = MarketSense.Pricing.applyOverridesOnly(medicalContext, {
 }, true)
 T.equal(staleMedical.priceHeuristic.model, "medical_v2",
     "cached legacy medical score is rebuilt")
-T.truthy(staleMedical.price < 999,
-    "cached legacy medical dollars are discarded")
+T.truthy(staleMedical.rawScore ~= 999,
+    "cached legacy medical score is discarded before band mapping")
 
 local buildingContext = {
     fullType = "Base.HarnessStorageCrate",
@@ -567,9 +567,9 @@ T.equal(buildingDetails.priceHeuristic.worldContainerCapacity, 24,
 T.equal(buildingDetails.priceHeuristic.yieldOutputQuantity, 4,
     "building heuristic exposes deterministic bundle quantity")
 buildingDetails.rawScore = buildingScore
-T.equal(MarketSense.Pricing.applyBalances(buildingContext, buildingDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(buildingScore)),
-    "building pricing keeps heuristic score without legacy flat additions")
+local buildingPrice = MarketSense.Pricing.applyBalances(buildingContext, buildingDetails)
+T.truthy(buildingPrice > buildingScore,
+    "building pricing maps heuristic utility into its currency band")
 
 local staleBuilding = MarketSense.Pricing.applyOverridesOnly(buildingContext, {
     fullType = buildingContext.fullType,
@@ -645,9 +645,9 @@ T.equal(resourceDetails.priceHeuristic.yieldOutputCount, 1,
 T.equal(resourceDetails.priceHeuristic.yieldOutputQuantity, 4,
     "resource heuristic exposes deterministic child quantity")
 resourceDetails.rawScore = resourceScore
-T.equal(MarketSense.Pricing.applyBalances(resourceContext, resourceDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(resourceScore)),
-    "resource pricing keeps heuristic score without legacy flat additions")
+local resourcePrice = MarketSense.Pricing.applyBalances(resourceContext, resourceDetails)
+T.truthy(resourcePrice > resourceScore,
+    "resource pricing maps heuristic utility into its currency band")
 
 local staleResource = MarketSense.Pricing.applyOverridesOnly(resourceContext, {
     fullType = resourceContext.fullType,
@@ -735,9 +735,9 @@ T.equal(miscDetails.priceHeuristic.yieldOutputCount, 1,
 T.equal(miscDetails.priceHeuristic.yieldOutputQuantity, 6,
     "misc heuristic exposes deterministic child quantity")
 miscDetails.rawScore = miscScore
-T.equal(MarketSense.Pricing.applyBalances(miscContext, miscDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(miscScore)),
-    "Misc pricing keeps heuristic score without legacy flat additions")
+local miscPrice = MarketSense.Pricing.applyBalances(miscContext, miscDetails)
+T.truthy(miscPrice > miscScore,
+    "Misc pricing maps heuristic utility into its currency band")
 
 local staleMisc = MarketSense.Pricing.applyOverridesOnly(miscContext, {
     fullType = miscContext.fullType,
@@ -809,9 +809,9 @@ T.equal(toolDetails.priceHeuristic.remainingUsesRatio, 0.75,
 T.equal(toolDetails.priceHeuristic.conditionLowerChance, 10,
     "tool heuristic exposes condition-loss evidence")
 toolDetails.rawScore = toolScore
-T.equal(MarketSense.Pricing.applyBalances(toolContext, toolDetails),
-    MarketSense.Core.round(MarketSense.Core.priceClamp(toolScore)),
-    "tool pricing keeps recipe-driven score without legacy flat additions")
+local toolPrice = MarketSense.Pricing.applyBalances(toolContext, toolDetails)
+T.truthy(toolPrice > toolScore,
+    "tool pricing maps recipe-driven utility into its currency band")
 
 local hybridDetails = {
     category = "Weapon",

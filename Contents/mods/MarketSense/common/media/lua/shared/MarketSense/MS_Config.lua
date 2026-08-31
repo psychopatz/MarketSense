@@ -21,14 +21,37 @@ local defaults = {
     },
     pricing = {
         minPrice = 1,
-        maxPrice = 1000000000,
+        -- There is intentionally no global upper bound. Crisis prices must
+        -- be able to reflect scarce weapons, medicine, fuel, and bulk goods.
         baseMultiplier = 1.0,
+        baseMultiplierPercent = 0,
+        globalValue = 0,
         openedPenalty = 0.72,
         contrastStrength = 0.08,
+        contrastPercent = 8,
         variationEnabled = true,
         variationStrength = 0.08,
+        variationPercent = 8,
         variationSalt = 1,
         variationAbsoluteOverrides = false,
+        -- These are normal-price bands, not final hard caps. Multipliers for
+        -- rarity, condition, scarcity, and exceptional utility may carry an
+        -- item above the configured reference maximum.
+        categoryBands = {
+            Food = { min = 50, max = 500, response = 55, exponent = 0.85 },
+            Beverage = { min = 25, max = 350, response = 35, exponent = 0.85 },
+            Liquid = { min = 15, max = 400, response = 35, exponent = 0.85 },
+            Weapon = { min = 40, max = 2000, response = 55, exponent = 0.85 },
+            Medical = { min = 40, max = 1200, response = 35, exponent = 0.85 },
+            Tool = { min = 25, max = 1000, response = 40, exponent = 0.85 },
+            Container = { min = 20, max = 700, response = 35, exponent = 0.85 },
+            Clothing = { min = 10, max = 500, response = 25, exponent = 0.85 },
+            Electronics = { min = 25, max = 750, response = 35, exponent = 0.85 },
+            Literature = { min = 10, max = 300, response = 20, exponent = 0.85 },
+            Resource = { min = 10, max = 700, response = 25, exponent = 0.85 },
+            Building = { min = 20, max = 800, response = 35, exponent = 0.85 },
+            Misc = { min = 5, max = 300, response = 20, exponent = 0.85 },
+        },
     },
     foodPricing = {
         highCalorieThreshold = 300.0,
@@ -37,6 +60,8 @@ local defaults = {
         highCarbohydrateThreshold = 30.0,
         hydrationThreshold = 0.10,
         thirstThreshold = 0.10,
+        openedPenalty = 0.72,
+        sealedPreservationMultiplier = 1.20,
     },
     liquidPricing = {},
     resourcePricing = {},
@@ -82,6 +107,10 @@ end
 
 mergeDefaults(runtime, defaults)
 
+-- Clear the old hard-cap default if this file is hot-reloaded in a live
+-- session. An upper bound is not part of the MarketSense price model.
+runtime.pricing.maxPrice = nil
+
 local function getSandboxVarsTable()
     if SandboxVars and type(SandboxVars.MarketSense) == "table" then
         return SandboxVars.MarketSense
@@ -90,73 +119,61 @@ local function getSandboxVarsTable()
 end
 
 function MarketSense.Config.reloadExported()
-    local exported = require "MarketSense/Pricing/MS_PricingConfig_Data"
-    if type(exported) == "table" then
-        if exported.global then
-            runtime.pricing.minPrice = exported.global.min_price or runtime.pricing.minPrice
-            runtime.pricing.maxPrice = exported.global.max_price or runtime.pricing.maxPrice
-            runtime.pricing.baseMultiplier = exported.global.base_multiplier or runtime.pricing.baseMultiplier
-            runtime.pricing.openedPenalty = exported.global.opened_penalty or runtime.pricing.openedPenalty
-
-            runtime.stock.ultralightMax = exported.global.stock_ultralight_max or runtime.stock.ultralightMax
-            runtime.stock.lightMax = exported.global.stock_light_max or runtime.stock.lightMax
-            runtime.stock.smallMax = exported.global.stock_small_max or runtime.stock.smallMax
-            runtime.stock.mediumMax = exported.global.stock_medium_max or runtime.stock.mediumMax
-            runtime.stock.heavyMax = exported.global.stock_heavy_max or runtime.stock.heavyMax
-            runtime.stock.massiveMax = exported.global.stock_massive_max or runtime.stock.massiveMax
-            runtime.stock.maxCap = exported.global.stock_max_cap or runtime.stock.maxCap
-            runtime.stock.defaultMinRatio = exported.global.stock_default_min_ratio or runtime.stock.defaultMinRatio
-        end
-        runtime.categories = exported.categories or {}
-        runtime.foodPricing = exported.food_pricing or runtime.foodPricing or {}
-        runtime.liquidPricing = exported.liquid_pricing
-            or runtime.liquidPricing or {}
-        runtime.resourcePricing = exported.resource_pricing
-            or runtime.resourcePricing or {}
-        runtime.miscPricing = exported.misc_pricing
-            or runtime.miscPricing or {}
-        runtime.weaponPricing = exported.weapon_pricing
-            or runtime.weaponPricing or {}
-        runtime.literaturePricing = exported.literature_pricing
-            or runtime.literaturePricing or {}
-        runtime.clothingPricing = exported.clothing_pricing
-            or runtime.clothingPricing or {}
-        runtime.containerPricing = exported.container_pricing
-            or runtime.containerPricing or {}
-        runtime.electronicsPricing = exported.electronics_pricing
-            or runtime.electronicsPricing or {}
-        runtime.medicalPricing = exported.medical_pricing
-            or runtime.medicalPricing or {}
-        runtime.buildingPricing = exported.building_pricing
-            or runtime.buildingPricing or {}
-        runtime.toolPricing = exported.tool_pricing or runtime.toolPricing or {}
-        runtime.marketModifiers = exported.market_modifiers or runtime.marketModifiers or {}
-        runtime.global = exported.global or {}
-    end
+    -- Pricing defaults live in the Lua pricing modules and the static
+    -- modifier data module. The generated pricing table is retained for
+    -- audit/export tooling only; it must not become a runtime dependency or
+    -- silently override the source-of-truth defaults after a cache refresh.
+    return false
 end
 
 function MarketSense.Config.applySandboxOptions()
     local vars = getSandboxVarsTable()
     if vars then
         runtime.sandboxVars = vars
-        if vars.PriceMultiplier ~= nil then
-            runtime.pricing.baseMultiplier = vars.PriceMultiplier
+        if vars.PriceMultiplierPercent ~= nil then
+            local percent = math.floor(tonumber(vars.PriceMultiplierPercent) or 0)
+            percent = math.max(-100, math.min(1000, percent))
+            runtime.pricing.baseMultiplierPercent = percent
+            runtime.pricing.baseMultiplier = 1.0 + (percent / 100.0)
+        elseif vars.PriceMultiplier ~= nil then
+            -- Compatibility for worlds created with the old 1.0 = neutral
+            -- decimal multiplier. New worlds use the integer-percent option.
+            runtime.pricing.baseMultiplier = tonumber(vars.PriceMultiplier) or 1.0
+            runtime.pricing.baseMultiplierPercent = math.floor(
+                ((runtime.pricing.baseMultiplier - 1.0) * 100.0) + 0.5
+            )
         end
         if vars.PriceGlobalValue ~= nil then
-            runtime.pricing.globalValue = vars.PriceGlobalValue
+            runtime.pricing.globalValue = math.floor(tonumber(vars.PriceGlobalValue) or 0)
         end
-        if vars.PriceContrastStrength ~= nil then
+        if vars.PriceContrastPercent ~= nil then
+            local percent = math.floor(tonumber(vars.PriceContrastPercent) or 0)
+            percent = math.max(0, math.min(50, percent))
+            runtime.pricing.contrastPercent = percent
+            runtime.pricing.contrastStrength = percent / 100.0
+        elseif vars.PriceContrastStrength ~= nil then
             runtime.pricing.contrastStrength = math.max(0,
                 math.min(0.50, tonumber(vars.PriceContrastStrength) or 0))
+            runtime.pricing.contrastPercent = math.floor(
+                (runtime.pricing.contrastStrength * 100.0) + 0.5
+            )
         end
         if vars.PriceVariationEnabled ~= nil then
             runtime.pricing.variationEnabled = vars.PriceVariationEnabled == true
                 or vars.PriceVariationEnabled == 1
                 or vars.PriceVariationEnabled == "true"
         end
-        if vars.PriceVariationStrength ~= nil then
+        if vars.PriceVariationPercent ~= nil then
+            local percent = math.floor(tonumber(vars.PriceVariationPercent) or 0)
+            percent = math.max(0, math.min(50, percent))
+            runtime.pricing.variationPercent = percent
+            runtime.pricing.variationStrength = percent / 100.0
+        elseif vars.PriceVariationStrength ~= nil then
             runtime.pricing.variationStrength = math.max(0,
                 math.min(0.50, tonumber(vars.PriceVariationStrength) or 0))
+            runtime.pricing.variationPercent = math.floor(
+                (runtime.pricing.variationStrength * 100.0) + 0.5
+            )
         end
         if vars.PriceVariationSalt ~= nil then
             runtime.pricing.variationSalt = math.floor(tonumber(vars.PriceVariationSalt) or 1)
@@ -168,6 +185,33 @@ function MarketSense.Config.applySandboxOptions()
         end
         if vars.StockMultiplier ~= nil then
             runtime.stock.globalMultiplier = vars.StockMultiplier
+        end
+
+        local bandKeys = {
+            { category = "Food", min = "PriceCategoryFoodMin", max = "PriceCategoryFoodMax" },
+            { category = "Beverage", min = "PriceCategoryBeverageMin", max = "PriceCategoryBeverageMax" },
+            { category = "Liquid", min = "PriceCategoryLiquidMin", max = "PriceCategoryLiquidMax" },
+            { category = "Weapon", min = "PriceCategoryWeaponMin", max = "PriceCategoryWeaponMax" },
+            { category = "Medical", min = "PriceCategoryMedicalMin", max = "PriceCategoryMedicalMax" },
+            { category = "Tool", min = "PriceCategoryToolMin", max = "PriceCategoryToolMax" },
+            { category = "Container", min = "PriceCategoryContainerMin", max = "PriceCategoryContainerMax" },
+            { category = "Clothing", min = "PriceCategoryClothingMin", max = "PriceCategoryClothingMax" },
+            { category = "Electronics", min = "PriceCategoryElectronicsMin", max = "PriceCategoryElectronicsMax" },
+            { category = "Literature", min = "PriceCategoryLiteratureMin", max = "PriceCategoryLiteratureMax" },
+            { category = "Resource", min = "PriceCategoryResourceMin", max = "PriceCategoryResourceMax" },
+            { category = "Building", min = "PriceCategoryBuildingMin", max = "PriceCategoryBuildingMax" },
+            { category = "Misc", min = "PriceCategoryMiscMin", max = "PriceCategoryMiscMax" },
+        }
+        for _, entry in ipairs(bandKeys) do
+            local band = runtime.pricing.categoryBands[entry.category]
+                or { min = 1, max = 1, response = 1, exponent = 0.85 }
+            if vars[entry.min] ~= nil then
+                band.min = math.max(0, math.floor(tonumber(vars[entry.min]) or band.min))
+            end
+            if vars[entry.max] ~= nil then
+                band.max = math.max(band.min, math.floor(tonumber(vars[entry.max]) or band.max))
+            end
+            runtime.pricing.categoryBands[entry.category] = band
         end
 
         -- Food descriptor thresholds are kept with food pricing so the
@@ -188,6 +232,17 @@ function MarketSense.Config.applySandboxOptions()
                 if value ~= nil then
                     foodPricing[entry.field] = math.max(0, value)
                 end
+            end
+        end
+        local foodMultiplierKeys = {
+            { option = "PriceFoodOpenedMultiplierPercent", field = "openedPenalty", min = 0, max = 150 },
+            { option = "PriceFoodSealedPreservationPercent", field = "sealedPreservationMultiplier", min = 0, max = 200 },
+        }
+        for _, entry in ipairs(foodMultiplierKeys) do
+            if vars[entry.option] ~= nil then
+                local percent = math.floor(tonumber(vars[entry.option]) or 0)
+                percent = math.max(entry.min, math.min(entry.max, percent))
+                foodPricing[entry.field] = percent / 100.0
             end
         end
         runtime.foodPricing = foodPricing

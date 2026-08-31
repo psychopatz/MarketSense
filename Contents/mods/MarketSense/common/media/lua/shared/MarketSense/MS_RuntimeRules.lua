@@ -156,9 +156,8 @@ function RuntimeRules.loadFromFile(force)
 
     RuntimeRules.reset()
 
-    if force and MarketSense.Config and type(MarketSense.Config.reloadExported) == "function" then
-        MarketSense.Config.reloadExported()
-    end
+    -- Runtime rules are reloadable, but generated pricing exports are not
+    -- runtime inputs. Pricing defaults remain owned by the Lua models.
 
     local ok, data = pcall(require, DATA_MODULE)
     if not ok or type(data) ~= "table" then

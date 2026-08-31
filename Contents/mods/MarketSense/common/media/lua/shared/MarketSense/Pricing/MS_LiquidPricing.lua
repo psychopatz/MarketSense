@@ -20,12 +20,12 @@ local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
-    model = "liquid_v2", anchor = 5.0, floor = 1.0, ceiling = 300.0,
-    amountWeight = 1.5, thirstWeight = 4.0, hungerWeight = 2.0,
+    model = "liquid_v2", anchor = 20.0, floor = 1.0,
+    amountWeight = 2.0, thirstWeight = 6.0, hungerWeight = 3.0,
     moodWeight = 0.04, medicalWeight = 2.0, fuelWeight = 2.0,
-    waterAnchor = 2.0, mixturePenalty = 2.0, emptyPenalty = 8.0,
+    waterAnchor = 5.0, mixturePenalty = 2.0, emptyPenalty = 8.0,
     poisonPenalty = 6.0, weightPenalty = 0.55, conditionFloor = 0.20,
-    yieldMultiplier = 1.0, yieldPremium = 0.0,
+    yieldMultiplier = 0.90, yieldPremium = 0.0,
 }
 
 local function number(value, fallback)
@@ -65,7 +65,7 @@ function LiquidPricing.calculate(ctx, details)
     local c = settings()
     local fluidText = table.concat({
         ctx.fluidTypeString or "", ctx.fluidType or "", ctx.fluidCategory or "",
-        ctx.fluidCategoryLower or "", details.primary or "",
+        ctx.fluidCategoryLower or "",
     }, " ")
     local categories = ctx.fluidCategories or {}
     local heuristic = {
@@ -108,7 +108,7 @@ function LiquidPricing.calculate(ctx, details)
 
     local transformScore, transform = TransformPricing.evaluate(ctx, details, {
         multiplier = c.yieldMultiplier, premium = c.yieldPremium,
-        floor = c.floor, ceiling = c.ceiling,
+        floor = c.floor,
     })
     if transformScore ~= nil then
         for key, value in pairs(transform) do heuristic[key] = value end
@@ -157,7 +157,7 @@ function LiquidPricing.calculate(ctx, details)
     Utils.addContribution(negatives, "poison or harmful state", poisonPenalty, ctx.isPoison)
     local stateFactor = Utils.runtimeStateFactor(ctx, { conditionFloor = c.conditionFloor })
     local score, summary = Utils.scoreAnchors(c.anchor, positives, negatives, {
-        stateFactor = stateFactor, floor = c.floor, ceiling = c.ceiling,
+        stateFactor = stateFactor, floor = c.floor,
     })
     for key, value in pairs(summary) do heuristic[key] = value end
     heuristic.mode = "measured_fluid_utility"

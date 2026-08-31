@@ -28,6 +28,7 @@ local function foodScript(fullName, displayName, values)
     function item:getActualWeight() return 0.5 end
     function item:getCannedFood() return true end
     function item:getPackaged() return true end
+    function item:isCantEat() return self.values.isCantEat == true end
     function item:getReplaceOnUse() return self.values.replaceOnUse or "" end
     function item:Remove() end
     return item
@@ -38,6 +39,7 @@ local sealed = foodScript("Base.CannedTomato", "Canned Tomato", {
     -- authoritative edible form for this regression fixture.
     calories = 1,
     lipids = 0,
+    isCantEat = true,
     replaceOnUse = "Base.CannedTomatoOpen",
 })
 local opened = foodScript("Base.CannedTomatoOpen", "Canned Tomato (Open)", {
@@ -99,5 +101,27 @@ T.equal(context.foodVariantEvidence.relation, "recipe_output",
 local openedContext = propertyReader.buildContext(opened.fullName)
 T.equal(openedContext.foodVariantEvidence.status, "not_applicable",
     "opened variants are not recursively audited as their own packages")
+
+local Pricing = require "MarketSense/MS_Pricing"
+local sealedDetails = {
+    category = "Food",
+    primary = "FoodNonPerishableCanned",
+    tags = { "FoodNonPerishableCanned" },
+    expandedTags = { "FoodNonPerishableCanned", "FoodNonPerishable", "Food" },
+}
+local openedDetails = {
+    category = "Food",
+    primary = "FoodNonPerishableCanned",
+    tags = { "FoodNonPerishableCanned" },
+    expandedTags = { "FoodNonPerishableCanned", "FoodNonPerishable", "Food" },
+}
+local sealedScore = Pricing.calculateRawScore(context, sealedDetails)
+local openedScore = Pricing.calculateRawScore(openedContext, openedDetails)
+T.truthy(sealedScore > openedScore,
+    "sealed canned food outranks its opened counterpart")
+T.equal(sealedDetails.priceHeuristic.foodCondition, "sealed",
+    "sealed canned food reports a sealed condition")
+T.equal(openedDetails.priceHeuristic.foodCondition, "opened",
+    "opened canned food reports a negative opened condition")
 
 T.finish("marketsense_food_variant_smoke")

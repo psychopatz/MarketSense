@@ -1,6 +1,7 @@
 require "MarketSense/MS_Core"
 require "MarketSense/MS_Config"
 require "MarketSense/MS_HeuristicsDB"
+require "MarketSense/signatures/tags/MS_TagMapper"
 require "MarketSense/Pricing/MS_PricingUtils"
 
 MarketSense = MarketSense or {}
@@ -10,17 +11,20 @@ local Modifiers = MarketSense.MarketModifiers
 local Core = MarketSense.Core
 local Config = MarketSense.ItemRuntimeConfig
 local DB = MarketSense.HeuristicsDB
+local TagMapper = MarketSense.TagMapper
 local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local addAudit = Utils.addAudit
 
 local defaults = require "MarketSense/Pricing/MS_MarketModifiers_Data"
 local tagModifiers = Modifiers.tagModifiers or {}
 local categoryModifiers = Modifiers.categoryModifiers or {}
+local subcategoryModifiers = Modifiers.subcategoryModifiers or {}
 local itemModifiers = Modifiers.itemModifiers or {}
 
 Modifiers.version = defaults.version or 1
 Modifiers.tagModifiers = tagModifiers
 Modifiers.categoryModifiers = categoryModifiers
+Modifiers.subcategoryModifiers = subcategoryModifiers
 Modifiers.itemModifiers = itemModifiers
 
 local function copyRule(rule)
@@ -41,6 +45,9 @@ local function loadDefaults()
     for key, rule in pairs(defaults.categoryModifiers or {}) do
         categoryModifiers[key] = mergeRule(copyRule(categoryModifiers[key]), rule)
     end
+    for key, rule in pairs(defaults.subcategoryModifiers or {}) do
+        subcategoryModifiers[key] = mergeRule(copyRule(subcategoryModifiers[key]), rule)
+    end
     for key, rule in pairs(defaults.itemModifiers or {}) do
         itemModifiers[key] = mergeRule(copyRule(itemModifiers[key]), rule)
     end
@@ -56,6 +63,9 @@ local function applyExportedRules()
     end
     for key, rule in pairs(exported.category_modifiers or exported.categoryModifiers or {}) do
         Modifiers.registerCategory(key, rule)
+    end
+    for key, rule in pairs(exported.subcategory_modifiers or exported.subcategoryModifiers or {}) do
+        Modifiers.registerSubcategory(key, rule)
     end
     for key, rule in pairs(exported.item_modifiers or exported.itemModifiers or {}) do
         Modifiers.registerItem(key, rule)
@@ -73,6 +83,15 @@ function Modifiers.registerCategory(category, rule)
     if type(category) == "string" and category ~= "" and type(rule) == "table" then
         categoryModifiers[category] = mergeRule(copyRule(categoryModifiers[category]), rule)
         return categoryModifiers[category]
+    end
+end
+
+function Modifiers.registerSubcategory(subcategory, rule)
+    if type(subcategory) == "string" and subcategory ~= "" and type(rule) == "table" then
+        subcategoryModifiers[subcategory] = mergeRule(
+            copyRule(subcategoryModifiers[subcategory]), rule
+        )
+        return subcategoryModifiers[subcategory]
     end
 end
 
@@ -101,10 +120,15 @@ end
 local function sandboxRule(tag, rule)
     local result = copyRule(rule)
     local vars = Config and Config.sandboxVars or nil
-    local add = vars and vars[optionKey(tag, "Value")] or nil
-    local mult = vars and vars[optionKey(tag, "Mult")] or nil
+    local prefix = optionKey(tag, "")
+    local add = vars and vars[prefix .. "Value"] or nil
+    local mult = vars and vars[prefix .. "Mult"] or nil
+    local percent = vars and vars[prefix .. "Percent"] or nil
     if add ~= nil then result.add = number(add, result.add or 0) end
     if mult ~= nil then result.mult = math.max(0, number(mult, result.mult or 1)) end
+    if percent ~= nil then
+        result.mult = math.max(0, 1 + (math.floor(number(percent, 0)) / 100.0))
+    end
     return result
 end
 
@@ -114,6 +138,23 @@ local function categoryAllowed(rule, category)
         if tostring(allowed) == tostring(category) then return true end
     end
     return false
+end
+
+local function ensureHierarchy(details)
+    details = details or {}
+    if details.subcategory and details.subcategory ~= "" then
+        return details.subcategory
+    end
+    local definition = TagMapper and TagMapper.getDefinition
+        and TagMapper.getDefinition(details.primary) or nil
+    local subcategory = type(definition) == "table"
+        and definition.subcategory or "General"
+    details.subcategory = subcategory
+    if type(definition) == "table" then
+        details.leaf = details.leaf or definition.leaf
+        details.primaryPrefix = details.primaryPrefix or definition.primaryPrefix
+    end
+    return subcategory
 end
 
 local function stateScale(details, rule)
@@ -220,6 +261,7 @@ local function seedInfo()
 end
 
 local function applyAnchorSpread(value, details, audit, summary)
+    if details and details.priceBandApplied == true then return value end
     local strength = clamp(Config and Config.pricing and Config.pricing.contrastStrength or 0, 0, 0.50)
     local anchor, anchorSource = categoryAnchor(details)
     if strength <= 0 or anchor <= 0 or value <= 0 then return value end
@@ -238,6 +280,35 @@ local function applyAnchorSpread(value, details, audit, summary)
         strength = strength,
         multiplier = spread / ratio,
     })
+    return value
+end
+
+local function applyCategoryBand(value, details, audit, summary)
+    summary = summary or {}
+    local pricing = Config and Config.pricing or {}
+    local bands = pricing.categoryBands or {}
+    local category = details and details.category or "Misc"
+    local band = bands[category]
+    if type(band) ~= "table" then return value end
+
+    local minimum = math.max(0, number(band.min, 0))
+    local maximum = math.max(minimum, number(band.max, minimum))
+    local response = math.max(0.01, number(band.response, 1))
+    local exponent = clamp(number(band.exponent, 1), 0.25, 2.0)
+    local score = math.max(0, number(value, 0))
+    local progress = (score / response) ^ exponent
+    local before = value
+    value = minimum + ((maximum - minimum) * progress)
+    summary.categoryBand = {
+        category = category,
+        min = minimum,
+        max = maximum,
+        response = response,
+        exponent = exponent,
+        progress = progress,
+        overflow = progress > 1,
+    }
+    addAudit(audit, "category price band", before, value, summary.categoryBand)
     return value
 end
 
@@ -285,10 +356,13 @@ function Modifiers.apply(ctx, details, value, audit, skipVariation)
         anchor = nil,
         anchorSource = nil,
         anchorSpreadMultiplier = 1,
+        categoryBand = nil,
         tagAdd = 0,
         tagMultiplier = 1,
         categoryAdd = 0,
         categoryMultiplier = 1,
+        subcategoryAdd = 0,
+        subcategoryMultiplier = 1,
         moduleAdd = 0,
         moduleMultiplier = 1,
         itemAdd = 0,
@@ -331,8 +405,30 @@ function Modifiers.apply(ctx, details, value, audit, skipVariation)
     local categoryRule = categoryModifiers[details and details.category]
         or DB.getCategory(details and details.category)
     local beforeCategory = working
-    working = applyRule(working, categoryRule, "category modifier", details, audit, summary)
+    working = applyRule(
+        working,
+        sandboxRule("Category." .. tostring(details and details.category or "Misc"), categoryRule),
+        "category modifier",
+        details,
+        audit,
+        summary
+    )
     summary.categoryAdd = working - beforeCategory
+
+    local category = tostring(details and details.category or "Misc")
+    local subcategory = tostring(ensureHierarchy(details) or "General")
+    local subcategoryKey = category .. "." .. subcategory
+    local subcategoryRule = subcategoryModifiers[subcategoryKey]
+    local beforeSubcategory = working
+    working = applyRule(
+        working,
+        sandboxRule("Subcategory." .. subcategoryKey, subcategoryRule),
+        "subcategory modifier",
+        details,
+        audit,
+        summary
+    )
+    summary.subcategoryAdd = working - beforeSubcategory
 
     for _, tag in ipairs(uniqueTags(details)) do
         local rule = tagModifiers[tag]
@@ -383,5 +479,10 @@ end
 function Modifiers.getTagModifiers()
     return Core.deepCopy(tagModifiers)
 end
+
+-- Category bands are a balance-stage conversion from heuristic score to
+-- currency. Keeping this separate from semantic modifiers lets callers and
+-- tests inspect raw modifier behavior without silently changing the unit.
+Modifiers.applyCategoryBand = applyCategoryBand
 
 return Modifiers

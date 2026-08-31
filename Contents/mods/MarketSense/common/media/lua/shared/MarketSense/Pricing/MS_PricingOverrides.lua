@@ -98,6 +98,14 @@ function Pricing.applyOverridesOnly(fullTypeOrContext, staticDetails, withAudit)
     end
 
     addAudit(audit, "static baseline", working, working)
+    if not (itemEntry and itemEntry.price ~= nil) then
+        local bandSummary = {}
+        working = MarketModifiers.applyCategoryBand(working, details, audit, bandSummary)
+        details.priceBandApplied = true
+        if details.priceHeuristic and bandSummary.categoryBand then
+            details.priceHeuristic.categoryBand = Core.deepCopy(bandSummary.categoryBand)
+        end
+    end
     working = MarketModifiers.apply(ctx, details, working, audit)
 
     local beforeSandbox = working

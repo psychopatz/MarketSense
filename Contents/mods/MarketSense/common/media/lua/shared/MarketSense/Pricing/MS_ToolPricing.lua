@@ -19,9 +19,8 @@ local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
     model = "tool_v2",
-    anchor = 10.0,
+    anchor = 26.0,
     floor = 1.0,
-    ceiling = 250.0,
     conditionWeight = 8.0,
     conditionScale = 10.0,
     drainableUsesWeight = 0.35,
@@ -47,7 +46,7 @@ local DEFAULTS = {
     weightPenalty = 1.5,
     twoHandPenalty = 2.0,
     stateFloor = 0.15,
-    yieldMultiplier = 1.0,
+    yieldMultiplier = 0.85,
     yieldPremium = 0.0,
 }
 
@@ -191,7 +190,6 @@ function ToolPricing.calculate(ctx, details)
         multiplier = c.yieldMultiplier,
         premium = c.yieldPremium,
         floor = c.floor,
-        ceiling = c.ceiling,
     })
     if transformScore ~= nil then
         local heuristic = {
@@ -243,8 +241,7 @@ function ToolPricing.calculate(ctx, details)
         ))
     end
     local total = math.max(number(c.floor, DEFAULTS.floor),
-        math.min(number(c.ceiling, DEFAULTS.ceiling),
-            totalBeforeState * stateFactor - weightPenalty))
+        totalBeforeState * stateFactor - weightPenalty)
     local score = {
         total = total,
         conditionContribution = conditionContribution,

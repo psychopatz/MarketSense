@@ -30,8 +30,27 @@ local TEXT_FALLBACKS = {
     UI_MarketSenseCatalog_Expand = "Expand all",
     UI_MarketSenseCatalog_Refresh = "Refresh catalog",
     UI_MarketSenseCatalog_Generate = "Generate MarketSense catalog",
+    UI_MarketSenseCatalog_Filter = "Filter taxonomy",
+    UI_MarketSenseCatalog_FilterAll = "All market items",
+    UI_MarketSenseCatalog_FilterCategory = "Category: %s",
+    UI_MarketSenseCatalog_FilterSubcategory = "Subcategory: %s",
+    UI_MarketSenseCatalog_FilterTheme = "Theme: %s",
+    UI_MarketSenseCatalog_FilterOrigin = "Origin: %s",
     UI_MarketSenseCatalog_BaseItemLabel = "Base item",
     UI_MarketSenseCatalog_BasePriceLabel = "base price",
+    UI_MarketSenseCatalog_SelectedHeader = "%s  |  Catalog price: $%d  |  %s",
+    UI_MarketSenseCatalog_DetailClassification = "Classification",
+    UI_MarketSenseCatalog_DetailPricingModel = "Pricing model",
+    UI_MarketSenseCatalog_DetailHeuristic = "Heuristic score (not dollars)",
+    UI_MarketSenseCatalog_DetailAdjustments = "Price adjustments",
+    UI_MarketSenseCatalog_DetailThemeTag = "theme/tag",
+    UI_MarketSenseCatalog_DetailEvidence = "Evidence",
+    UI_MarketSenseCatalog_DetailVariant = "Nutrition source",
+    UI_MarketSenseCatalog_DescriptionCategory = "Category",
+    UI_MarketSenseCatalog_DescriptionQuality = "Quality",
+    UI_MarketSenseCatalog_DescriptionRarity = "Rarity",
+    UI_MarketSenseCatalog_DescriptionTheme = "Theme",
+    UI_MarketSenseCatalog_DescriptionOrigin = "Origin",
 }
 
 local DISPLAY_NAME_CACHE = {}
@@ -48,16 +67,27 @@ end
 
 local function trFormat(key, fallback, ...)
     if type(getText) == "function" then
-        local ok, value = pcall(getText, key, ...)
+        -- PZ versions differ on whether getText consumes format arguments.
+        -- Read the translated template first, then format it here so a
+        -- literal "%s" never leaks into the catalog UI.
+        local ok, value = pcall(getText, key)
         if ok and value and value ~= key and value ~= "" then
-            return value
+            local formatted, result = pcall(string.format, tostring(value), ...)
+            return formatted and result or tostring(value)
         end
     end
-    return string.format(fallback or TEXT_FALLBACKS[key] or key, ...)
+    local template = fallback or TEXT_FALLBACKS[key] or key
+    local formatted, result = pcall(string.format, template, ...)
+    return formatted and result or tostring(template)
 end
 
 local function lower(value)
     return string.lower(tostring(value or ""))
+end
+
+local function demandText(value)
+    if value == nil then return "-" end
+    return string.format("%.2f", tonumber(value) or 0)
 end
 
 local function timestampMs()
@@ -194,22 +224,285 @@ local function displaySource(row)
     return source
 end
 
-local function displayTags(row)
+local FILTER_KIND_ORDER = {
+    all = 0,
+    category = 1,
+    subcategory = 2,
+    theme = 3,
+    origin = 4,
+}
+
+local function filterKey(kind, value)
+    return lower(kind) .. "\31" .. lower(value)
+end
+
+local function addFilterOption(optionsByKey, kind, value, label)
+    value = tostring(value or "")
+    if value == "" then return end
+    local key = filterKey(kind, value)
+    if optionsByKey[key] then return end
+    optionsByKey[key] = {
+        key = key,
+        kind = kind,
+        value = value,
+        label = label,
+    }
+end
+
+local function subcategoryValue(row)
+    local path = row and (row.categoryPath or categoryPath(row)) or {}
+    local category = tostring(row.category or path[1] or "Misc")
+    local value = tostring(row.subcategory or path[2] or "")
+    if value == "" or value == "Root" or value == "General" then
+        return nil
+    end
+    if string.sub(value, 1, #category + 1) == category .. "." then
+        return value
+    end
+    return category .. "." .. value
+end
+
+local function descriptorValuesForRow(row, prefix, field)
     local values = {}
-    local primary = tostring(row.primary or "")
-    for _, value in ipairs(row.tags or {}) do
+    local seen = {}
+    local function append(value)
         value = tostring(value or "")
-        if value ~= "" and value ~= primary then
-            local dot = string.find(value, ".", 1, true)
-            if dot then value = string.sub(value, dot + 1) end
-            appendUnique(values, value)
+        if value ~= "" and not seen[lower(value)] then
+            seen[lower(value)] = true
+            values[#values + 1] = value
         end
     end
-    local text = primary ~= "" and primary or tostring(row.category or "Misc")
-    if #values > 0 then text = text .. ", " .. table.concat(values, ", ") end
-    local source = displaySource(row)
-    if source ~= "" then text = text .. ", " .. source end
-    return text
+
+    local fields = type(field) == "table" and field or { field }
+    for _, fieldName in ipairs(fields) do
+        if row and fieldName and row[fieldName] ~= nil then
+            if type(row[fieldName]) == "table" then
+                for _, value in ipairs(row[fieldName]) do append(value) end
+            else
+                append(row[fieldName])
+            end
+        end
+    end
+
+    local marker = tostring(prefix or "") .. "."
+    for _, tag in ipairs(tagList(row)) do
+        local text = tostring(tag or "")
+        if string.sub(text, 1, #marker) == marker then
+            append(string.sub(text, #marker + 1))
+        end
+    end
+    return values
+end
+
+local function validTaxonomyPart(value)
+    value = tostring(value or "")
+    return value ~= "" and value ~= "Root" and value ~= "General"
+end
+
+local function normalizeTaxonomyPart(value, category)
+    value = tostring(value or "")
+    category = tostring(category or "")
+    if category ~= "" and string.sub(value, 1, #category + 1)
+        == category .. "." then
+        value = string.sub(value, #category + 2)
+    end
+    return value
+end
+
+local function prettyTaxonomyPart(value)
+    value = tostring(value or "")
+    value = string.gsub(value, "([a-z0-9])([A-Z])", "%1 %2")
+    value = string.gsub(value, "([A-Z]+)([A-Z][a-z])", "%1 %2")
+    value = string.gsub(value, "[_%-]+", " ")
+    return value
+end
+
+local function categoryDescription(row)
+    row = row or {}
+    local path = row.categoryPath
+    if type(path) ~= "table" then path = categoryPath(row) end
+
+    local values = {}
+    for _, value in ipairs(path or {}) do
+        if validTaxonomyPart(value) then appendUnique(values, value) end
+    end
+
+    local category = tostring(row.category or values[1] or "Misc")
+    local subcategory = normalizeTaxonomyPart(row.subcategory, category)
+    if validTaxonomyPart(subcategory) then
+        appendUnique(values, subcategory)
+    end
+
+    local leaf = normalizeTaxonomyPart(row.leaf, category)
+    if validTaxonomyPart(leaf) then
+        appendUnique(values, leaf)
+    end
+
+    -- Runtime-generated rows can omit persisted subcategory/leaf fields.
+    -- Derive the readable leaf from the same flat primary token used by the
+    -- classifier, without exposing the implementation prefix when possible.
+    if #values == 0 then appendUnique(values, category) end
+    if #values == 1 then
+        local primary = tostring(row.primary or "")
+        local candidates = {
+            category,
+            subcategory,
+        }
+        for _, prefix in ipairs(candidates) do
+            prefix = tostring(prefix or "")
+            if prefix ~= "" and #primary > #prefix
+                and string.sub(primary, 1, #prefix) == prefix
+            then
+                appendUnique(values, string.sub(primary, #prefix + 1))
+                break
+            end
+        end
+    end
+
+    local displayValues = {}
+    for _, value in ipairs(values) do
+        displayValues[#displayValues + 1] = prettyTaxonomyPart(value)
+    end
+    return table.concat(displayValues, " > ")
+end
+
+local function labeledDescriptor(row, prefix, field, labelKey, fallback)
+    local values = descriptorValuesForRow(row, prefix, field)
+    if #values == 0 then return nil end
+    local displayValues = {}
+    for _, value in ipairs(values) do
+        displayValues[#displayValues + 1] = prettyTaxonomyPart(value)
+    end
+    return tr(labelKey, fallback) .. ": " .. table.concat(displayValues, ", ")
+end
+
+local function originValue(row)
+    local value = row and row.origin or nil
+    if value == nil or tostring(value) == "" then
+        value = row and (row.sourceModId or row.sourceModName) or nil
+    end
+    value = tostring(value or "")
+    return value ~= "" and value or nil
+end
+
+local function buildFilterOptions(items)
+    local optionsByKey = {}
+
+    for _, row in ipairs(items or {}) do
+        local path = row.categoryPath or categoryPath(row)
+        local category = tostring(row.category or path[1] or "Misc")
+        if category ~= "" then
+            addFilterOption(optionsByKey, "category", category,
+                trFormat("UI_MarketSenseCatalog_FilterCategory",
+                    "Category: %s", category))
+        end
+
+        local subcategory = subcategoryValue(row)
+        if subcategory then
+            addFilterOption(optionsByKey, "subcategory", subcategory,
+                trFormat("UI_MarketSenseCatalog_FilterSubcategory",
+                    "Subcategory: %s", subcategory))
+        end
+
+        for _, theme in ipairs(descriptorValuesForRow(row, "Theme", "theme")) do
+            addFilterOption(optionsByKey, "theme", theme,
+                trFormat("UI_MarketSenseCatalog_FilterTheme",
+                    "Theme: %s", theme))
+        end
+
+        local origin = originValue(row)
+        if origin then
+            addFilterOption(optionsByKey, "origin", origin,
+                trFormat("UI_MarketSenseCatalog_FilterOrigin",
+                    "Origin: %s", origin))
+        end
+    end
+
+    local options = {
+        {
+            key = "all",
+            kind = "all",
+            value = "",
+            label = tr("UI_MarketSenseCatalog_FilterAll", "All market items"),
+        },
+    }
+    for _, option in pairs(optionsByKey) do
+        options[#options + 1] = option
+    end
+
+    table.sort(options, function(left, right)
+        if left.kind ~= right.kind then
+            return (FILTER_KIND_ORDER[left.kind] or 999)
+                < (FILTER_KIND_ORDER[right.kind] or 999)
+        end
+        if left.kind == "category" and right.kind == "category" then
+            local leftOrder = CATEGORY_ORDER[left.value] or 999
+            local rightOrder = CATEGORY_ORDER[right.value] or 999
+            if leftOrder ~= rightOrder then return leftOrder < rightOrder end
+        end
+        return lower(left.label) < lower(right.label)
+    end)
+    return options
+end
+
+local function matchesFilter(row, filter)
+    if type(filter) ~= "table" or filter.kind == nil
+        or filter.kind == "all" then
+        return true
+    end
+
+    local kind = tostring(filter.kind)
+    local value = lower(filter.value)
+    if value == "" then return true end
+
+    if kind == "category" then
+        return lower(row and row.category) == value
+    elseif kind == "subcategory" then
+        return lower(subcategoryValue(row)) == value
+    elseif kind == "theme" then
+        for _, theme in ipairs(descriptorValuesForRow(row, "Theme", "theme")) do
+            if lower(theme) == value then return true end
+        end
+        return false
+    elseif kind == "origin" then
+        return lower(originValue(row)) == value
+    end
+    return true
+end
+
+local function displayTags(row)
+    row = row or {}
+    local values = {}
+    local category = categoryDescription(row)
+    if category ~= "" then
+        values[#values + 1] = tr("UI_MarketSenseCatalog_DescriptionCategory",
+            "Category") .. ": " .. category
+    end
+
+    local quality = labeledDescriptor(row, "Quality", "quality",
+        "UI_MarketSenseCatalog_DescriptionQuality", "Quality")
+    if quality then values[#values + 1] = quality end
+
+    local rarity = labeledDescriptor(row, "Rarity", "rarity",
+        "UI_MarketSenseCatalog_DescriptionRarity", "Rarity")
+    if rarity then values[#values + 1] = rarity end
+
+    local theme = labeledDescriptor(row, "Theme", "themes",
+        "UI_MarketSenseCatalog_DescriptionTheme", "Theme")
+    if theme then values[#values + 1] = theme end
+
+    local origin = labeledDescriptor(row, "Origin", "origin",
+        "UI_MarketSenseCatalog_DescriptionOrigin", "Origin")
+    if not origin then
+        local source = displaySource(row)
+        if source ~= "" then
+            origin = tr("UI_MarketSenseCatalog_DescriptionOrigin", "Origin")
+                .. ": " .. source
+        end
+    end
+    if origin then values[#values + 1] = origin end
+
+    return table.concat(values, " | ")
 end
 
 local function joinText(values, separator)
@@ -343,6 +636,130 @@ local function buildDetailSubtext(details)
     return baseText or diagnostics
 end
 
+local function formatSigned(value)
+    value = tonumber(value)
+    if value == nil or value == 0 then return nil end
+    return string.format("%+g", value)
+end
+
+local function appendDetailLine(lines, labelKey, fallback, value)
+    value = tostring(value or "")
+    if value == "" then return end
+    lines[#lines + 1] = {
+        label = tr(labelKey, fallback),
+        value = value,
+    }
+end
+
+local function buildDetailLines(row, details)
+    row = row or {}
+    details = details or {}
+    local heuristic = details.priceHeuristic or {}
+    local market = details.marketPricing or {}
+    local lines = {}
+
+    local path = row.categoryPath
+    if type(path) ~= "table" then path = categoryPath(row) end
+    local classification = table.concat(path or {}, " > ")
+    local rarity = details.rarity or row.rarity
+    if rarity and tostring(rarity) ~= "" then
+        classification = classification .. " | rarity=" .. tostring(rarity)
+    end
+    local themes = details.themes or row.themes
+    if type(themes) == "table" and #themes > 0 then
+        classification = classification .. " | themes=" .. table.concat(themes, ", ")
+    elseif type(row.descriptorEvidence) == "table" then
+        local themeNames = {}
+        for _, evidence in ipairs(row.descriptorEvidence) do
+            local tag = tostring(evidence.tag or "")
+            if string.sub(tag, 1, 6) == "Theme." then
+                appendUnique(themeNames, string.sub(tag, 7))
+            end
+        end
+        if #themeNames > 0 then
+            classification = classification .. " | themes=" .. table.concat(themeNames, ", ")
+        end
+    end
+    appendDetailLine(lines, "UI_MarketSenseCatalog_DetailClassification",
+        "Classification", classification)
+
+    local model = tostring(heuristic.model or "")
+    local role = tostring(heuristic.role or heuristic.marketRole or "")
+    local state = tostring(heuristic.foodCondition or heuristic.freshnessState or "")
+    local modelText = model ~= "" and model or "unknown"
+    if role ~= "" then modelText = modelText .. " | role=" .. role end
+    if state ~= "" then modelText = modelText .. " | state=" .. state end
+    appendDetailLine(lines, "UI_MarketSenseCatalog_DetailPricingModel",
+        "Pricing model", modelText)
+
+    local heuristicParts = {}
+    if heuristic.score ~= nil then
+        heuristicParts[#heuristicParts + 1] = string.format("raw=%g", heuristic.score)
+    end
+    if heuristic.rationUnits ~= nil then
+        heuristicParts[#heuristicParts + 1] = string.format("ration=%s",
+            demandText(heuristic.rationUnits))
+    end
+    if heuristic.hungerChange ~= nil then
+        heuristicParts[#heuristicParts + 1] = string.format("hunger=%s",
+            demandText(heuristic.hungerChange))
+    end
+    if heuristic.thirstChange ~= nil then
+        heuristicParts[#heuristicParts + 1] = string.format("thirst=%s",
+            demandText(heuristic.thirstChange))
+    end
+    appendDetailLine(lines, "UI_MarketSenseCatalog_DetailHeuristic",
+        "Heuristic score (not dollars)", table.concat(heuristicParts, " | "))
+
+    local adjustmentParts = {}
+    local band = heuristic.categoryBand
+    if type(band) == "table" then
+        adjustmentParts[#adjustmentParts + 1] = string.format(
+            "band=%s $%g-$%g",
+            tostring(band.category or row.category or "category"),
+            tonumber(band.min) or 0, tonumber(band.max) or 0)
+    end
+    local additions = {
+        { key = "categoryAdd", label = "category" },
+        { key = "subcategoryAdd", label = "subcategory" },
+        { key = "tagAdd", labelKey = "UI_MarketSenseCatalog_DetailThemeTag" },
+        { key = "itemAdd", label = "item" },
+    }
+    for _, entry in ipairs(additions) do
+        local value = formatSigned(market[entry.key])
+        if value then
+            local label = entry.label or tr(entry.labelKey)
+            adjustmentParts[#adjustmentParts + 1] = label .. "=" .. value
+        end
+    end
+    if market.variationMultiplier ~= nil then
+        adjustmentParts[#adjustmentParts + 1] = string.format("variation=%.3fx",
+            tonumber(market.variationMultiplier) or 1)
+    end
+    appendDetailLine(lines, "UI_MarketSenseCatalog_DetailAdjustments",
+        "Price adjustments", table.concat(adjustmentParts, " | "))
+
+    local evidenceParts = {}
+    local yieldText = yieldSummary(details)
+    if yieldText then evidenceParts[#evidenceParts + 1] = yieldText end
+    local availability = details.availabilityStatus or details.availability
+    if type(availability) == "table" then availability = availability.status end
+    if availability and tostring(availability) ~= "" then
+        evidenceParts[#evidenceParts + 1] = "availability=" .. tostring(availability)
+    end
+    appendDetailLine(lines, "UI_MarketSenseCatalog_DetailEvidence",
+        "Evidence", table.concat(evidenceParts, " | "))
+
+    local variant = heuristic.foodVariantEvidence
+    if type(variant) == "table" and variant.sourceFullType then
+        appendDetailLine(lines, "UI_MarketSenseCatalog_DetailVariant",
+            "Nutrition source", string.format("%s (%s)",
+                tostring(variant.sourceFullType),
+                tostring(variant.relation or variant.status or "verified")))
+    end
+    return lines
+end
+
 local function drawMarketItemRow(list, y, entry, alternate)
     local row = entry.item.item
     local height = entry.height or list.itemheight
@@ -377,8 +794,11 @@ return {
     lower = lower,
     timestampMs = timestampMs,
     categoryPath = categoryPath,
+    buildFilterOptions = buildFilterOptions,
+    matchesFilter = matchesFilter,
     safeItemDisplayName = safeItemDisplayName,
     displayTags = displayTags,
+    categoryDescription = categoryDescription,
     rowSearchText = rowSearchText,
     yieldSummary = yieldSummary,
     baseItemSummary = baseItemSummary,
@@ -386,5 +806,6 @@ return {
     marketModifierSummary = PriceFormatting.marketModifierSummary,
     descriptorSummary = PriceFormatting.descriptorSummary,
     buildDetailSubtext = buildDetailSubtext,
+    buildDetailLines = buildDetailLines,
     drawMarketItemRow = drawMarketItemRow,
 }

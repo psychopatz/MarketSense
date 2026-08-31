@@ -69,6 +69,11 @@ function TransformPricing.evaluate(ctx, details, options)
     local totalQuantity = 0
     local contributions = {}
     local hasMultiQuantity = false
+    -- Bulk packages retain the value of more contents, but not linearly:
+    -- the last units in a carton are less scarce. This is a discount curve,
+    -- not a price ceiling; a large crisis bundle may still be very valuable.
+    local quantityExponent = math.max(0.55, math.min(1.0,
+        number(options.quantityExponent, 0.60)))
     for _, output in ipairs(yieldInfo.outputs or {}) do
         local quantity = number(output.quantity, 0)
         local chance = number(output.chance, 1.0)
@@ -128,12 +133,15 @@ function TransformPricing.evaluate(ctx, details, options)
                 and MarketSense.ItemRuntimeConfig.pricing.minPrice, 1),
             unitValue
         )
-        local value = unitValue * quantity
+        local pricedQuantity = quantity <= 1 and quantity or quantity ^ quantityExponent
+        local value = unitValue * pricedQuantity
         total = total + value
         totalQuantity = totalQuantity + quantity
         contributions[#contributions + 1] = {
             fullType = fullType,
             quantity = quantity,
+            pricedQuantity = pricedQuantity,
+            quantityDiscount = quantity > 0 and pricedQuantity / quantity or 1,
             chance = chance,
             unitRawScore = rawUnitValue,
             unitIntrinsicScore = unitValue,
@@ -153,19 +161,27 @@ function TransformPricing.evaluate(ctx, details, options)
     local multiplier = number(options.multiplier, 1.0)
     local premium = number(options.premium, 0.0)
     local floor = math.max(0, number(options.floor, 1.0))
-    local ceiling = math.max(floor, number(options.ceiling, 250.0))
+    local ceiling = number(options.ceiling, nil)
     local score = (total * multiplier) + premium
-    score = math.max(floor, math.min(ceiling, score))
+    score = math.max(floor, score)
+    if ceiling ~= nil then
+        score = math.min(ceiling, score)
+    end
     return score, {
         status = "valued",
         mode = (#contributions > 1 or hasMultiQuantity)
             and "multi_output_bundle" or "replacement",
         yieldValue = total,
         yieldMultiplier = multiplier,
+        quantityExponent = quantityExponent,
         yieldPremium = premium,
         contributions = contributions,
         outputCount = #contributions,
         outputQuantity = totalQuantity,
+        -- Kept as evidence for the report/API; nil means the aggregate is
+        -- deliberately uncapped unless an integration explicitly opts in.
+        aggregateCeiling = ceiling,
+        aggregateFloor = floor,
         score = score,
     }
 end

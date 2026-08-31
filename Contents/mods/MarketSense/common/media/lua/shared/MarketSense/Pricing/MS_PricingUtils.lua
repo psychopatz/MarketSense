@@ -6,7 +6,7 @@ local Utils = {}
 local CATEGORY_BASE_SCORES = {
     Medical = 18, Weapon = 18, Tool = 14,
     Container = 14, Clothing = 4, Electronics = 14, Resource = 5,
-    Building = 5, Liquid = 5, Literature = 5, Misc = 2,
+    Building = 5, Liquid = 5, Literature = 5, Misc = 8,
 }
 
 local function addAudit(audit, label, before, after, extra)
@@ -78,8 +78,11 @@ local function scoreAnchors(anchor, positive, negative, options)
     local stateFactor = clamp(number(options.stateFactor, 1), 0, 1.5)
     local weightPenalty = math.max(0, number(options.weightPenalty, 0))
     local floor = math.max(0, number(options.floor, 1))
-    local ceiling = math.max(floor, number(options.ceiling, 250))
-    local score = clamp(subtotal * stateFactor - weightPenalty, floor, ceiling)
+    local ceiling = number(options.ceiling, nil)
+    local score = math.max(floor, subtotal * stateFactor - weightPenalty)
+    if ceiling ~= nil then
+        score = math.min(ceiling, score)
+    end
     return score, {
         anchor = number(anchor, 0),
         positiveScore = positiveScore,

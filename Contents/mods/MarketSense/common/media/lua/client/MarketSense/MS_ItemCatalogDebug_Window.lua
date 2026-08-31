@@ -1,4 +1,5 @@
 require "ISUI/ISTextEntryBox"
+require "ISUI/ISComboBox"
 require "MarketSense/MS_PublicAPI"
 require "PsychopatzCore/UI/PsychopatzUI"
 require "PsychopatzCore/UI/PsychopatzDebugHubWindow"
@@ -16,6 +17,8 @@ local trFormat = Presentation.trFormat
 local lower = Presentation.lower
 local timestampMs = Presentation.timestampMs
 local categoryPath = Presentation.categoryPath
+local buildFilterOptions = Presentation.buildFilterOptions
+local matchesFilter = Presentation.matchesFilter
 local safeItemDisplayName = Presentation.safeItemDisplayName
 local displayTags = Presentation.displayTags
 local rowSearchText = Presentation.rowSearchText
@@ -24,7 +27,11 @@ local baseItemSummary = Presentation.baseItemSummary
 local priceHeuristicSummary = Presentation.priceHeuristicSummary
 local marketModifierSummary = Presentation.marketModifierSummary
 local buildDetailSubtext = Presentation.buildDetailSubtext
+local buildDetailLines = Presentation.buildDetailLines
 local drawMarketItemRow = Presentation.drawMarketItemRow
+
+local DETAIL_HEIGHT = 174
+local DETAIL_GAP = 10
 
 MarketSenseItemCatalogDebugWindow = PsychopatzWindow:derive(
     "MarketSenseItemCatalogDebugWindow"
@@ -43,6 +50,12 @@ function MarketSenseItemCatalogDebugWindow:createChildren()
     if self.search.setClearButton then self.search:setClearButton(true) end
     self.search.onTextChange = function() self:queueVisibleRefresh() end
     self:addChild(self.search)
+
+    self.filterCombo = ISComboBox:new(0, 0, 100, 28, self,
+        MarketSenseItemCatalogDebugWindow.onFilterChanged)
+    self.filterCombo:initialise()
+    self.filterCombo:instantiate()
+    self:addChild(self.filterCombo)
 
     self.collapseAllButton = UI.CreateButton(self, {
         id = "collapse",
@@ -90,6 +103,8 @@ function MarketSenseItemCatalogDebugWindow:createChildren()
 
     self.allItems = {}
     self.visibleItems = {}
+    self.filterOptions = {}
+    self.filterSelection = nil
     self.selectedItem = nil
     self.selectedDetails = nil
     self.statusText = nil
@@ -118,28 +133,50 @@ function MarketSenseItemCatalogDebugWindow:startCatalogWatch()
 end
 
 function MarketSenseItemCatalogDebugWindow:onResponsiveLayout()
-    local rect = self:getContentRect({ top = 110, bottom = 76 })
+    local rect = self:getContentRect({
+        top = 110,
+        bottom = DETAIL_HEIGHT + DETAIL_GAP,
+    })
     local gap = Layout.Pixels(6, self.uiScale)
     local controlHeight = Layout.Pixels(28, self.uiScale)
     local toolbarY = rect.y - Layout.Pixels(78, self.uiScale)
     local compact = Layout.IsCompact(rect.width,
         Layout.Pixels(820, self.uiScale))
-    local searchWidth = compact and rect.width
-        or math.max(Layout.Pixels(180, self.uiScale),
-            math.floor(rect.width * 0.42))
+    local searchWidth
+    local filterWidth
+    if compact then
+        searchWidth = math.max(Layout.Pixels(180, self.uiScale),
+            math.floor((rect.width - gap) * 0.5))
+        filterWidth = math.max(Layout.Pixels(180, self.uiScale),
+            rect.width - searchWidth - gap)
+    else
+        searchWidth = math.max(Layout.Pixels(180, self.uiScale),
+            math.floor(rect.width * 0.30))
+        filterWidth = math.max(Layout.Pixels(210, self.uiScale),
+            math.floor(rect.width * 0.30))
+    end
     self.search.psychopatzPreferredWidth = searchWidth
+    self.filterCombo.psychopatzPreferredWidth = filterWidth
     local controls = {
         self.collapseAllButton, self.expandButton, self.refreshButton,
         self.generateButton,
     }
-    local controlsX = compact and rect.x or rect.x + searchWidth + gap
+    local controlsX
+    if compact then
+        controlsX = rect.x
+    else
+        controlsX = rect.x + searchWidth + gap + filterWidth + gap
+    end
     local controlsY = compact and toolbarY + controlHeight + gap or toolbarY
     Layout.SetBounds(self.search, rect.x, toolbarY, searchWidth, controlHeight)
+    Layout.SetBounds(self.filterCombo,
+        compact and rect.x + searchWidth + gap or rect.x + searchWidth + gap,
+        toolbarY, filterWidth, controlHeight)
     Layout.Flow(controls, {
         x = controlsX,
         y = controlsY,
-        width = compact and rect.width
-            or math.max(1, rect.width - searchWidth - gap),
+        width = compact and rect.width or math.max(1,
+            rect.width - searchWidth - filterWidth - (gap * 2)),
     }, { scale = self.uiScale, gap = 5, minWidth = 86 })
     Layout.SetBounds(self.itemList, rect.x, rect.y, rect.width, rect.height)
 end
@@ -205,10 +242,54 @@ function MarketSenseItemCatalogDebugWindow:refreshCatalog()
         end
         return leftName < rightName
     end)
+    self:rebuildFilterOptions()
     self:refreshVisibleItems()
     local state = MarketSense and MarketSense.ItemsRegistry
         and MarketSense.ItemsRegistry.state or nil
     self.catalogReference = state and state.catalog or nil
+end
+
+function MarketSenseItemCatalogDebugWindow:rebuildFilterOptions()
+    local currentKey = self.filterSelection and self.filterSelection.key or "all"
+    self.filterOptions = buildFilterOptions(self.allItems or {})
+
+    local selected = self.filterOptions[1]
+    for _, option in ipairs(self.filterOptions) do
+        if option.key == currentKey then
+            selected = option
+            break
+        end
+    end
+    self.filterSelection = selected
+
+    if not self.filterCombo then return end
+    if self.filterCombo.clear then
+        self.filterCombo:clear()
+    else
+        self.filterCombo.options = {}
+        self.filterCombo.optionData = {}
+    end
+    for _, option in ipairs(self.filterOptions) do
+        self.filterCombo:addOptionWithData(option.label, option)
+    end
+    if self.filterCombo.selectData then
+        self.filterCombo:selectData(selected)
+    else
+        self.filterCombo.selected = 1
+    end
+end
+
+function MarketSenseItemCatalogDebugWindow:onFilterChanged()
+    local selected = nil
+    if self.filterCombo and self.filterCombo.getOptionData then
+        selected = self.filterCombo:getOptionData(self.filterCombo.selected)
+    end
+    if type(selected) == "table" then
+        self.filterSelection = selected
+    else
+        self.filterSelection = self.filterOptions[1]
+    end
+    self:queueVisibleRefresh()
 end
 
 function MarketSenseItemCatalogDebugWindow:queueVisibleRefresh()
@@ -245,8 +326,10 @@ function MarketSenseItemCatalogDebugWindow:refreshVisibleItems()
     local query = lower(self.search and self.search:getText() or "")
     self.visibleItems = {}
     for _, row in ipairs(self.allItems or {}) do
-        if query == "" or string.find(row._searchText or rowSearchText(row),
-            query, 1, true)
+        local matchesQuery = query == ""
+            or string.find(row._searchText or rowSearchText(row),
+                query, 1, true)
+        if matchesQuery and matchesFilter(row, self.filterSelection)
         then
             self.visibleItems[#self.visibleItems + 1] = row
         end
@@ -346,18 +429,21 @@ end
 
 function MarketSenseItemCatalogDebugWindow:render()
     PsychopatzWindow.render(self)
-    local rect = self:getContentRect({ top = 110, bottom = 76 })
+    local rect = self:getContentRect({
+        top = 110,
+        bottom = DETAIL_HEIGHT + DETAIL_GAP,
+    })
     local count = #(self.visibleItems or {})
     local suffix = string.format("%d / %d", count, #(self.allItems or {}))
     UI.DrawSectionTitle(self,
         tr("UI_MarketSenseCatalog_Heading", "AVAILABLE MARKET ITEMS"),
         rect.x, rect.y - Layout.Pixels(22, self.uiScale), rect.width, suffix)
 
-    local detailHeight = Layout.Pixels(64, self.uiScale)
-    local detailY = self:getHeight() - detailHeight - Layout.Pixels(10, self.uiScale)
+    local detailHeight = Layout.Pixels(DETAIL_HEIGHT, self.uiScale)
+    local detailY = self:getHeight() - detailHeight
     UI.DrawSurface(self, rect.x, detailY, rect.width, detailHeight, true)
     local detailText
-    local detailSubtext
+    local detailLines
     if self.runtimeGenerationStatus then
         detailText = self.runtimeGenerationStatus
     elseif self.selectedItem then
@@ -365,27 +451,47 @@ function MarketSenseItemCatalogDebugWindow:render()
         local status = details.marketEligible == false
             and tr("UI_MarketSenseCatalog_NotEligible", "NOT ELIGIBLE")
             or tr("UI_MarketSenseCatalog_Ready", "READY")
-        local price = tonumber(details.price or self.selectedItem.price) or 0
-        detailText = string.format("%s  |  %s  |  $%d  |  %s",
+        -- The catalog row is authoritative. DebugItem may recalculate a
+        -- transient value from live state, but showing that second value
+        -- beside the row price makes the catalog look contradictory.
+        local catalogPrice = math.floor(tonumber(self.selectedItem.price) or 0)
+        detailText = trFormat("UI_MarketSenseCatalog_SelectedHeader",
+            "%s  |  Catalog price: $%d  |  %s",
             self.selectedItem.displayName or self.selectedItem.fullType,
-            self.selectedItem.category or "Misc", math.floor(price), status)
-        detailSubtext = buildDetailSubtext(details)
+            catalogPrice, status)
+        detailLines = buildDetailLines(self.selectedItem, details)
     elseif self.statusText then
         detailText = self.statusText
     else
         detailText = tr("UI_MarketSenseCatalog_SelectItem",
             "Select an item to run the MarketSense debug evaluator.")
     end
+    local text = Theme.colors.text
     local muted = Theme.colors.textMuted
+    local titleFont = UIFont.Medium or UIFont.Small
+    local textWidth = math.max(40, rect.width - Layout.Pixels(20, self.uiScale))
     self:drawText(Layout.Ellipsize(detailText, UIFont.Small,
-        math.max(40, rect.width - Layout.Pixels(20, self.uiScale))),
-        rect.x + Layout.Pixels(10, self.uiScale), detailY + Layout.Pixels(10, self.uiScale),
-        muted.r, muted.g, muted.b, muted.a, UIFont.Small)
-    if detailSubtext then
-        self:drawText(Layout.Ellipsize(detailSubtext, UIFont.Small,
-            math.max(40, rect.width - Layout.Pixels(20, self.uiScale))),
-            rect.x + Layout.Pixels(10, self.uiScale), detailY + Layout.Pixels(34, self.uiScale),
-            muted.r, muted.g, muted.b, muted.a, UIFont.Small)
+        textWidth), rect.x + Layout.Pixels(10, self.uiScale),
+        detailY + Layout.Pixels(9, self.uiScale),
+        text.r, text.g, text.b, text.a, titleFont)
+    if detailLines then
+        local x = rect.x + Layout.Pixels(10, self.uiScale)
+        local y = detailY + Layout.Pixels(37, self.uiScale)
+        local lineHeight = Layout.Pixels(18, self.uiScale)
+        local labelGap = Layout.Pixels(8, self.uiScale)
+        local labelColor = Theme.colors.textMuted
+        for index, line in ipairs(detailLines) do
+            local label = tostring(line.label or "") .. ":"
+            local labelWidth = Theme.TextWidth(UIFont.Small, label) + labelGap
+            local valueWidth = math.max(40, textWidth - labelWidth)
+            self:drawText(label, x, y, labelColor.r, labelColor.g,
+                labelColor.b, labelColor.a, UIFont.Small)
+            self:drawText(Layout.Ellipsize(tostring(line.value or ""),
+                UIFont.Small, valueWidth), x + labelWidth, y,
+                text.r, text.g, text.b, text.a, UIFont.Small)
+            y = y + lineHeight
+            if index >= 7 then break end
+        end
     end
 end
 
@@ -406,11 +512,15 @@ end
 -- Kept public for lightweight catalog/UI smoke tests and other debug tools
 -- that need to preview the same taxonomy grouping without opening a window.
 MarketSenseItemCatalogDebugWindow.BuildCategoryPath = categoryPath
+MarketSenseItemCatalogDebugWindow.BuildDisplayTags = displayTags
+MarketSenseItemCatalogDebugWindow.BuildFilterOptions = buildFilterOptions
+MarketSenseItemCatalogDebugWindow.MatchesFilter = matchesFilter
 MarketSenseItemCatalogDebugWindow.BuildYieldSummary = yieldSummary
 MarketSenseItemCatalogDebugWindow.BuildBaseItemSummary = baseItemSummary
 MarketSenseItemCatalogDebugWindow.BuildPriceHeuristicSummary = priceHeuristicSummary
 MarketSenseItemCatalogDebugWindow.BuildMarketModifierSummary = marketModifierSummary
 MarketSenseItemCatalogDebugWindow.BuildDetailSubtext = buildDetailSubtext
+MarketSenseItemCatalogDebugWindow.BuildDetailLines = buildDetailLines
 
 function MarketSenseItemCatalogDebugWindow.Open()
     if MarketSenseItemCatalogDebugWindow.instance then
@@ -426,10 +536,10 @@ function MarketSenseItemCatalogDebugWindow.Open()
         persistenceKey = "MarketSense.ItemCatalogDebug",
         resizable = true,
         responsiveSpec = {
-            width = 980,
-            height = 720,
-            minWidth = 640,
-            minHeight = 460,
+            width = 1080,
+            height = 820,
+            minWidth = 700,
+            minHeight = 560,
             maxWidth = 1440,
             maxHeight = 980,
         },
