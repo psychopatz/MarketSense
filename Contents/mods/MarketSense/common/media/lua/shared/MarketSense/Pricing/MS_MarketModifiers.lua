@@ -347,7 +347,9 @@ local function applyVariation(value, ctx, details, audit, summary)
     return value
 end
 
-function Modifiers.apply(ctx, details, value, audit, skipVariation)
+function Modifiers.apply(ctx, details, value, audit, skipVariation, options)
+    options = options or {}
+    local rawOnly = options.rawOnly == true
     local working = number(value, 0)
     local summary = {
         baseScore = working,
@@ -370,6 +372,7 @@ function Modifiers.apply(ctx, details, value, audit, skipVariation)
         variationMultiplier = 1,
         applied = {},
         variationScope = "item",
+        rawOnly = rawOnly,
     }
 
     local itemRule = itemModifiers[ctx and ctx.fullType or ""] or DB.getItem(ctx and ctx.fullType)
@@ -397,6 +400,18 @@ function Modifiers.apply(ctx, details, value, audit, skipVariation)
             summary.variationSource = "disabled"
             summary.variationScope = "disabled"
         end
+        return working, summary
+    end
+
+    -- Transform parents own the market-facing identity.  A child score is
+    -- therefore deliberately kept mechanical here; applying the child's
+    -- category, subcategory, tags, and variation would charge those semantic
+    -- adjustments again when the parent is finalized.
+    if rawOnly then
+        summary.variationSource = "raw-only"
+        summary.variationScope = "raw-only"
+        details.marketPricing = summary
+        addAudit(audit, "raw mechanical child score", working, working)
         return working, summary
     end
 

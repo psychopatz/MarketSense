@@ -88,7 +88,15 @@ function API.GetPriceDetailsForInstance(fullType, inventoryItem, withAudit)
     return Pricing.calculateDetails(fullType, withAudit == true, inventoryItem)
 end
 
-function API.GetPrice(fullType)
+function API.GetPriceForInstance(fullType, inventoryItem)
+    local details = API.GetPriceDetailsForInstance(fullType, inventoryItem, false)
+    return details and details.price or 0
+end
+
+function API.GetPrice(fullType, inventoryItem)
+    if inventoryItem ~= nil then
+        return API.GetPriceForInstance(fullType, inventoryItem)
+    end
     return (API.GetPriceDetails(fullType) or {}).price or 0
 end
 

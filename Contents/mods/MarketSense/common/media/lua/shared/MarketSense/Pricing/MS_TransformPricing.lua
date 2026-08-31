@@ -121,8 +121,13 @@ function TransformPricing.evaluate(ctx, details, options)
         if rawUnitValue == nil then
             return blocked("resolved", "output item did not produce a raw score: " .. fullType)
         end
+        -- The parent package receives the child's mechanical score, then
+        -- applies the parent's category/subcategory/theme/rarity rules once.
+        -- Applying the child market layer here would charge those semantic
+        -- premiums twice (the old path made packed tents and sleeping bags
+        -- several times more expensive than their unpacked outputs).
         local unitValue, childSummary = MarketSense.MarketModifiers.apply(
-            childContext, childDetails, rawUnitValue, nil, true
+            childContext, childDetails, rawUnitValue, nil, true, { rawOnly = true }
         )
         if childSummary and childSummary.absoluteOverride then
             unitValue = childSummary.overridePrice
@@ -145,6 +150,8 @@ function TransformPricing.evaluate(ctx, details, options)
             chance = chance,
             unitRawScore = rawUnitValue,
             unitIntrinsicScore = unitValue,
+            unitPricingStage = childSummary and childSummary.absoluteOverride
+                and "exact_override" or "raw_mechanical",
             contribution = value,
             model = childDetails.priceHeuristic
                 and childDetails.priceHeuristic.model or nil,

@@ -884,6 +884,8 @@ T.truthy(fullCondition.price > halfCondition.price, "weapon condition affects pr
 T.truthy(halfCondition.price > brokenCondition.price, "broken weapon condition reduces price")
 T.equal(fullCondition.priceHeuristic.conditionRatio, 1, "full condition ratio is visible")
 T.equal(halfCondition.priceHeuristic.conditionRatio, 0.5, "half condition ratio is visible")
+T.equal(api.GetPriceForInstance(weaponScriptItem.fullName, weaponInstance(100)),
+    fullCondition.price, "instance price convenience API uses the same evaluator")
 
 local staleWeapon = MarketSense.Pricing.applyOverridesOnly(weaponScriptItem.fullName, {
     fullType = weaponScriptItem.fullName,
@@ -895,7 +897,8 @@ local staleWeapon = MarketSense.Pricing.applyOverridesOnly(weaponScriptItem.full
 }, true)
 T.equal(staleWeapon.priceHeuristic.model, "weapon_v2",
     "cached legacy weapon score is rebuilt")
-T.truthy(staleWeapon.price < 999, "cached legacy weapon dollars are discarded")
+T.truthy(staleWeapon.price > 0 and staleWeapon.price ~= 999,
+    "cached legacy weapon dollars are discarded")
 
 registry.state.catalog = {
     items = {

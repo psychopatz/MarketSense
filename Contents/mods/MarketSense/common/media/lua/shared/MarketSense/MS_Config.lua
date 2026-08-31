@@ -44,7 +44,10 @@ local defaults = {
             Weapon = { min = 40, max = 2000, response = 55, exponent = 0.85 },
             Medical = { min = 40, max = 1200, response = 35, exponent = 0.85 },
             Tool = { min = 25, max = 1000, response = 40, exponent = 0.85 },
-            Container = { min = 20, max = 700, response = 35, exponent = 0.85 },
+            -- A normal pot/bowl/bottle should occupy the lower-middle of the
+            -- container band; high-capacity bags and specialized storage can
+            -- still overflow the normal reference maximum.
+            Container = { min = 20, max = 700, response = 80, exponent = 0.85 },
             Clothing = { min = 10, max = 500, response = 25, exponent = 0.85 },
             Electronics = { min = 25, max = 750, response = 35, exponent = 0.85 },
             Literature = { min = 10, max = 300, response = 20, exponent = 0.85 },
@@ -64,6 +67,18 @@ local defaults = {
         sealedPreservationMultiplier = 1.20,
     },
     liquidPricing = {},
+    -- Vessel value is appended after the category band and before semantic
+    -- modifiers.  These are dollar contributions, not percentage controls.
+    vesselPricing = {
+        enabled = true,
+        baseValue = 0,
+        capacityValue = 1.0,
+        weightPenalty = 1.0,
+        openedPenalty = 1.0,
+        sealedBonus = 0,
+        retainedBonus = 0,
+        unknownValue = 1,
+    },
     resourcePricing = {},
     miscPricing = {},
     weaponPricing = {},
@@ -186,6 +201,28 @@ function MarketSense.Config.applySandboxOptions()
         if vars.StockMultiplier ~= nil then
             runtime.stock.globalMultiplier = vars.StockMultiplier
         end
+
+        local vesselPricing = runtime.vesselPricing or {}
+        if vars.PriceVesselEnabled ~= nil then
+            vesselPricing.enabled = vars.PriceVesselEnabled == true
+                or vars.PriceVesselEnabled == 1
+                or vars.PriceVesselEnabled == "true"
+        end
+        local vesselValueKeys = {
+            { option = "PriceVesselBaseValue", field = "baseValue", min = -100, max = 100 },
+            { option = "PriceVesselCapacityValue", field = "capacityValue", min = 0, max = 100 },
+            { option = "PriceVesselWeightPenalty", field = "weightPenalty", min = 0, max = 100 },
+            { option = "PriceVesselOpenedPenalty", field = "openedPenalty", min = 0, max = 100 },
+            { option = "PriceVesselSealedBonus", field = "sealedBonus", min = -100, max = 100 },
+            { option = "PriceVesselRetainedBonus", field = "retainedBonus", min = -100, max = 100 },
+        }
+        for _, entry in ipairs(vesselValueKeys) do
+            if vars[entry.option] ~= nil then
+                local value = math.floor(tonumber(vars[entry.option]) or 0)
+                vesselPricing[entry.field] = math.max(entry.min, math.min(entry.max, value))
+            end
+        end
+        runtime.vesselPricing = vesselPricing
 
         local bandKeys = {
             { category = "Food", min = "PriceCategoryFoodMin", max = "PriceCategoryFoodMax" },

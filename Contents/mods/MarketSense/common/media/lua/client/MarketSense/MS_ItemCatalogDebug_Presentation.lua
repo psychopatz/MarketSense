@@ -43,6 +43,7 @@ local TEXT_FALLBACKS = {
     UI_MarketSenseCatalog_DetailPricingModel = "Pricing model",
     UI_MarketSenseCatalog_DetailHeuristic = "Heuristic score (not dollars)",
     UI_MarketSenseCatalog_DetailAdjustments = "Price adjustments",
+    UI_MarketSenseCatalog_DetailVessel = "Container value",
     UI_MarketSenseCatalog_DetailThemeTag = "theme/tag",
     UI_MarketSenseCatalog_DetailEvidence = "Evidence",
     UI_MarketSenseCatalog_DetailVariant = "Nutrition source",
@@ -735,6 +736,24 @@ local function buildDetailLines(row, details)
     if market.variationMultiplier ~= nil then
         adjustmentParts[#adjustmentParts + 1] = string.format("variation=%.3fx",
             tonumber(market.variationMultiplier) or 1)
+    end
+    if heuristic.vesselName then
+        local vesselParts = { tostring(heuristic.vesselName) }
+        local vesselState = tostring(heuristic.vesselState or "")
+        if vesselState ~= "" and vesselState ~= "none" then
+            vesselParts[#vesselParts + 1] = vesselState
+        end
+        local vesselValue = tonumber(heuristic.vesselValue)
+        if vesselValue ~= nil and vesselValue ~= 0 then
+            vesselParts[#vesselParts + 1] = string.format("value=$%+g", vesselValue)
+        end
+        local vesselCapacity = tonumber(heuristic.vesselCapacity)
+        if vesselCapacity ~= nil and vesselCapacity > 0 then
+            vesselParts[#vesselParts + 1] = string.format("capacity=%g", vesselCapacity)
+        end
+        adjustmentParts[#adjustmentParts + 1] = tr(
+            "UI_MarketSenseCatalog_DetailVessel", "Container value")
+            .. "=" .. table.concat(vesselParts, ", ")
     end
     appendDetailLine(lines, "UI_MarketSenseCatalog_DetailAdjustments",
         "Price adjustments", table.concat(adjustmentParts, " | "))

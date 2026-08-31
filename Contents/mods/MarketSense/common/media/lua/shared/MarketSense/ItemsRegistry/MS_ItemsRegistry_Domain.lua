@@ -47,6 +47,11 @@ function Domain.getPrimaryTag(tags)
 end
 
 function Domain.getBasePrice(ctx, tagInfo)
+    local catalogPrice = Pricing.calculateCatalogPrice
+        and Pricing.calculateCatalogPrice(ctx, tagInfo, false) or nil
+    if catalogPrice ~= nil then
+        return math.max(Config.pricing.minPrice or 1, Core.round(catalogPrice))
+    end
     local rawScore = Pricing.calculateRawScore(ctx, tagInfo)
     return math.max(Config.pricing.minPrice or 1, Core.round(Core.priceClamp(rawScore)))
 end

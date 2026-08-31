@@ -19,6 +19,22 @@ local function buildVariantContext(fullType)
     return ContextBuilder.buildContext(fullType, nil, true)
 end
 
+local function isLiveInstanceContext(context)
+    if type(context) ~= "table" or context.isInventoryItemInstance ~= true then
+        return false
+    end
+
+    -- ContextModel now records this directly. The trace check keeps old
+    -- cached contexts safe while a running session migrates to the new field.
+    if context.isTemporary == true then
+        return false
+    end
+    if context.foodFactTrace and context.foodFactTrace.isTemporary == true then
+        return false
+    end
+    return true
+end
+
 function ContextBuilder.buildContext(scriptItemOrFullType, inventoryItem, skipFoodVariantEvidence)
     if type(scriptItemOrFullType) == "table" and scriptItemOrFullType.fullType and scriptItemOrFullType.item ~= nil then
         return scriptItemOrFullType
@@ -36,6 +52,9 @@ function ContextBuilder.buildContext(scriptItemOrFullType, inventoryItem, skipFo
         -- always be read afresh.
         if inventoryItem == nil then
             local cached = Cache.getContext(fullType)
+            if cached and isLiveInstanceContext(cached) then
+                cached = nil
+            end
             if cached then
                 if cached.foodVariantEvidence == nil and not skipFoodVariantEvidence then
                     FoodVariantEvidence.apply(cached, buildVariantContext)
@@ -76,7 +95,12 @@ function ContextBuilder.buildContext(scriptItemOrFullType, inventoryItem, skipFo
     end
 
     if isTemporary then Core.releaseTemporaryInstance(instance) end
-    Cache.setContext(context.fullType, context)
+    -- An explicit inventory instance is live state, not a reusable item
+    -- definition. Caching it would let a later static lookup inherit its
+    -- vessel, condition, freshness, or exact-price behavior.
+    if inventoryItem == nil then
+        Cache.setContext(context.fullType, context)
+    end
     return Core.deepCopy(context)
 end
 

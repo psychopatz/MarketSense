@@ -208,6 +208,17 @@ T.equal(foodHeuristicText,
     "catalog displays food utility and valued bundle evidence")
 T.equal(Window.BuildPriceHeuristicSummary({
     priceHeuristic = {
+        model = "food_v2", status = "ready", subtype = "FoodPerishableDish",
+        role = "edible", rationUnits = 1, hungerChange = -0.2,
+        thirstChange = 0, freshnessState = "fresh", yieldStatus = "not_detected",
+        vesselName = "Pot", vesselState = "retained", vesselValue = 5,
+        vesselCapacity = 1.5,
+    },
+}),
+    "Pricing: ready | subtype=FoodPerishableDish | role=edible | ration=1.00 | hunger=-0.20 | thirst=0.00 | freshness=fresh | yield=not_detected | vessel=Pot, retained, value=$+5, capacity=1.5",
+    "catalog exposes the retained vessel in the compact heuristic summary")
+T.equal(Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
         model = "food_v2", status = "ready", subtype = "Food",
         role = "edible", rationUnits = 1.25, hungerChange = -0.3,
         thirstChange = 0, freshnessState = "fresh", yieldStatus = "not_detected",

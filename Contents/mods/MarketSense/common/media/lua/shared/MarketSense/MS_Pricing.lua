@@ -41,6 +41,8 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, i
     end
     local tagInfo = MarketSense.AutoTag.generate(ctx)
 
+    local temporaryContext = ctx.isTemporary == true
+        or (ctx.foodFactTrace and ctx.foodFactTrace.isTemporary == true)
     local details = {
         fullType = ctx.fullType, moduleName = ctx.moduleName, typeName = ctx.typeName,
         sourceModId = ctx.sourceModId, sourceModName = ctx.sourceModName,
@@ -53,6 +55,12 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, i
         rarityEvidence = Core.deepCopy((tagInfo.details or {}).rarityEvidence),
         weaponEvidence = Core.deepCopy((tagInfo.details or {}).weaponEvidence),
         confidence = tagInfo.confidence, rawScore = 0, price = 0, stock = nil, source = "lazy",
+        -- Materialized catalog prices are deterministic definition prices;
+        -- concrete inventory instances must be recalculated so a transferred
+        -- liquid uses its current vessel instead of the cached definition.
+        _instancePricing = inventoryItem ~= nil
+            or (ctx.isInventoryItemInstance == true and not temporaryContext),
+        _ignoreExactPrice = internal and internal.ignoreExactPrice == true or false,
     }
 
     local yieldPath = {}
@@ -72,6 +80,15 @@ function Pricing.calculateDetails(fullTypeOrContext, withAudit, inventoryItem, i
     details.stock    = MarketSense.Stock.calculate(ctx.fullType, ctx, details)
     if audit then details.balanceAudit = audit end
     return details
+end
+
+function Pricing.calculateCatalogPrice(ctx, tagInfo, withAudit)
+    if type(ctx) ~= "table" or not ctx.fullType then return nil end
+    -- Keep explicit item prices authoritative in the static catalog. The
+    -- normal definition context already has no live vessel state; concrete
+    -- inventory instances use GetPriceDetailsForInstance instead.
+    local details = Pricing.calculateDetails(ctx, withAudit == true)
+    return details and details.price or nil
 end
 
 function Pricing.generateDetailsOnce(fullTypeOrContext, withAudit)

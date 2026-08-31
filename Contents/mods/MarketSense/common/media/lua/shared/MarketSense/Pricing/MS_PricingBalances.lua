@@ -3,6 +3,7 @@ require "MarketSense/MS_Core"
 require "MarketSense/MS_HeuristicsDB"
 require "MarketSense/Pricing/MS_PricingUtils"
 require "MarketSense/Pricing/MS_MarketModifiers"
+require "MarketSense/Pricing/MS_VesselPricing"
 
 MarketSense = MarketSense or {}
 MarketSense.Pricing = MarketSense.Pricing or {}
@@ -13,11 +14,25 @@ local DB = MarketSense.HeuristicsDB
 local Core = MarketSense.Core
 local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local MarketModifiers = require "MarketSense/Pricing/MS_MarketModifiers"
+local VesselPricing = require "MarketSense/Pricing/MS_VesselPricing"
 local addAudit = Utils.addAudit
 local clampAndRound = Utils.clampAndRound
 
 function Pricing.applyBalances(ctx, details, audit)
     local working = tonumber(details.rawScore or 0) or 0
+    local vessel = VesselPricing.calculate(ctx, details)
+    if details.priceHeuristic and type(vessel) == "table" then
+        details.priceHeuristic.vesselModel = vessel.model
+        details.priceHeuristic.vesselValue = vessel.value
+        details.priceHeuristic.vesselStatus = vessel.status
+        details.priceHeuristic.vesselSource = vessel.source
+        details.priceHeuristic.vesselState = vessel.state
+        details.priceHeuristic.vesselName = vessel.vesselName
+        details.priceHeuristic.vesselFullType = vessel.vesselFullType
+        details.priceHeuristic.vesselProfile = vessel.vesselProfile
+        details.priceHeuristic.vesselCapacity = vessel.capacity
+        details.priceHeuristic.vesselWeight = vessel.weight
+    end
     addAudit(audit, "raw score", working, working)
     if details.yieldResolution then
         addAudit(audit, "yield resolution", working, working,
@@ -40,6 +55,7 @@ function Pricing.applyBalances(ctx, details, audit)
                 fluidCategories = details.priceHeuristic.fluidCategories,
                 fluidAmount = details.priceHeuristic.fluidAmount,
                 fluidCapacity = details.priceHeuristic.fluidCapacity,
+                fluidContainerName = details.priceHeuristic.fluidContainerName,
                 fluidPrimaryAmount = details.priceHeuristic.fluidPrimaryAmount,
                 fluidFilledRatio = details.priceHeuristic.fluidFilledRatio,
                 fluidIsEmpty = details.priceHeuristic.fluidIsEmpty,
@@ -67,6 +83,16 @@ function Pricing.applyBalances(ctx, details, audit)
                 subtotal = details.priceHeuristic.subtotal,
                 stateFactor = details.priceHeuristic.stateFactor,
                 weightPenalty = details.priceHeuristic.weightPenalty,
+                vesselModel = details.priceHeuristic.vesselModel,
+                vesselValue = details.priceHeuristic.vesselValue,
+                vesselStatus = details.priceHeuristic.vesselStatus,
+                vesselSource = details.priceHeuristic.vesselSource,
+                vesselState = details.priceHeuristic.vesselState,
+                vesselName = details.priceHeuristic.vesselName,
+                vesselFullType = details.priceHeuristic.vesselFullType,
+                vesselProfile = details.priceHeuristic.vesselProfile,
+                vesselCapacity = details.priceHeuristic.vesselCapacity,
+                vesselWeight = details.priceHeuristic.vesselWeight,
                 bodyLocation = details.priceHeuristic.bodyLocation,
                 bodyLocationToken = details.priceHeuristic.bodyLocationToken,
                 biteDefense = details.priceHeuristic.biteDefense,
@@ -144,7 +170,9 @@ function Pricing.applyBalances(ctx, details, audit)
     -- condition, and stock modifiers. The band is a normal-price reference,
     -- not a final ceiling.
     local itemEntry = DB.getItem(ctx.fullType)
-    local hasExactPrice = itemEntry and itemEntry.price ~= nil
+    local hasExactPrice = not details._ignoreExactPrice
+        and not details._instancePricing
+        and itemEntry and itemEntry.price ~= nil
     if not hasExactPrice then
         local bandSummary = {}
         working = MarketModifiers.applyCategoryBand(working, details, audit, bandSummary)
@@ -152,6 +180,21 @@ function Pricing.applyBalances(ctx, details, audit)
         if details.priceHeuristic and bandSummary.categoryBand then
             details.priceHeuristic.categoryBand = Core.deepCopy(bandSummary.categoryBand)
         end
+    end
+
+    if type(vessel) == "table" and tonumber(vessel.value) and vessel.value ~= 0
+        and not hasExactPrice
+    then
+        local beforeVessel = working
+        working = working + tonumber(vessel.value)
+        addAudit(audit, "vessel value", beforeVessel, working, {
+            value = vessel.value,
+            vessel = vessel.vesselName,
+            source = vessel.source,
+            state = vessel.state,
+            profile = vessel.vesselProfile,
+            capacity = vessel.capacity,
+        })
     end
 
     -- Typed category/tag/item modifiers are applied exactly once before the
@@ -168,7 +211,7 @@ function Pricing.applyBalances(ctx, details, audit)
     working = working * (tonumber(Config.pricing.baseMultiplier) or 1)
     addAudit(audit, "global mult", beforeGlobal, working, Config.pricing.baseMultiplier)
 
-    if itemEntry and itemEntry.price ~= nil then
+    if hasExactPrice then
         local overridePrice = details.marketPricing
             and details.marketPricing.overridePrice or itemEntry.price
         local finalPrice = clampAndRound(overridePrice)

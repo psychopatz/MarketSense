@@ -17,8 +17,11 @@ local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local TransformPricing = MarketSense.TransformPricing
 
 local DEFAULTS = {
-    model = "container_v2", anchor = 28.0, floor = 1.0,
-    capacityWeight = 1.05, reductionWeight = 0.09, wearableAnchor = 4.0,
+    -- Keep the baseline aligned with the exported v2 container model. The
+    -- previous inflated anchor made every small vessel look like premium
+    -- storage once it passed through the category currency band.
+    model = "container_v2", anchor = 14.0, floor = 1.0,
+    capacityWeight = 0.85, reductionWeight = 0.07, wearableAnchor = 2.0,
     specialAnchor = 2.0, weightPenalty = 0.75, conditionFloor = 0.20,
     yieldMultiplier = 0.90, yieldPremium = 0.0,
 }
@@ -67,7 +70,9 @@ function ContainerPricing.calculate(ctx, details)
         model = tostring(c.model or DEFAULTS.model), status = "ready",
         subtype = details.primary or "Container",
         reason = "Container value combines usable capacity, carry efficiency, portability, and state.",
-        capacity = ctx.capacity, weightReduction = ctx.weightReduction, weight = ctx.weight,
+        capacity = ctx.capacity, fluidCapacity = ctx.fluidCapacity,
+        effectiveCapacity = nil, fluidContainerName = ctx.fluidContainerName,
+        weightReduction = ctx.weightReduction, weight = ctx.weight,
         conditionMax = ctx.conditionMax, condition = ctx.condition,
         conditionRatio = ctx.conditionRatio, canBeEquipped = ctx.canBeEquipped,
         bodyLocation = ctx.bodyLocation, bodyLocationToken = ctx.bodyLocationToken,
@@ -111,7 +116,11 @@ function ContainerPricing.calculate(ctx, details)
     heuristic.yieldBlockedReason = type(transform) == "table" and transform.reason or nil
 
     local positives, negatives = heuristic.positiveContributions, heuristic.negativeContributions
-    local capacity = math.max(0, number(ctx.capacity, 0))
+    local regularCapacity = math.max(0, number(ctx.capacity, 0))
+    local fluidCapacity = math.max(0, number(ctx.fluidCapacity, 0))
+    local capacity = math.max(regularCapacity,
+        ctx.isFluidContainer == true and fluidCapacity or 0)
+    heuristic.effectiveCapacity = capacity
     local reduction = math.max(0, number(ctx.weightReduction, 0))
     local capacityValue = math.min(14, math.sqrt(capacity) * number(c.capacityWeight, 0.85))
     local reductionValue = math.min(8, reduction * number(c.reductionWeight, 0.07))

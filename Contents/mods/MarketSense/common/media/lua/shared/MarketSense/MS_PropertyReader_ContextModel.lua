@@ -332,6 +332,7 @@ function ContextModel.build(facts, scriptItem, fullType, moduleName, typeName, i
         isGoodHot = Core.safeBoolean(instance or scriptItem, { "isGoodHot", "getGoodHot" }, false),
         hasFluidContainer = Core.safeBoolean(scriptItem, { "isCanStoreWater", "CanStoreWater" }, false),
         instanceCreated = instance ~= nil,
+        isTemporary = isTemporary == true,
         isFoodInstance = isFoodInstance,
         isInventoryItemInstance = isInventoryItemInstance,
         isLiteratureInstance = isLiteratureInstance,

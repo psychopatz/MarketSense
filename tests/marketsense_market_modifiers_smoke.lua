@@ -3,6 +3,7 @@ T.addPackagePaths()
 
 local Config = require "MarketSense/MS_Config"
 local Modifiers = require "MarketSense/Pricing/MS_MarketModifiers"
+local TransformPricing = require "MarketSense/Pricing/MS_TransformPricing"
 local DB = require "MarketSense/MS_HeuristicsDB"
 local Cache = require "MarketSense/MS_RuntimeCache"
 
@@ -78,6 +79,68 @@ T.equal(variedExact, 20, "exact override still waits for balance finalization")
 T.truthy(variedExactSummary.overridePrice ~= 77,
     "exact override variation is opt-in")
 pricing.variationAbsoluteOverrides = false
+
+-- A transform child contributes mechanical value only.  The package applies
+-- its own semantic identity after the child is aggregated, so rarity/theme
+-- additions must not leak into this intermediate score.
+pricing.variationEnabled = false
+local rawChildDetails = {
+    fullType = "Base.RawChild",
+    category = "Building",
+    primary = "BuildingSurvivalTent",
+    tags = { "BuildingSurvivalTent", "Rarity.Common", "Theme.Survival" },
+    expandedTags = { "Building", "BuildingSurvival", "BuildingSurvivalTent",
+        "Rarity.Common", "Theme.Survival" },
+    priceHeuristic = { anchor = 10, stateFactor = 1 },
+}
+local rawChild, rawChildSummary = Modifiers.apply(
+    { fullType = "Base.RawChild", moduleName = "Base" },
+    rawChildDetails, 20, nil, true, { rawOnly = true }
+)
+T.equal(rawChild, 20, "raw-only transform child keeps mechanical score")
+T.equal(rawChildSummary.tagAdd, 0, "raw-only child skips semantic tag additions")
+T.equal(rawChildSummary.categoryAdd, 0, "raw-only child skips category additions")
+T.truthy(rawChildSummary.rawOnly, "raw-only child stage is visible in the audit summary")
+
+-- Verify the transform evaluator uses that intermediate stage, rather than
+-- merely exposing an unused option on the modifier module.
+local previousPricing = MarketSense.Pricing
+local previousReader = MarketSense.PropertyReader
+MarketSense.Pricing = {
+    calculateDetails = function()
+        return {
+            rawScore = 20,
+            category = "Building",
+            primary = "BuildingSurvivalTent",
+            tags = { "BuildingSurvivalTent", "Rarity.Common", "Theme.Survival" },
+            expandedTags = { "Building", "BuildingSurvival", "BuildingSurvivalTent",
+                "Rarity.Common", "Theme.Survival" },
+            priceHeuristic = { model = "building_v2", anchor = 12 },
+        }
+    end,
+}
+MarketSense.PropertyReader = {
+    buildContext = function(fullType)
+        return { fullType = fullType, item = {} }
+    end,
+}
+local transformed, transformedSummary = TransformPricing.evaluate(
+    { fullType = "Base.RawBundle" },
+    {
+        yieldResolution = {
+            status = "resolved",
+            outputs = {
+                { fullType = "Base.RawChild", quantity = 1, chance = 1, resolution = "exact" },
+            },
+        },
+    },
+    {}
+)
+MarketSense.Pricing = previousPricing
+MarketSense.PropertyReader = previousReader
+T.equal(transformed, 20, "transform evaluator aggregates raw child value")
+T.equal(transformedSummary.contributions[1].unitPricingStage, "raw_mechanical",
+    "transform audit identifies the raw mechanical child stage")
 
 pricing.variationEnabled = true
 local bundle, bundleSummary = evaluate("Base.AggregateBundle", nil, "resolved")

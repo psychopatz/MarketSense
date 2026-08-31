@@ -5,6 +5,23 @@ local function demandText(value)
         return string.format("%.2f", tonumber(value) or 0)
     end
 
+local function vesselText(heuristic)
+        local name = tostring(heuristic and heuristic.vesselName or "")
+        if name == "" then return "" end
+        local parts = { name }
+        local state = tostring(heuristic.vesselState or "")
+        if state ~= "" and state ~= "none" then parts[#parts + 1] = state end
+        local value = tonumber(heuristic.vesselValue)
+        if value ~= nil and value ~= 0 then
+            parts[#parts + 1] = string.format("value=$%+g", value)
+        end
+        local capacity = tonumber(heuristic.vesselCapacity)
+        if capacity ~= nil and capacity > 0 then
+            parts[#parts + 1] = string.format("capacity=%g", capacity)
+        end
+        return " | vessel=" .. table.concat(parts, ", ")
+    end
+
 local function foodVariantText(heuristic)
         local evidence = heuristic and heuristic.foodVariantEvidence
         if type(evidence) ~= "table" then return "" end
@@ -33,7 +50,7 @@ local function formatFood(heuristic)
             demandText(heuristic.thirstChange),
             tostring(heuristic.freshnessState or "-"),
             tostring(heuristic.yieldStatus or "not_detected"))
-        return result .. foodVariantText(heuristic)
+        return result .. vesselText(heuristic) .. foodVariantText(heuristic)
 end
 
 local function formatLiterature(heuristic)
@@ -62,6 +79,7 @@ local function formatLiquid(heuristic)
             demandText(heuristic.fluidFilledRatio),
             mixture,
             tostring(heuristic.yieldStatus or "not_detected"))
+            .. vesselText(heuristic)
 end
 
 local function formatResource(heuristic)

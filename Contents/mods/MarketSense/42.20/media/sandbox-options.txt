@@ -20,6 +20,74 @@ option MarketSense.PriceGlobalValue
     translation = MarketSense.PriceGlobalValue,
 }
 
+option MarketSense.PriceVesselEnabled
+{
+    type = boolean,
+    default = true,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceVesselEnabled,
+}
+
+option MarketSense.PriceVesselBaseValue
+{
+    type = integer,
+    default = 0,
+    min = -100,
+    max = 100,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceVesselBaseValue,
+}
+
+option MarketSense.PriceVesselCapacityValue
+{
+    type = integer,
+    default = 1,
+    min = 0,
+    max = 100,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceVesselCapacityValue,
+}
+
+option MarketSense.PriceVesselWeightPenalty
+{
+    type = integer,
+    default = 1,
+    min = 0,
+    max = 100,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceVesselWeightPenalty,
+}
+
+option MarketSense.PriceVesselOpenedPenalty
+{
+    type = integer,
+    default = 1,
+    min = 0,
+    max = 100,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceVesselOpenedPenalty,
+}
+
+option MarketSense.PriceVesselSealedBonus
+{
+    type = integer,
+    default = 0,
+    min = -100,
+    max = 100,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceVesselSealedBonus,
+}
+
+option MarketSense.PriceVesselRetainedBonus
+{
+    type = integer,
+    default = 0,
+    min = -100,
+    max = 100,
+    page = MarketSenseGlobal,
+    translation = MarketSense.PriceVesselRetainedBonus,
+}
+
 option MarketSense.PriceFoodOpenedMultiplierPercent
 {
     type = integer,

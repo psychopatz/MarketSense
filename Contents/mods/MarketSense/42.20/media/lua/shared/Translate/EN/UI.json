@@ -23,6 +23,7 @@
     "UI_MarketSenseCatalog_DetailPricingModel": "Pricing model",
     "UI_MarketSenseCatalog_DetailHeuristic": "Heuristic score (not dollars)",
     "UI_MarketSenseCatalog_DetailAdjustments": "Price adjustments",
+    "UI_MarketSenseCatalog_DetailVessel": "Container value",
     "UI_MarketSenseCatalog_DetailThemeTag": "theme/tag",
     "UI_MarketSenseCatalog_DetailEvidence": "Evidence",
     "UI_MarketSenseCatalog_DetailVariant": "Nutrition source",

@@ -30,7 +30,7 @@ local buildDetailSubtext = Presentation.buildDetailSubtext
 local buildDetailLines = Presentation.buildDetailLines
 local drawMarketItemRow = Presentation.drawMarketItemRow
 
-local DETAIL_HEIGHT = 174
+local DETAIL_HEIGHT = 210
 local DETAIL_GAP = 10
 
 MarketSenseItemCatalogDebugWindow = PsychopatzWindow:derive(
@@ -490,7 +490,7 @@ function MarketSenseItemCatalogDebugWindow:render()
                 UIFont.Small, valueWidth), x + labelWidth, y,
                 text.r, text.g, text.b, text.a, UIFont.Small)
             y = y + lineHeight
-            if index >= 7 then break end
+            if index >= 8 then break end
         end
     end
 end

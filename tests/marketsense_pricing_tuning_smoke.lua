@@ -46,6 +46,8 @@ Runtime.pricing.baseMultiplier = 1
 
 T.equal(Runtime.pricing.maxPrice, nil,
     "Lua pricing defaults do not impose a global price cap")
+T.equal(Runtime.pricing.categoryBands.Container.response, 80,
+    "container currency band is calibrated for ordinary vessels")
 T.falsy(Config.reloadExported(),
     "generated pricing exports are not runtime inputs")
 
@@ -180,6 +182,10 @@ _G.SandboxVars = { MarketSense = {
     PriceVariationPercent = 12,
     PriceFoodOpenedMultiplierPercent = 70,
     PriceFoodSealedPreservationPercent = 125,
+    PriceVesselEnabled = false,
+    PriceVesselBaseValue = 12,
+    PriceVesselCapacityValue = 8,
+    PriceVesselOpenedPenalty = 4,
     PriceCategoryFoodMin = 100,
     PriceCategoryFoodMax = 600,
 }}
@@ -194,6 +200,14 @@ T.equal(Runtime.foodPricing.openedPenalty, 0.70,
     "integer opened-food percentage becomes the internal penalty")
 T.equal(Runtime.foodPricing.sealedPreservationMultiplier, 1.25,
     "integer sealed-preservation percentage becomes the internal premium")
+T.equal(Runtime.vesselPricing.enabled, false,
+    "vessel pricing enable option is applied")
+T.equal(Runtime.vesselPricing.baseValue, 12,
+    "integer vessel base value remains an integer dollar addition")
+T.equal(Runtime.vesselPricing.capacityValue, 8,
+    "integer vessel capacity value is applied")
+T.equal(Runtime.vesselPricing.openedPenalty, 4,
+    "integer opened-vessel penalty is applied")
 T.equal(Runtime.pricing.categoryBands.Food.min, 100,
     "category band minimum is sandbox configurable")
 T.equal(Runtime.pricing.categoryBands.Food.max, 600,

@@ -76,6 +76,7 @@ function LiquidPricing.calculate(ctx, details)
         isFluidContainer = ctx.isFluidContainer == true,
         fluidType = ctx.fluidType, fluidTypeString = ctx.fluidTypeString,
         fluidCategory = ctx.fluidCategory, fluidCategories = categories,
+        fluidContainerName = ctx.fluidContainerName,
         fluidAmount = ctx.fluidAmount, fluidCapacity = ctx.fluidCapacity,
         fluidPrimaryAmount = ctx.fluidPrimaryAmount, fluidFilledRatio = ctx.fluidFilledRatio,
         fluidIsEmpty = ctx.fluidIsEmpty == true, fluidIsMixture = ctx.fluidIsMixture == true,
