@@ -8,6 +8,10 @@ MarketSense.RuntimeCache = MarketSense.RuntimeCache or {
     tags = {},
     contexts = {},
     missing = {},
+    detailOrder = {},
+    detailStamps = {},
+    detailClock = 0,
+    detailLimit = 256,
     stats = {
         detailHits = 0,
         detailMisses = 0,
@@ -20,6 +24,29 @@ MarketSense.RuntimeCache = MarketSense.RuntimeCache or {
 
 local Cache = MarketSense.RuntimeCache
 local Core = MarketSense.Core
+
+local function touchDetail(fullType)
+    Cache.detailClock = (Cache.detailClock or 0) + 1
+    Cache.detailStamps = Cache.detailStamps or {}
+    Cache.detailStamps[fullType] = Cache.detailClock
+    local order = Cache.detailOrder or {}
+    order[#order + 1] = { key = fullType, stamp = Cache.detailClock }
+    Cache.detailOrder = order
+
+    local limit = math.max(32, math.floor(tonumber(Cache.detailLimit) or 256))
+    while #order > limit do
+        local oldest = table.remove(order, 1)
+        if oldest and Cache.details[oldest.key] ~= nil then
+            if Cache.detailStamps[oldest.key] == oldest.stamp then
+                Cache.details[oldest.key] = nil
+                Cache.prices[oldest.key] = nil
+                Cache.stock[oldest.key] = nil
+                Cache.tags[oldest.key] = nil
+                Cache.detailStamps[oldest.key] = nil
+            end
+        end
+    end
+end
 
 Cache.stats = Cache.stats or {}
 Cache.stats.detailHits = Cache.stats.detailHits or 0
@@ -46,6 +73,9 @@ function Cache.clear()
     Cache.tags = {}
     Cache.contexts = {}
     Cache.missing = {}
+    Cache.detailOrder = {}
+    Cache.detailStamps = {}
+    Cache.detailClock = 0
     Cache.built = false
     Cache.pricingRevision = currentPricingRevision()
 end
@@ -55,6 +85,7 @@ function Cache.getDetails(fullType)
     local value = Cache.details[fullType]
     if value ~= nil then
         Cache.stats.detailHits = (Cache.stats.detailHits or 0) + 1
+        touchDetail(fullType)
     else
         Cache.stats.detailMisses = (Cache.stats.detailMisses or 0) + 1
     end
@@ -67,6 +98,7 @@ function Cache.setDetails(fullType, details)
         return nil
     end
 
+    touchDetail(fullType)
     local stored = Core.deepCopy(details)
     Cache.details[fullType] = stored
     Cache.prices[fullType] = tonumber(stored.price) or 0
@@ -90,6 +122,7 @@ function Cache.getStats()
     local stats = Core.shallowCopy(Cache.stats or {})
     stats.contexts = 0
     stats.details = 0
+    stats.detailLimit = math.max(32, math.floor(tonumber(Cache.detailLimit) or 256))
     stats.pending = 0
     for _ in pairs(Cache.contexts or {}) do stats.contexts = stats.contexts + 1 end
     for _ in pairs(Cache.details or {}) do stats.details = stats.details + 1 end

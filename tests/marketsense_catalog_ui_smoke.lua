@@ -22,7 +22,7 @@ PsychopatzCore.DebugHub.RegisterTool = function(definition)
 end
 MarketSense.GetAllKnownItems = function() return {} end
 MarketSense.GetRegistryDetails = function(fullType)
-    if fullType == "Base.CannedCarrots2" then return { basePrice = 1 } end
+    if fullType == "Base.CannedCarrots2" then return { price = 1 } end
     return nil
 end
 getItemDisplayName = function(fullType)
@@ -175,8 +175,8 @@ local baseItemText = Window.BuildBaseItemSummary({
     },
 })
 T.equal(baseItemText,
-    "Base item: 6 x Canned Carrots [Base.CannedCarrots2] (base price=$1)",
-    "catalog displays bundle base item and persisted base price")
+    "Base item: 6 x Canned Carrots [Base.CannedCarrots2] (catalog price=$1)",
+    "catalog displays bundle base item and current catalog price")
 local ambiguousYieldText = Window.BuildYieldSummary({
     yieldResolution = {
         status = "ambiguous", candidateCount = 2,

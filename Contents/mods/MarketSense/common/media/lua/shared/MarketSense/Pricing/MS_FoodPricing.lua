@@ -123,16 +123,10 @@ local function hasVariantNutrition(ctx, details)
         and type(evidence.fields) == "table" and #evidence.fields > 0
 end
 
-local function hasOpenedYield(yieldInfo)
-    for _, output in ipairs(yieldInfo and yieldInfo.outputs or {}) do
-        local fullType = string.lower(tostring(output and output.fullType or ""))
-        if string.sub(fullType, -5) == "open"
-            or string.sub(fullType, -6) == "opened"
-        then
-            return true
-        end
-    end
-    return false
+local function foodState(ctx, details)
+    if isOpenedFood(ctx) then return "opened" end
+    if hasVariantNutrition(ctx, details) then return "sealed" end
+    return "fresh"
 end
 
 local function signedValue(ctx, signedKey, magnitudeKey)
@@ -201,7 +195,6 @@ local function roleMultiplier(ctx, details, c)
         end
     end
     if opened then
-        multiplier = number(c.openedPenalty, DEFAULTS.openedPenalty)
         role = "opened_food"
     end
     if tagPresent(details, "FoodSeed") then
@@ -226,8 +219,9 @@ local function roleMultiplier(ctx, details, c)
         or ctx.isCannedFood == true or sealedVariant)
     then
         if sealedVariant then
-            multiplier = multiplier * number(c.sealedPreservationMultiplier,
-                DEFAULTS.sealedPreservationMultiplier)
+            -- Sealed preservation is a live market policy applied after the
+            -- intrinsic food score. Keeping it out of this score lets a
+            -- sandbox change reprice the catalog without rescanning items.
         else
             multiplier = multiplier * number(c.cannedMultiplier, DEFAULTS.cannedMultiplier)
         end
@@ -321,6 +315,10 @@ function FoodPricing.calculate(ctx, details)
     local c = settings()
     local yieldInfo = details.yieldResolution or YieldResolver.resolve(ctx)
     details.yieldResolution = yieldInfo
+    local opened = isOpenedFood(ctx)
+    local inheritedNutrition = hasVariantNutrition(ctx, details)
+    details.foodState = opened and "opened"
+        or inheritedNutrition and "sealed" or "fresh"
 
     if FoodVariantEvidence and type(FoodVariantEvidence.apply) == "function"
         and MarketSense.PropertyReader
@@ -329,27 +327,16 @@ function FoodPricing.calculate(ctx, details)
         FoodVariantEvidence.apply(ctx, buildVariantContext, yieldInfo)
     end
 
+    -- Variant evidence may be discovered by the call above, so refresh the
+    -- cached state after that enrichment rather than relying on an earlier
+    -- incomplete probe.
+    opened = isOpenedFood(ctx)
+    inheritedNutrition = hasVariantNutrition(ctx, details)
+    details.foodState = opened and "opened"
+        or inheritedNutrition and "sealed" or "fresh"
+
     if yieldInfo.status == "resolved" then
         local bundleMultiplier = number(c.bundleMultiplier, DEFAULTS.bundleMultiplier)
-        if (ctx.isCantEat == true or hasVariantNutrition(ctx, details))
-            and not isOpenedFood(ctx)
-            and (tagPresent(details, "FoodNonPerishableCanned")
-                or tagPresent(details, "FoodPreserved")
-                or tagPresent(details, "FoodPreservedPickled")
-                or ctx.isCannedFood == true
-                or hasVariantNutrition(ctx, details))
-        then
-            -- The deterministic child is often the opened item. Remove its
-            -- opened-state discount before applying the sealed preservation
-            -- premium so a package does not inherit the wrong condition.
-            bundleMultiplier = bundleMultiplier
-                * number(c.sealedPreservationMultiplier,
-                    DEFAULTS.sealedPreservationMultiplier)
-            if hasOpenedYield(yieldInfo) then
-                bundleMultiplier = bundleMultiplier / math.max(0.05,
-                    number(c.openedPenalty, DEFAULTS.openedPenalty))
-            end
-        end
         local bundleScore, bundleHeuristic = TransformPricing.evaluate(ctx, details, {
             multiplier = bundleMultiplier,
             premium = c.bundlePremium,
@@ -360,8 +347,9 @@ function FoodPricing.calculate(ctx, details)
             bundleHeuristic.status = "ready"
             bundleHeuristic.anchor = number(c.anchor, DEFAULTS.anchor)
             bundleHeuristic.reason = "Deterministic food transform valued from individualized child outputs."
-            bundleHeuristic.foodCondition = isOpenedFood(ctx) and "opened"
+            bundleHeuristic.foodCondition = opened and "opened"
                 or ctx.isCantEat == true and "sealed" or "fresh"
+            bundleHeuristic.foodState = details.foodState
             bundleHeuristic.foodVariantEvidence = Core.deepCopy(ctx.foodVariantEvidence)
             Utils.addYieldEvidence(bundleHeuristic, details)
             bundleHeuristic.positiveContributions = Core.deepCopy(bundleHeuristic.contributions)
@@ -392,8 +380,6 @@ function FoodPricing.calculate(ctx, details)
         + thirstUnits * number(c.thirstWeight, DEFAULTS.thirstWeight)
         + calorieUnits * number(c.caloriesWeight, DEFAULTS.caloriesWeight)
     local roleValue, roleName = roleMultiplier(ctx, details, c)
-    local opened = isOpenedFood(ctx)
-    local inheritedNutrition = hasVariantNutrition(ctx, details)
     if ctx.isCantEat == true and not opened and not inheritedNutrition then
         local recipes = countEvolvedRecipes(ctx)
         rationUnits = number(c.minimumRationUnits, DEFAULTS.minimumRationUnits)
@@ -455,6 +441,7 @@ function FoodPricing.calculate(ctx, details)
         moodBenefit = moodBenefit,
         moodHarm = moodHarm,
         roleMultiplier = roleValue,
+        foodState = details.foodState,
         foodCondition = opened and "opened" or (ctx.isCantEat == true and "sealed" or "fresh"),
         shelfLifeMultiplier = shelfLife,
         shelfLifeState = shelfLifeState,
@@ -504,6 +491,41 @@ function FoodPricing.calculate(ctx, details)
     heuristic.formula = "multiplicative_food_utility"
     details.priceHeuristic = heuristic
     return score
+end
+
+-- Applies the two food-state controls that are intentionally excluded from
+-- the persisted intrinsic score. The state itself is cached; only this small
+-- policy lookup runs when sandbox pricing changes.
+function FoodPricing.applyPolicy(ctx, details, value, audit)
+    ctx = ctx or {}
+    details = details or {}
+    local state = details.foodState or foodState(ctx, details)
+    local c = settings()
+    local multiplier = 1.0
+    if state == "opened" then
+        multiplier = number(c.openedPenalty, DEFAULTS.openedPenalty)
+    elseif state == "sealed" then
+        multiplier = number(c.sealedPreservationMultiplier,
+            DEFAULTS.sealedPreservationMultiplier)
+    end
+    multiplier = clamp(multiplier, 0.05, 2.0)
+    local before = number(value, 0)
+    local after = before * multiplier
+    if audit and multiplier ~= 1 then
+        audit[#audit + 1] = {
+            stage = "food state policy",
+            before = before,
+            after = after,
+            state = state,
+            multiplier = multiplier,
+        }
+    end
+    details.foodState = state
+    details.foodStateMultiplier = multiplier
+    if type(details.priceHeuristic) == "table" then
+        details.priceHeuristic.foodStateMultiplier = multiplier
+    end
+    return after
 end
 
 return FoodPricing

@@ -117,8 +117,16 @@ local openedDetails = {
 }
 local sealedScore = Pricing.calculateRawScore(context, sealedDetails)
 local openedScore = Pricing.calculateRawScore(openedContext, openedDetails)
-T.truthy(sealedScore > openedScore,
-    "sealed canned food outranks its opened counterpart")
+local sealedPrice = Pricing.applyBalances(context, sealedDetails)
+local openedPrice = Pricing.applyBalances(openedContext, openedDetails)
+T.truthy(sealedPrice > openedPrice,
+    "sealed canned food outranks its opened counterpart after state policy")
+T.equal(sealedDetails.foodState, "sealed",
+    "sealed food state is carried into the balance phase")
+T.equal(openedDetails.foodState, "opened",
+    "opened food state is carried into the balance phase")
+T.truthy(sealedScore >= openedScore,
+    "intrinsic nutrition score does not punish the sealed package")
 T.equal(sealedDetails.priceHeuristic.foodCondition, "sealed",
     "sealed canned food reports a sealed condition")
 T.equal(openedDetails.priceHeuristic.foodCondition, "opened",

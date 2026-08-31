@@ -47,6 +47,26 @@ function Text.join(list, delimiter)
     return table.concat(list or {}, delimiter or "|")
 end
 
+-- Cache rows are pipe-delimited. Encode free-text vessel fields so a modded
+-- display name cannot corrupt the rest of the row.
+function Text.encodeField(value)
+    local text = tostring(value or "")
+    text = string.gsub(text, "%%", "%%25")
+    text = string.gsub(text, "|", "%%7C")
+    text = string.gsub(text, "\r", "%%0D")
+    text = string.gsub(text, "\n", "%%0A")
+    return text
+end
+
+function Text.decodeField(value)
+    local text = tostring(value or "")
+    text = string.gsub(text, "%%0A", "\n")
+    text = string.gsub(text, "%%0D", "\r")
+    text = string.gsub(text, "%%7C", "|")
+    text = string.gsub(text, "%%25", "%%")
+    return text
+end
+
 function Text.copyArray(source)
     local out = {}
     for _, value in ipairs(source or {}) do

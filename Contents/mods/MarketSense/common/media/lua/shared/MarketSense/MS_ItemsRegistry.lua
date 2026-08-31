@@ -22,6 +22,8 @@ Registry.loadCatalogFromCache = Runtime.loadCatalogFromCache
 Registry.rebuildCache = Runtime.rebuildCache
 Registry.ensureLoaded = Runtime.ensureLoaded
 Registry.regenerate = Runtime.rebuildCache
+Registry.refreshCatalogPrices = Runtime.refreshCatalogPrices
+Registry.scheduleRebuild = Runtime.scheduleRebuild
 
 function Registry.getAvailability(fullType)
     if not Availability or type(Availability.get) ~= "function" then
@@ -47,6 +49,10 @@ function Registry.get(fullType)
         return nil
     end
 
+    if type(Registry.refreshCatalogPrices) == "function" then
+        Registry.refreshCatalogPrices()
+    end
+
     local masterList = MarketSense.Config and MarketSense.Config.MasterList
     if type(masterList) == "table" and type(masterList[fullType]) == "table" then
         return MarketSense.Core.deepCopy(masterList[fullType])
@@ -61,6 +67,9 @@ function Registry.get(fullType)
 end
 
 function Registry.getAllKnown()
+    if type(Registry.refreshCatalogPrices) == "function" then
+        Registry.refreshCatalogPrices()
+    end
     local catalog = Registry.state and Registry.state.catalog
     if type(catalog) == "table" and type(catalog.items) == "table" then
         -- The catalog is immutable between registry commits. Build one

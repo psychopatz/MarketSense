@@ -146,6 +146,7 @@ function IO.parseLuaTableFile(path)
             local stringFields = {
                 "generatedAt", "activeModsHash", "signatureVersion",
                 "gameVersion", "sourceManifestHash", "pricingConfigHash",
+                "intrinsicConfigHash", "pricingPolicyHash",
             }
             for _, key in ipairs(stringFields) do
                 local value = readStringField(text, key)
@@ -173,6 +174,8 @@ function IO.serializeIndex(indexData)
         "    signatureVersion = " .. Shared.quoteString(indexData.signatureVersion or Registry.SIGNATURE_VERSION) .. ",",
         "    pricingHeuristicVersion = " .. tostring(indexData.pricingHeuristicVersion or Registry.PRICING_HEURISTIC_VERSION) .. ",",
         "    pricingConfigHash = " .. Shared.quoteString(indexData.pricingConfigHash or Shared.buildPricingConfigHash()) .. ",",
+        "    intrinsicConfigHash = " .. Shared.quoteString(indexData.intrinsicConfigHash or Shared.buildIntrinsicConfigHash()) .. ",",
+        "    pricingPolicyHash = " .. Shared.quoteString(indexData.pricingPolicyHash or Shared.buildPricingConfigHash()) .. ",",
     }
 
     if indexData.gameVersion ~= nil then
@@ -386,17 +389,36 @@ function IO.parseLeanFile(path)
         else
             local parts = Shared.split(text, "|")
             local fullType = Shared.trim(parts[1])
-            local basePrice = tonumber(parts[2])
+            local intrinsicScore = tonumber(parts[2])
             local stockMin = tonumber(parts[3])
             local stockMax = tonumber(parts[4])
 
-            if fullType ~= "" and basePrice ~= nil and stockMin ~= nil and stockMax ~= nil then
+            if fullType ~= "" and intrinsicScore ~= nil and stockMin ~= nil and stockMax ~= nil then
                 current = current or { items = {} }
+                local vesselName = Shared.decodeField(parts[5])
+                local vesselState = Shared.decodeField(parts[6])
+                local vesselPricing
+                if vesselName ~= "" then
+                    vesselPricing = {
+                        vesselName = vesselName,
+                        vesselState = Shared.decodeField(parts[6]),
+                        capacity = tonumber(parts[7]) or 0,
+                        weight = tonumber(parts[8]) or 0,
+                        vesselFullType = Shared.decodeField(parts[9]),
+                        vesselProfile = Shared.decodeField(parts[10]),
+                        source = Shared.decodeField(parts[11]),
+                        model = Shared.decodeField(parts[12]),
+                    }
+                end
+                local foodState = Shared.decodeField(parts[14])
                 current.items[#current.items + 1] = {
                     fullType,
-                    math.max(Config.pricing.minPrice or 1, Core.round(basePrice)),
+                    intrinsicScore,
                     math.max(0, math.floor(stockMin)),
                     math.max(0, math.floor(stockMax)),
+                    vesselPricing,
+                    parts[13] == "1",
+                    foodState ~= "" and foodState or nil,
                 }
             end
         end
@@ -422,7 +444,9 @@ function IO.loadStoredItems(indexData)
                     if fullType ~= "" then
                         items[fullType] = {
                             item = fullType,
+                            intrinsicScore = tonumber(row[2]) or (Config.pricing.minPrice or 1),
                             basePrice = tonumber(row[2]) or (Config.pricing.minPrice or 1),
+                            rawScore = tonumber(row[2]) or (Config.pricing.minPrice or 1),
                             tags = Shared.copyArray(tags),
                             stockRange = {
                                 min = math.max(0, tonumber(row[3]) or 0),
@@ -435,6 +459,9 @@ function IO.loadStoredItems(indexData)
                             leaf = parsed.leaf or fileEntry.leaf,
                             primary = primary,
                             primaryPrefix = parsed.primaryPrefix or fileEntry.primaryPrefix,
+                            vesselPricing = Core.deepCopy(row[5]),
+                            isActualLiquid = row[6] == true,
+                            foodState = row[7],
                             path = fileEntry.path,
                         }
                     end
@@ -464,8 +491,9 @@ function IO.validateIndex(indexData, activeState)
     if tonumber(indexData.pricingHeuristicVersion) ~= Registry.PRICING_HEURISTIC_VERSION then
         return false, "pricing"
     end
-    if tostring(indexData.pricingConfigHash or "") ~= tostring(Shared.buildPricingConfigHash()) then
-        return false, "pricing-config"
+    if tostring(indexData.intrinsicConfigHash or "")
+        ~= tostring(Shared.buildIntrinsicConfigHash()) then
+        return false, "intrinsic-config"
     end
     if activeState.gameVersion and Shared.trim(indexData.gameVersion or "") ~= "" and tostring(indexData.gameVersion) ~= tostring(activeState.gameVersion) then
         return false, "game"

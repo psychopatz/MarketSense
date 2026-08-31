@@ -274,9 +274,7 @@ function VesselPricing.resolve(ctx, details)
     return nil
 end
 
-function VesselPricing.calculate(ctx, details)
-    ctx = ctx or {}
-    details = details or {}
+local function calculateResolvedVessel(vessel, details, ctx)
     local c, profiles = settings()
     local result = {
         model = tostring(c.model or DEFAULTS.model),
@@ -294,15 +292,15 @@ function VesselPricing.calculate(ctx, details)
         result.status = "disabled"
         return result
     end
-
-    local vessel = VesselPricing.resolve(ctx, details)
-    if not vessel then return result end
+    if type(vessel) ~= "table" then return result end
 
     -- Empty Container roots already use the full container scorer.  The
     -- separate component is for content-bearing liquids and food only.
     local category = tostring(details.category or "")
     if category ~= "Liquid" and not isFood(details) then return result end
-    if category == "Liquid" and ctx.isActualLiquid ~= true then return result end
+    if category == "Liquid" and not (ctx and ctx.isActualLiquid == true) then
+        return result
+    end
 
     local profile = profileFor(vessel.name, profiles, c.unknownValue)
     local capacity = math.max(number(vessel.capacity, 0), 0)
@@ -328,6 +326,30 @@ function VesselPricing.calculate(ctx, details)
     result.capacity = capacity
     result.weight = weight
     return result
+end
+
+function VesselPricing.calculate(ctx, details)
+    ctx = ctx or {}
+    details = details or {}
+    return calculateResolvedVessel(VesselPricing.resolve(ctx, details), details, ctx)
+end
+
+-- Re-evaluate only the cheap vessel policy from a persisted identity. This
+-- keeps capacity/profile sandbox changes live without rebuilding item facts.
+function VesselPricing.calculateCached(snapshot, details)
+    if type(snapshot) ~= "table" then return nil end
+    local cached = snapshot.vesselPricing
+    if type(cached) ~= "table" or tostring(cached.vesselName or "") == "" then
+        return calculateResolvedVessel(nil, details or {}, snapshot)
+    end
+    return calculateResolvedVessel({
+        name = cached.vesselName,
+        fullType = cached.vesselFullType,
+        source = cached.source,
+        state = cached.state or cached.vesselState,
+        capacity = cached.capacity,
+        weight = cached.weight,
+    }, details or {}, snapshot)
 end
 
 VesselPricing.profileRules = PROFILE_RULES

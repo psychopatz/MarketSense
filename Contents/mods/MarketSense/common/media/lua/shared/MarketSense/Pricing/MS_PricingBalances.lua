@@ -15,12 +15,20 @@ local Core = MarketSense.Core
 local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local MarketModifiers = require "MarketSense/Pricing/MS_MarketModifiers"
 local VesselPricing = require "MarketSense/Pricing/MS_VesselPricing"
+local FoodPricing = MarketSense.FoodPricing
 local addAudit = Utils.addAudit
 local clampAndRound = Utils.clampAndRound
 
 function Pricing.applyBalances(ctx, details, audit)
     local working = tonumber(details.rawScore or 0) or 0
-    local vessel = VesselPricing.calculate(ctx, details)
+    -- Persisted definition snapshots already contain the resolved vessel
+    -- identity. Recalculate its small policy value, but never walk Java item
+    -- definitions again on the catalog path. Concrete inventory instances do
+    -- not set this field and continue through the live resolver.
+    local vessel = details._cachedVesselPricing
+    if type(vessel) ~= "table" then
+        vessel = VesselPricing.calculate(ctx, details)
+    end
     if details.priceHeuristic and type(vessel) == "table" then
         details.priceHeuristic.vesselModel = vessel.model
         details.priceHeuristic.vesselValue = vessel.value
@@ -170,10 +178,14 @@ function Pricing.applyBalances(ctx, details, audit)
     -- condition, and stock modifiers. The band is a normal-price reference,
     -- not a final ceiling.
     local itemEntry = DB.getItem(ctx.fullType)
+    local exactPrice = tonumber(details.exactPrice)
     local hasExactPrice = not details._ignoreExactPrice
         and not details._instancePricing
-        and itemEntry and itemEntry.price ~= nil
+        and ((itemEntry and itemEntry.price ~= nil) or exactPrice ~= nil)
     if not hasExactPrice then
+        if FoodPricing and type(FoodPricing.applyPolicy) == "function" then
+            working = FoodPricing.applyPolicy(ctx, details, working, audit)
+        end
         local bandSummary = {}
         working = MarketModifiers.applyCategoryBand(working, details, audit, bandSummary)
         details.priceBandApplied = true
@@ -213,7 +225,9 @@ function Pricing.applyBalances(ctx, details, audit)
 
     if hasExactPrice then
         local overridePrice = details.marketPricing
-            and details.marketPricing.overridePrice or itemEntry.price
+            and details.marketPricing.overridePrice
+            or exactPrice
+            or itemEntry.price
         local finalPrice = clampAndRound(overridePrice)
         addAudit(audit, "item final price", working, finalPrice)
         return finalPrice

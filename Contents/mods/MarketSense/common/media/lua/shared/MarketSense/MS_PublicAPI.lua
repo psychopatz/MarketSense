@@ -17,8 +17,9 @@ local MarketModifiers = MarketSense.MarketModifiers
 local function invalidatePricingViews()
     Cache.clear()
     if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.state then
-        MarketSense.ItemsRegistry.state.loaded = false
-        MarketSense.ItemsRegistry.state.catalog = nil
+        -- Registered category/tag/item modifiers are policy changes. Keep the
+        -- intrinsic catalog resident and force only its cheap price refresh.
+        MarketSense.ItemsRegistry.state.pricingPolicyHash = nil
         MarketSense.ItemsRegistry.state.knownSnapshot = nil
     end
 end
@@ -57,6 +58,31 @@ local function getCachedPriceDetails(fullType, withAudit, source)
     local cached = Cache.getDetails(fullType)
     if cached and (withAudit ~= true or type(cached.balanceAudit) == "table") then
         return cached
+    end
+
+    -- Normal definition pricing is a cheap finalization over the persisted
+    -- intrinsic registry row. Audit/debug requests intentionally retain the
+    -- live evaluator so they can show complete evidence and current facts.
+    if source == nil and withAudit ~= true then
+        local registry = MarketSense.ItemsRegistry
+        local state = registry and registry.state or nil
+        if state and not state.loaded and type(registry.ensureLoaded) == "function" then
+            pcall(registry.ensureLoaded, false)
+            state = registry.state
+        end
+        if state and state.stale ~= true and registry
+            and type(registry.get) == "function"
+        then
+            local snapshot = registry.get(fullType)
+            if type(snapshot) == "table" and snapshot.intrinsicScore ~= nil
+                and type(Pricing.finalizeIntrinsicSnapshot) == "function"
+            then
+                local details = Pricing.finalizeIntrinsicSnapshot(snapshot, false)
+                if type(details) == "table" then
+                    return Cache.setDetails(fullType, details)
+                end
+            end
+        end
     end
 
     Cache.recordEvaluation()
@@ -290,9 +316,17 @@ function API.ApplyRuntimeRule(ruleTable)
                 MarketSense.ItemsRegistry.state.loaded = false
                 MarketSense.ItemsRegistry.state.catalog = nil
                 MarketSense.ItemsRegistry.state.knownSnapshot = nil
+                MarketSense.ItemsRegistry.state.rebuildPending = true
+                MarketSense.ItemsRegistry.state.deferredRebuild = true
+                MarketSense.ItemsRegistry.state.rebuildReason = "runtime-rule-change"
             end
             if MarketSense.Config then
                 MarketSense.Config.MasterList = {}
+            end
+            if MarketSense.ItemsRegistry
+                and type(MarketSense.ItemsRegistry.scheduleRebuild) == "function"
+            then
+                MarketSense.ItemsRegistry.scheduleRebuild("runtime-rule-change")
             end
         end
         return applied

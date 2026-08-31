@@ -54,6 +54,8 @@ local function populateMasterList(indexData, activeState, options)
         files = Shared.copyArray(indexData and indexData.files or {}),
         activeModsHash = activeState.activeModsHash,
         pricingConfigHash = Shared.buildPricingConfigHash(),
+        intrinsicConfigHash = Shared.buildIntrinsicConfigHash(),
+        pricingPolicyHash = Shared.buildPricingConfigHash(),
         generatedAt = indexData and indexData.generatedAt or nil,
         source = cacheOnly and (stale and "stale-lean-cache" or "lean-cache") or "live-cache",
         stale = stale,
@@ -79,19 +81,23 @@ local function populateMasterList(indexData, activeState, options)
                             if not skip then
                                 local baseData = {
                                     item = fullType,
+                                    intrinsicScore = tonumber(row[2]) or (Config.pricing.minPrice or 1),
                                     basePrice = tonumber(row[2]) or (Config.pricing.minPrice or 1),
+                                    rawScore = tonumber(row[2]) or (Config.pricing.minPrice or 1),
                                     tags = Shared.copyArray(baseTags),
                                     stockRange = {
                                         min = math.max(0, tonumber(row[3]) or 0),
                                         max = math.max(0, tonumber(row[4]) or 0),
                                     },
+                                    vesselPricing = Shared.Core.deepCopy(row[5]),
+                                    isActualLiquid = row[6] == true,
+                                    foodState = row[7],
                                 }
 
                                 local liveData = Build.applyRuntimeOverride(fullType, baseData, runtimeRules)
                                 liveData.availability = availability
-                                registerLiveItem(fullType, liveData)
-
                                 local liveEntry = Build.buildLiveEntry(fullType, liveData, group.origin, nil, nil)
+                                registerLiveItem(fullType, liveEntry)
                                 catalog.items[fullType] = liveEntry
                                 catalog.total = catalog.total + 1
                                 catalog.modules[liveEntry.moduleName] = (catalog.modules[liveEntry.moduleName] or 0) + 1
@@ -110,12 +116,48 @@ local function populateMasterList(indexData, activeState, options)
     Registry.state.loaded = true
     Registry.state.activeModsHash = activeState.activeModsHash
     Registry.state.pricingConfigHash = catalog.pricingConfigHash
+    Registry.state.intrinsicConfigHash = catalog.intrinsicConfigHash
+    Registry.state.pricingPolicyHash = catalog.pricingPolicyHash
     Registry.state.catalog = catalog
     Registry.state.lastIndex = indexData
     Registry.state.stale = stale
     Registry.state.knownSnapshot = nil
 
     return catalog
+end
+
+-- Sandbox and modifier policy changes only require this O(n) arithmetic pass.
+-- The persisted intrinsic rows remain valid and no PropertyReader/AutoTag
+-- work is repeated.
+function Runtime.refreshCatalogPrices()
+    local catalog = Registry.state.catalog
+    if type(catalog) ~= "table" or type(catalog.items) ~= "table" then
+        return false
+    end
+
+    local policyHash = Shared.buildPricingConfigHash()
+    if Registry.state.pricingPolicyHash == policyHash then return false end
+
+    for fullType, entry in pairs(catalog.items) do
+        local details = Shared.Pricing.finalizeIntrinsicSnapshot
+            and Shared.Pricing.finalizeIntrinsicSnapshot(entry, false) or nil
+        if type(details) == "table" then
+            entry.price = tonumber(details.price) or entry.price or 0
+            entry.pricingSource = details.source or "intrinsic-cache"
+            local masterList = MarketSense.Config and MarketSense.Config.MasterList
+            if type(masterList) == "table" and type(masterList[fullType]) == "table" then
+                masterList[fullType].price = entry.price
+                masterList[fullType].pricingSource = entry.pricingSource
+            end
+        end
+    end
+
+    catalog.pricingConfigHash = policyHash
+    catalog.pricingPolicyHash = policyHash
+    Registry.state.pricingConfigHash = policyHash
+    Registry.state.pricingPolicyHash = policyHash
+    Registry.state.knownSnapshot = nil
+    return true
 end
 
 function Runtime.loadCatalogFromCache()
@@ -371,8 +413,9 @@ function Runtime.ensureLoaded(forceRebuild)
 
     if Registry.state.loaded
         and Registry.state.activeModsHash == activeState.activeModsHash
-        and Registry.state.pricingConfigHash == Shared.buildPricingConfigHash()
+        and Registry.state.intrinsicConfigHash == Shared.buildIntrinsicConfigHash()
         and type(Registry.state.catalog) == "table" then
+        Runtime.refreshCatalogPrices()
         if Registry.state.rebuildPending then
             Runtime.scheduleRebuild(Registry.state.rebuildReason or "deferred")
         end
@@ -383,10 +426,17 @@ function Runtime.ensureLoaded(forceRebuild)
     local valid, reason = IO.validateIndex(indexData, activeState)
     if valid then
         Shared.debugLog("MS_Items cache already valid; loading from " .. Registry.OUTPUT_HINT)
-        Registry.state.rebuildPending = false
-        Registry.state.deferredRebuild = false
-        Registry.state.stale = false
-        return populateMasterList(indexData, activeState, { cacheOnly = true })
+        local rebuilding = Registry.state.rebuildPending == true
+        if not rebuilding then
+            Registry.state.deferredRebuild = false
+            Registry.state.stale = false
+        end
+        local catalog = populateMasterList(indexData, activeState, {
+            cacheOnly = true,
+            stale = rebuilding,
+        })
+        if rebuilding then Runtime.scheduleRebuild(Registry.state.rebuildReason or "deferred") end
+        return catalog
     end
 
     if reason == "mods" then
@@ -417,6 +467,8 @@ function Runtime.ensureLoaded(forceRebuild)
         Registry.state.loaded = true
         Registry.state.activeModsHash = activeState.activeModsHash
         Registry.state.pricingConfigHash = Shared.buildPricingConfigHash()
+        Registry.state.intrinsicConfigHash = Shared.buildIntrinsicConfigHash()
+        Registry.state.pricingPolicyHash = Shared.buildPricingConfigHash()
         Registry.state.stale = true
     end
 

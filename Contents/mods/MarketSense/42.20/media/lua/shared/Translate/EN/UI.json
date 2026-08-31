@@ -19,6 +19,7 @@
  "UI_MarketSenseCatalog_RuntimeGenerationFailed": "MarketSense runtime catalog generation failed: %s",
     "UI_MarketSenseCatalog_SelectItem": "Select an item to run the MarketSense debug evaluator.",
     "UI_MarketSenseCatalog_SelectedHeader": "%s  |  Catalog price: $%d  |  %s",
+    "UI_MarketSenseCatalog_CatalogPriceLabel": "catalog price",
     "UI_MarketSenseCatalog_DetailClassification": "Classification",
     "UI_MarketSenseCatalog_DetailPricingModel": "Pricing model",
     "UI_MarketSenseCatalog_DetailHeuristic": "Heuristic score (not dollars)",

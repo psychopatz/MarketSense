@@ -37,7 +37,7 @@ local TEXT_FALLBACKS = {
     UI_MarketSenseCatalog_FilterTheme = "Theme: %s",
     UI_MarketSenseCatalog_FilterOrigin = "Origin: %s",
     UI_MarketSenseCatalog_BaseItemLabel = "Base item",
-    UI_MarketSenseCatalog_BasePriceLabel = "base price",
+    UI_MarketSenseCatalog_CatalogPriceLabel = "catalog price",
     UI_MarketSenseCatalog_SelectedHeader = "%s  |  Catalog price: $%d  |  %s",
     UI_MarketSenseCatalog_DetailClassification = "Classification",
     UI_MarketSenseCatalog_DetailPricingModel = "Pricing model",
@@ -585,16 +585,17 @@ local function baseItemSummary(details)
     end
 
     local outputs = {}
-    local basePriceLabel = tr("UI_MarketSenseCatalog_BasePriceLabel", "base price")
+    local catalogPriceLabel = tr("UI_MarketSenseCatalog_CatalogPriceLabel", "catalog price")
     for _, output in ipairs(yield.outputs or {}) do
         local quantity = tonumber(output.quantity) or 0
         local fullType = tostring(output.fullType or "?")
         local registry = registryDetails(fullType)
-        local basePrice = tonumber(output.basePrice)
-            or (registry and tonumber(registry.basePrice))
-        local priceText = basePrice ~= nil
-            and string.format("%s=$%g", basePriceLabel, basePrice)
-            or string.format("%s=?", basePriceLabel)
+        local catalogPrice = tonumber(output.catalogPrice)
+            or tonumber(output.price)
+            or (registry and tonumber(registry.price))
+        local priceText = catalogPrice ~= nil
+            and string.format("%s=$%g", catalogPriceLabel, catalogPrice)
+            or string.format("%s=?", catalogPriceLabel)
         outputs[#outputs + 1] = string.format("%g x %s [%s] (%s)",
             quantity, safeItemDisplayName(fullType), fullType, priceText)
     end

@@ -7,7 +7,7 @@ local Pricing = require "MarketSense/MS_Pricing"
 local Core = require "MarketSense/MS_Core"
 local Cache = require "MarketSense/MS_RuntimeCache"
 local Evidence = require "MarketSense/MS_FoodVariantEvidence"
-require "MarketSense/ItemsRegistry/MS_ItemsRegistry_Shared"
+local Shared = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_Shared"
 
 local function evaluate(category, primary, context)
     local details = {
@@ -39,6 +39,24 @@ local function readyContext(extra)
 end
 
 Runtime.sandboxVars = nil
+Config.applySandboxOptions()
+Runtime.pricing.variationEnabled = false
+Runtime.pricing.contrastStrength = 0
+Runtime.pricing.baseMultiplier = 1
+
+local intrinsicHashBeforePolicyChange = Shared.buildIntrinsicConfigHash()
+_G.SandboxVars = { MarketSense = {
+    PriceMultiplierPercent = 35,
+    PriceVariationPercent = 10,
+    PriceFoodOpenedMultiplierPercent = 65,
+    PriceFoodSealedPreservationPercent = 150,
+    PriceVesselCapacityValue = 7,
+    PriceCategoryFoodMin = 80,
+}}
+Config.applySandboxOptions()
+T.equal(Shared.buildIntrinsicConfigHash(), intrinsicHashBeforePolicyChange,
+    "sandbox policy changes do not invalidate intrinsic cache inputs")
+_G.SandboxVars = nil
 Config.applySandboxOptions()
 Runtime.pricing.variationEnabled = false
 Runtime.pricing.contrastStrength = 0
@@ -150,6 +168,31 @@ local uncappedDetails = {
 local uncapped = Pricing.applyBalances(readyContext(), uncappedDetails)
 T.truthy(uncapped > Runtime.pricing.categoryBands.Food.max,
     "aggregate price can overflow the normal category band")
+
+local cachedSnapshot = {
+    fullType = "Base.CachedPolicyItem",
+    moduleName = "Base",
+    typeName = "CachedPolicyItem",
+    category = "Food",
+    primary = "FoodStaple",
+    tags = { "FoodStaple" },
+    expandedTags = { "Food", "FoodStaple" },
+    intrinsicScore = 100,
+    stockRange = { min = 1, max = 4 },
+}
+Runtime.pricing.variationEnabled = false
+Runtime.pricing.baseMultiplier = 1
+local originalContextBuilder = MarketSense.PropertyReader.buildContext
+MarketSense.PropertyReader.buildContext = function()
+    error("cached finalization must not rebuild PropertyReader context")
+end
+local cachedPrice = Pricing.finalizeIntrinsicSnapshot(cachedSnapshot, false).price
+Runtime.pricing.baseMultiplier = 2
+local policyPrice = Pricing.finalizeIntrinsicSnapshot(cachedSnapshot, false).price
+MarketSense.PropertyReader.buildContext = originalContextBuilder
+T.equal(policyPrice, cachedPrice * 2,
+    "cached intrinsic score is finalized with the current policy")
+Runtime.pricing.baseMultiplier = 1
 
 Runtime.sandboxVars = {
     PriceSubcategoryFoodNonPerishableValue = 40,

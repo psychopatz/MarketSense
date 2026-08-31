@@ -7,6 +7,7 @@ local Registry = Shared.Registry
 local Core = Shared.Core
 local TagUtils = Shared.TagUtils
 local Config = Shared.Config
+local Pricing = Shared.Pricing
 
 local GENERIC_FOOD_TAGS = {
     Food = true,
@@ -173,14 +174,22 @@ local function serializeFoodAudit(entries)
 end
 
 function Build.applyRuntimeOverride(fullType, data, runtimeRules)
+    local intrinsicScore = tonumber(data.intrinsicScore or data.basePrice)
+        or (Config.pricing.minPrice or 1)
     local liveData = {
         item = fullType,
-        basePrice = tonumber(data.basePrice) or (Config.pricing.minPrice or 1),
+        intrinsicScore = intrinsicScore,
+        basePrice = intrinsicScore,
+        rawScore = intrinsicScore,
         tags = Shared.copyArray(data.tags or {}),
         stockRange = {
             min = math.max(0, tonumber(data.stockRange and data.stockRange.min) or 0),
             max = math.max(0, tonumber(data.stockRange and data.stockRange.max) or 0),
         },
+        vesselPricing = Core.deepCopy(data.vesselPricing),
+        isActualLiquid = data.isActualLiquid == true,
+        foodState = data.foodState,
+        exactPrice = data.exactPrice,
     }
 
     if not runtimeRules or type(runtimeRules.getOverride) ~= "function" then
@@ -224,7 +233,11 @@ function Build.applyRuntimeOverride(fullType, data, runtimeRules)
     end
 
     if type(override.price) == "number" then
-        liveData.basePrice = math.max(Config.pricing.minPrice or 1, Core.round(override.price))
+        -- An exact runtime rule is final policy, not intrinsic item value.
+        -- Keep the persisted score intact so removing the rule or changing a
+        -- sandbox multiplier cannot permanently bake the override into the
+        -- definition cache.
+        liveData.exactPrice = math.max(Config.pricing.minPrice or 1, Core.round(override.price))
     end
 
     if type(override.stock) == "table" then
@@ -244,27 +257,63 @@ end
 
 function Build.buildLiveEntry(fullType, itemData, sourceOrigin, category, primary)
     local moduleName, typeName = Core.splitFullType(fullType)
-    local effectiveBasePrice = tonumber(itemData.basePrice) or (Config.pricing.minPrice or 1)
+    local intrinsicScore = tonumber(itemData.intrinsicScore or itemData.basePrice)
+        or (Config.pricing.minPrice or 1)
 
     local expandedTags = TagUtils.expandHierarchy(itemData.tags or {})
+    local snapshot = {
+        item = fullType,
+        fullType = fullType,
+        moduleName = moduleName,
+        typeName = typeName,
+        sourceModId = sourceOrigin or moduleName,
+        sourceModName = sourceOrigin == "Vanilla" and "Project Zomboid (Vanilla)"
+            or tostring(sourceOrigin or moduleName),
+        category = category or TagUtils.categoryFromPrimary(primary
+            or Shared.getPrimaryTag(itemData.tags)),
+        primary = primary or Shared.getPrimaryTag(itemData.tags),
+        tags = Shared.copyArray(itemData.tags or {}),
+        expandedTags = expandedTags,
+        intrinsicScore = intrinsicScore,
+        basePrice = intrinsicScore,
+        rawScore = intrinsicScore,
+        exactPrice = itemData.exactPrice,
+        foodState = itemData.foodState,
+        stockRange = Core.deepCopy(itemData.stockRange or { min = 0, max = 0 }),
+        vesselPricing = Core.deepCopy(itemData.vesselPricing),
+        isActualLiquid = itemData.isActualLiquid == true,
+    }
+    local finalized = Pricing and Pricing.finalizeIntrinsicSnapshot
+        and Pricing.finalizeIntrinsicSnapshot(snapshot, false) or nil
+    local effectivePrice = finalized and tonumber(finalized.price)
+        or (Config.pricing.minPrice or 1)
     return {
         fullType = fullType,
         moduleName = moduleName,
         typeName = typeName,
         sourceModId = sourceOrigin or moduleName,
         sourceModName = sourceOrigin == "Vanilla" and "Project Zomboid (Vanilla)" or tostring(sourceOrigin or moduleName),
-        category = category or TagUtils.categoryFromPrimary(primary or Shared.getPrimaryTag(itemData.tags)),
-        primary = primary or Shared.getPrimaryTag(itemData.tags),
+        category = snapshot.category,
+        primary = snapshot.primary,
         tags = Shared.copyArray(itemData.tags or {}),
         expandedTags = expandedTags,
-        basePrice = tonumber(itemData.basePrice) or 0,
-        price = tonumber(effectiveBasePrice) or 0,
-        rawScore = tonumber(itemData.basePrice) or 0,
+        subcategory = finalized and finalized.subcategory or nil,
+        leaf = finalized and finalized.leaf or nil,
+        primaryPrefix = finalized and finalized.primaryPrefix or nil,
+        intrinsicScore = intrinsicScore,
+        basePrice = intrinsicScore,
+        price = effectivePrice,
+        rawScore = intrinsicScore,
+        exactPrice = itemData.exactPrice,
+        foodState = itemData.foodState,
         confidence = 1,
         stock = {
             min = math.max(0, tonumber(itemData.stockRange and itemData.stockRange.min) or 0),
             max = math.max(0, tonumber(itemData.stockRange and itemData.stockRange.max) or 0),
         },
+        vesselPricing = Core.deepCopy(itemData.vesselPricing),
+        isActualLiquid = itemData.isActualLiquid == true,
+        pricingSource = itemData.exactPrice ~= nil and "override" or "intrinsic-cache",
         availability = itemData.availability or Availability.get(fullType),
         source = "lean-cache",
     }
@@ -380,15 +429,26 @@ local function collectOneItem(job, scriptItem)
     end
 
     local tagInfo = MarketSense.AutoTag.generate(ctx)
+    local snapshot = Pricing.calculateIntrinsicSnapshot(ctx, false, nil, {
+        tagInfo = tagInfo,
+    })
+    if type(snapshot) ~= "table" then return end
     local baseData = {
         item = ctx.fullType,
-        basePrice = Shared.getBasePrice(ctx, tagInfo),
-        tags = TagUtils.unique(tagInfo.tags or { tagInfo.primary }),
-        stockRange = Shared.getBaseStock(ctx),
+        intrinsicScore = snapshot.intrinsicScore,
+        basePrice = snapshot.intrinsicScore,
+        rawScore = snapshot.rawScore,
+        tags = TagUtils.unique(snapshot.tags or { snapshot.primary }),
+        stockRange = snapshot.stockRange or Shared.getBaseStock(ctx),
+        vesselPricing = snapshot.vesselPricing,
+        isActualLiquid = snapshot.isActualLiquid,
+        foodState = snapshot.foodState,
     }
     local liveData = Build.applyRuntimeOverride(ctx.fullType, baseData, runtimeRules)
     local primary = Shared.getPrimaryTag(liveData.tags)
     local fileEntry = Shared.toFileEntry(primary, liveData.tags)
+    local intrinsicPrimary = Shared.getPrimaryTag(snapshot.tags)
+    local intrinsicFileEntry = Shared.toFileEntry(intrinsicPrimary, snapshot.tags)
     local origin = Shared.getOriginFromContext(ctx)
     if job.foodAudit then
         local auditEntry = collectFoodAuditEntry(ctx, tagInfo, primary, fileEntry)
@@ -397,21 +457,29 @@ local function collectOneItem(job, scriptItem)
 
     job.generated[ctx.fullType] = {
         item = ctx.fullType,
-        basePrice = tonumber(liveData.basePrice) or Shared.getBasePrice(ctx, tagInfo),
-        tags = TagUtils.unique(liveData.tags or { primary }),
+        -- Persist only the definition-derived snapshot. Runtime rules are
+        -- reapplied when the lean files are loaded, so policy edits are not
+        -- baked into the next intrinsic cache generation.
+        intrinsicScore = snapshot.intrinsicScore,
+        basePrice = snapshot.intrinsicScore,
+        rawScore = snapshot.rawScore,
+        tags = TagUtils.unique(snapshot.tags or { snapshot.primary }),
         stockRange = {
-            min = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.min) or 0),
-            max = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.max) or 0),
+            min = math.max(0, tonumber(snapshot.stockRange and snapshot.stockRange.min) or 0),
+            max = math.max(0, tonumber(snapshot.stockRange and snapshot.stockRange.max) or 0),
         },
         availability = availability,
         origin = origin,
-        root = fileEntry.root,
-        category = fileEntry.category,
-        subcategory = fileEntry.subcategory,
-        leaf = fileEntry.leaf,
-        primary = primary,
-        primaryPrefix = fileEntry.primaryPrefix,
-        path = fileEntry.path,
+        root = intrinsicFileEntry.root,
+        category = snapshot.category,
+        subcategory = snapshot.subcategory,
+        leaf = snapshot.leaf,
+        primary = intrinsicPrimary,
+        primaryPrefix = intrinsicFileEntry.primaryPrefix,
+        vesselPricing = Core.deepCopy(snapshot.vesselPricing),
+        isActualLiquid = snapshot.isActualLiquid == true,
+        foodState = snapshot.foodState,
+        path = intrinsicFileEntry.path,
     }
 end
 
@@ -508,9 +576,13 @@ function Build.groupForWrite(itemsByFullType)
 
         bucket.items[#bucket.items + 1] = {
             item = fullType,
-            basePrice = tonumber(entry.basePrice) or (Config.pricing.minPrice or 1),
+            intrinsicScore = tonumber(entry.intrinsicScore or entry.basePrice)
+                or (Config.pricing.minPrice or 1),
             stockMin = tonumber(entry.stockRange and entry.stockRange.min) or 0,
             stockMax = tonumber(entry.stockRange and entry.stockRange.max) or 0,
+            vesselPricing = Core.deepCopy(entry.vesselPricing),
+            isActualLiquid = entry.isActualLiquid == true,
+            foodState = entry.foodState,
         }
     end
 
@@ -548,10 +620,21 @@ function Build.writeGroupedFiles(grouped, activeState, sourceManifestHash)
             content[#content + 1] = "@origin=" .. tostring(group.origin or "Vanilla")
             content[#content + 1] = "@tags=" .. Shared.join(group.tags or {}, "|")
             for _, row in ipairs(group.items) do
+                local vessel = row.vesselPricing or {}
                 content[#content + 1] = tostring(row.item) ..
-                    "|" .. tostring(Core.round(row.basePrice or 0)) ..
+                    "|" .. tostring(row.intrinsicScore or 0) ..
                     "|" .. tostring(math.max(0, math.floor(row.stockMin or 0))) ..
-                    "|" .. tostring(math.max(0, math.floor(row.stockMax or 0)))
+                    "|" .. tostring(math.max(0, math.floor(row.stockMax or 0))) ..
+                    "|" .. Shared.encodeField(vessel.vesselName) ..
+                    "|" .. Shared.encodeField(vessel.state or vessel.vesselState) ..
+                    "|" .. tostring(tonumber(vessel.capacity) or 0) ..
+                    "|" .. tostring(tonumber(vessel.weight) or 0) ..
+                    "|" .. Shared.encodeField(vessel.vesselFullType) ..
+                    "|" .. Shared.encodeField(vessel.vesselProfile) ..
+                    "|" .. Shared.encodeField(vessel.source) ..
+                    "|" .. Shared.encodeField(vessel.model) ..
+                    "|" .. (row.isActualLiquid and "1" or "0") ..
+                    "|" .. Shared.encodeField(row.foodState)
             end
             content[#content + 1] = ""
         end
@@ -579,6 +662,8 @@ function Build.writeGroupedFiles(grouped, activeState, sourceManifestHash)
         signatureVersion = Registry.SIGNATURE_VERSION,
         pricingHeuristicVersion = Registry.PRICING_HEURISTIC_VERSION,
         pricingConfigHash = Shared.buildPricingConfigHash(),
+        intrinsicConfigHash = Shared.buildIntrinsicConfigHash(),
+        pricingPolicyHash = Shared.buildPricingConfigHash(),
         gameVersion = activeState.gameVersion,
         sourceManifestHash = tostring(sourceManifestHash or Shared.stableHash({
             tostring(activeState and activeState.activeModsHash or ""),

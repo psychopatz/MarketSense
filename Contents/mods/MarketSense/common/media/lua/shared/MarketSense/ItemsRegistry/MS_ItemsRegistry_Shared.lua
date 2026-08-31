@@ -11,14 +11,14 @@ require "MarketSense/signatures/tags/MS_TagMapper"
 MarketSense.ItemsRegistry = MarketSense.ItemsRegistry or {}
 local Registry = MarketSense.ItemsRegistry
 
-Registry.SCHEMA_VERSION = 4
-Registry.FILE_SCHEMA = "MS_ITEMS_V1"
+Registry.SCHEMA_VERSION = 5
+Registry.FILE_SCHEMA = "MS_ITEMS_V2"
 -- Force one migration from older caches that were valid but incomplete at
 -- boot, causing live bundle items to appear only after manual generation.
-Registry.GENERATOR_VERSION = 3
+Registry.GENERATOR_VERSION = 4
 -- Bump when pricing inputs or runtime resolver semantics change so an old
 -- materialized cache cannot hide the corrected bundle values.
-Registry.PRICING_HEURISTIC_VERSION = 29
+Registry.PRICING_HEURISTIC_VERSION = 31
 Registry.SIGNATURE_VERSION = "market-sense-v25-battery-root"
 Registry.ROOT_FOLDER = "MS_Items"
 -- PZ's getFileWriter only permits data extensions such as .txt/.json. The
@@ -48,6 +48,8 @@ Registry.state = Registry.state or {
     readyProbeCount = 0,
     lastReadyItemCount = nil,
     stale = false,
+    intrinsicConfigHash = nil,
+    pricingPolicyHash = nil,
 }
 
 -- These limits deliberately keep registry work out of the boot critical path.
@@ -71,7 +73,26 @@ Shared.Pricing = MarketSense.Pricing
 Shared.Stock = MarketSense.Stock
 Shared.Config = MarketSense.ItemRuntimeConfig
 
-local function appendConfigSignature(parts, prefix, value, seen)
+local INTRINSIC_POLICY_KEYS = {
+    baseMultiplier = true,
+    baseMultiplierPercent = true,
+    globalValue = true,
+    contrastStrength = true,
+    contrastPercent = true,
+    variationEnabled = true,
+    variationStrength = true,
+    variationPercent = true,
+    variationSalt = true,
+    variationAbsoluteOverrides = true,
+    openedPenalty = true,
+    sealedPreservationMultiplier = true,
+    categoryBands = true,
+    vesselPricing = true,
+    sandboxVars = true,
+    marketModifiers = true,
+}
+
+local function appendConfigSignature(parts, prefix, value, seen, excluded)
     local valueType = type(value)
     if valueType == "function" or valueType == "userdata" or valueType == "thread" then
         return
@@ -91,8 +112,9 @@ local function appendConfigSignature(parts, prefix, value, seen)
     for _, key in ipairs(keys) do
         local keyText = tostring(key)
         if keyText ~= "MasterList" and keyText ~= "ItemRegistryRevision"
-            and keyText ~= "pricingRevision" then
-            appendConfigSignature(parts, prefix .. "." .. keyText, value[key], seen)
+            and keyText ~= "pricingRevision"
+            and not (excluded and excluded[keyText]) then
+            appendConfigSignature(parts, prefix .. "." .. keyText, value[key], seen, excluded)
         end
     end
 end
@@ -100,6 +122,16 @@ end
 function Shared.buildPricingConfigHash()
     local parts = {}
     appendConfigSignature(parts, "runtime", Shared.Config or {}, {})
+    table.sort(parts)
+    return Text.stableHash(parts)
+end
+
+-- Intrinsic inputs are the expensive item facts and raw scoring model. Policy
+-- controls are intentionally excluded so changing sandbox prices only
+-- invalidates cheap finalization, not the 4k-item definition scan.
+function Shared.buildIntrinsicConfigHash()
+    local parts = {}
+    appendConfigSignature(parts, "runtime", Shared.Config or {}, {}, INTRINSIC_POLICY_KEYS)
     table.sort(parts)
     return Text.stableHash(parts)
 end
