@@ -97,9 +97,15 @@ function Signature.match(ctx)
         return materialResult("ResourceFuel", 0.96, "material_fluid_category")
     end
 
+    if displayCategory == "corpse" or hasTagAlias(ctx, "animalcorpse") then
+        return materialResult("MaterialButchering", 0.96, "material_animal_corpse")
+    end
+
     if (ctx.lootTypeLower or "") ~= "material"
         and displayCategory ~= "material"
-        and displayCategory ~= "materialweapon" then
+        and displayCategory ~= "materialweapon"
+        and displayCategory ~= "corpse"
+        and not hasTagAlias(ctx, "animalcorpse") then
         return { matched = false, confidence = 0 }
     end
 

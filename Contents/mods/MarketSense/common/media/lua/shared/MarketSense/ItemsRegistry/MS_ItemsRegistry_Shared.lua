@@ -19,12 +19,17 @@ Registry.GENERATOR_VERSION = 3
 -- Bump when pricing inputs or runtime resolver semantics change so an old
 -- materialized cache cannot hide the corrected bundle values.
 Registry.PRICING_HEURISTIC_VERSION = 24
-Registry.SIGNATURE_VERSION = "market-sense-v24-theme-material-loot-rarity"
+Registry.SIGNATURE_VERSION = "market-sense-v25-battery-root"
 Registry.ROOT_FOLDER = "MS_Items"
 -- PZ's getFileWriter only permits data extensions such as .txt/.json. The
 -- index is a safe, line-parsed manifest persisted as .txt.
 Registry.INDEX_PATH = Registry.ROOT_FOLDER .. "/MS_ItemsIndex.txt"
 Registry.REQUEST_PATH = Registry.ROOT_FOLDER .. "/MS_RebuildRequest.json"
+-- The grouped TXT files are the runtime catalog.  The prebuild audit was a
+-- diagnostic sidecar and was never consumed by the mod or catalog viewer.
+-- Keep it opt-in for troubleshooting instead of writing a second catalog on
+-- every generation.
+Registry.WRITE_PREBUILD_AUDIT = false
 Registry.AUDIT_PATH = Registry.ROOT_FOLDER .. "/MS_PrebuildAudit.json"
 Registry.OUTPUT_HINT = "Zomboid/Lua/MS_Items/"
 

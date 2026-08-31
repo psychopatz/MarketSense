@@ -281,7 +281,7 @@ function Build.collectGeneratedItems()
     Availability.rebuild(allItems)
 
     local generated = {}
-    local foodAudit = {}
+    local foodAudit = Registry.WRITE_PREBUILD_AUDIT and {} or nil
     for index = 0, allItems:size() - 1 do
         local scriptItem = allItems:get(index)
         local ctx = MarketSense.PropertyReader.buildContext(scriptItem)
@@ -304,9 +304,11 @@ function Build.collectGeneratedItems()
                 local primary = Shared.getPrimaryTag(liveData.tags)
                 local fileEntry = Shared.toFileEntry(primary, liveData.tags)
                 local origin = Shared.getOriginFromContext(ctx)
-                local auditEntry = collectFoodAuditEntry(ctx, tagInfo, primary, fileEntry)
-                if auditEntry then
-                    foodAudit[#foodAudit + 1] = auditEntry
+                if foodAudit then
+                    local auditEntry = collectFoodAuditEntry(ctx, tagInfo, primary, fileEntry)
+                    if auditEntry then
+                        foodAudit[#foodAudit + 1] = auditEntry
+                    end
                 end
 
                 generated[ctx.fullType] = {
@@ -336,7 +338,9 @@ function Build.collectGeneratedItems()
         end
     end
 
-    IO.writeFile(Registry.AUDIT_PATH, serializeFoodAudit(foodAudit))
+    if foodAudit then
+        IO.writeFile(Registry.AUDIT_PATH, serializeFoodAudit(foodAudit))
+    end
     return generated
 end
 

@@ -293,6 +293,26 @@ local function buildAdmission(ctx)
         push(vetoHits, "drug_non_edible")
     end
 
+    -- Gardening harvests and smoking/utility items sometimes inherit the
+    -- base:food item type for spoilage or recipe support. Their display
+    -- category plus CantEat flag is stronger evidence of the market root.
+    if (ctx.displayCategoryToken or "") == "gardening" and ctx.isCantEat == true then
+        push(vetoHits, "non_food_gardening")
+    end
+    if (ctx.displayCategoryToken or "") == "tool"
+        and ctx.isCantEat == true
+        and not hasNutritionEvidence(ctx)
+        and not hasRecipeEvidence(ctx) then
+        push(vetoHits, "non_food_tool")
+    end
+    if hasTagAlias(ctx, "farmingloot") and ctx.isCantEat == true
+        and containsAny(ctx.idLower or "", { "grasstuft", "haytuft" }) then
+        push(vetoHits, "non_food_animal_feed")
+    end
+    if (ctx.displayCategoryToken or "") == "corpse" or hasTagAlias(ctx, "animalcorpse") then
+        push(vetoHits, "animal_corpse")
+    end
+
     if ctx.isFoodInstance == true then
         push(signalHits, "food_instance")
     end
@@ -455,6 +475,9 @@ local function exactStage(ctx, prefix, admission)
     local eatType = ctx.eatTypeLower or ""
     local foodType = normalizeFoodType(ctx)
 
+    if hasTagAlias(ctx, "herbaltea") then
+        return makeResult("FoodTea", 0.92, "exact", "food_herbal_tea_tag", admissionDetails(admission))
+    end
     if hasTagAlias(ctx, "canbedividedinbowls") or hasTagAlias(ctx, "canbedividediinbowls") or eatType == "pot" then
         return makeResult(prefix .. "Dish", 0.93, "exact", "food_dish", admissionDetails(admission))
     end
@@ -491,6 +514,7 @@ local function exactStage(ctx, prefix, admission)
 end
 
 local function namedStage(ctx, admission)
+    local itemId = ctx.idLower or ""
     local text = table.concat({
         ctx.idLower or "", ctx.displayNameLower or "", ctx.descriptionLower or "",
         ctx.iconLower or "", ctx.tooltipLower or "",
@@ -500,6 +524,33 @@ local function namedStage(ctx, admission)
     end
     if contains(text, "bitters") then
         return makeResult("FoodNonPerishableBeverage", 0.84, "name", "food_name_bitter_beverage", admissionDetails(admission))
+    end
+    if containsAny(text, { "hops", "hopflower" }) then
+        return makeResult("FoodHerb", 0.86, "name", "food_name_hops", admissionDetails(admission))
+    end
+    if containsAny(text, { "ryesheaf", "wheatsheaf" }) then
+        return makeResult("FoodLivestock", 0.86, "name", "food_name_animal_feed", admissionDetails(admission))
+    end
+    if containsAny(text, { "leech", "tadpole", "ladybug" }) then
+        return makeResult("FoodInsect", 0.86, "name", "food_name_fishing_bait", admissionDetails(admission))
+    end
+    if contains(itemId, "seedpaste") then
+        return makeResult("FoodSeed", 0.84, "name", "food_name_seed_paste", admissionDetails(admission))
+    end
+    if itemId == "gum" or containsAny(itemId, { "gummy", "fries", "frozen_frenchfries", "frozen_tatodots", "popcorn" }) then
+        return makeFoodResult(perishablePrefix(ctx), "Snack", 0.84, "name", "food_name_snack", admission)
+    end
+    if containsAny(itemId, { "coneicecream", "fudgeepop", "creamocle", "popsicle", "icecreamsandwich" }) then
+        return makeFoodResult(perishablePrefix(ctx), "Candy", 0.84, "name", "food_name_frozen_treat", admission)
+    end
+    if containsAny(itemId, {
+        "burritorecipe", "hotdogpack", "maki", "onigiri", "perogies", "springroll",
+        "sushiegg", "tacorecipe",
+    }) then
+        return makeFoodResult(perishablePrefix(ctx), "Meal", 0.84, "name", "food_name_prepared_meal", admission)
+    end
+    if containsAny(itemId, { "jellyroll", "smore", "tacoshell", "tortilla", "waffles", "cone" }) then
+        return makeFoodResult(perishablePrefix(ctx), "Baking", 0.84, "name", "food_name_baked_item", admission)
     end
     if contains(text, "gravymix") then
         return makeResult("FoodNonPerishableSauce", 0.87, "name", "food_name_sauce_mix", admissionDetails(admission))
@@ -572,14 +623,14 @@ local function tokenStage(ctx)
         return "Fruits", "food_token_fruits"
     end
     if containsAny(text, {
-        "beet", "broccoli", "cabbage", "carrot", "corn", "cucumber", "eggplant",
+        "beet", "broccoli", "cabbage", "carrot", "cucumber", "eggplant",
         "leek", "lettuce", "onion", "pea", "pepper", "potato", "radish",
         "tomato", "vegetable", "zucchini",
     }) then
         return "Vegetables", "food_token_vegetables"
     end
     if containsAny(text, {
-        "catfish", "crappie", "fish", "gar", "lobster", "roe", "salmon",
+        "catfish", "crappie", "fish", "aligatorgar", "alligatorgar", "lobster", "roe", "salmon",
         "sardine", "seafood", "shrimp", "trout",
     }) then
         return "Seafood", "food_token_seafood"

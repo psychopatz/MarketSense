@@ -67,7 +67,9 @@ local BLTOK_TO_CAT = {
     ears="AccessoryHead", eartop="AccessoryHead",
     mask="AccessoryFace", maskeyes="AccessoryFace", maskfull="AccessoryFace",
     eyes="AccessoryFace", nose="AccessoryFace", lefteye="AccessoryFace",
-    righteye="AccessoryFace", makeup="AccessoryFace", scba="AccessoryFace",
+    righteye="AccessoryFace", makeup="AccessoryFace", makeupeyes="AccessoryFace",
+    makeupeyesshadow="AccessoryFace", makeuplips="AccessoryFace",
+    makeupfullface="AccessoryFace", scba="AccessoryFace",
 }
 
 local function hasTag(ctx, token)

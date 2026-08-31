@@ -32,12 +32,16 @@ local function isSeedPacket(ctx)
     local lootType = ctx.lootTypeLower or ""
     local seedNamed = containsAny(itemId, { "bagseed", "seedpacket", "seed" })
         or containsAny(displayName, { "bag seed", "seed packet" })
+    local feedTuft = hasTag(ctx, "farmingloot") and ctx.isCantEat == true
+        and containsAny(itemId, { "grasstuft", "haytuft" })
 
     return displayCategory == "gardening"
         or hasTag(ctx, "seedpacket")
         or hasTag(ctx, "seed")
         or contains(lootType, "seed")
+        or feedTuft
         or (seedNamed and displayCategory == "drugs")
+        or (displayCategory == "drugs" and contains(itemId, "spores"))
         or (seedNamed and ctx.isCraftRecipeProduct == true
             and containsAny(itemId, { "bagseed", "seedpacket" }))
 end
@@ -67,6 +71,19 @@ function Signature.match(ctx)
     end
     local itemId = ctx.idLower or ""
     local displayName = ctx.displayNameLower or ""
+
+    if hasTag(ctx, "farmingloot") and ctx.isCantEat == true
+        and contains(itemId, "haytuft") then
+        return TagMapper.makeResult("BuildingAgricultureHay", 0.90, {
+            source = "gardening_feed_hay",
+        })
+    end
+    if hasTag(ctx, "farmingloot") and ctx.isCantEat == true
+        and contains(itemId, "grasstuft") then
+        return TagMapper.makeResult("BuildingAgricultureHay", 0.90, {
+            source = "gardening_feed_grass",
+        })
+    end
 
     if containsAny(itemId, { "gardeningspray", "pestcontrol", "insecticide", "molluscide" })
         or containsAny(displayName, { "garden spray", "pest control", "insecticide" }) then
@@ -98,7 +115,7 @@ function Signature.match(ctx)
             source = "gardening_plant_decor_name",
         })
     end
-    if containsAny(itemId, { "poppypods", "sunflowerheaddried" }) then
+    if containsAny(itemId, { "poppies", "poppypods", "sunflowerhead", "sunflowerheaddried" }) then
         return TagMapper.makeResult("GardeningHarvest", 0.88, {
             source = "gardening_harvest_name",
         })
@@ -122,7 +139,7 @@ function Signature.match(ctx)
     end
     if isSeed(ctx) or (ctx.lootTypeLower or ""):find("seed")
         or ((ctx.displayCategoryToken or "") == "drugs"
-            and contains(ctx.idLower or "", "seed")) then
+            and containsAny(ctx.idLower or "", { "seed", "spores" })) then
         return TagMapper.makeResult("GardeningSeed", 0.90, { source = "gardening_seed" })
     end
     return TagMapper.makeResult("Gardening", 0.85, { source = "gardening_display" })

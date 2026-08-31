@@ -71,6 +71,11 @@ function Signature.match(ctx)
     local disp = ctx.displayCategoryToken or ""
     local isTool = TOOL_DISP_CATS[disp]
         or hasTag(ctx, "sharpenable")
+        or (disp == "drugs" and (hasTag(ctx, "grinder") or hasTag(ctx, "grinderkief")))
+        or (disp == "drugs" and containsAny(ctx.idLower or "", {
+            "hotplate", "beaker", "coffeefilter", "roundflask",
+            "volumetricflask", "pyrexdishempty",
+        }))
         or (itemTypeIs(ctx, "weapon") and not hasTag(ctx, "firearm") and not hasTag(ctx, "nomaintenancexp"))
 
     if not isTool then return { matched = false, confidence = 0 } end
@@ -92,7 +97,7 @@ function Signature.match(ctx)
         { { "blowtorch", "blow_torch" }, "ToolWelding", "tool_welding_name" },
         { { "steelwool", "straightrazor", "razor", "scissors", "scalpel", "rubberhose" }, "ToolMaintenance", "tool_maintenance_name" },
         { { "oilpress" }, "ToolFarming", "tool_farming_name" },
-        { { "bullhorn", "funnel", "heavychain", "chain_hook", "hook" }, "ToolUtility", "tool_utility_name" },
+        { { "bullhorn", "funnel", "heavychain", "chain_hook", "hook", "grinder", "hotplate", "beaker", "coffeefilter", "roundflask", "volumetricflask", "pyrexdish" }, "ToolUtility", "tool_utility_name" },
     }
     for _, entry in ipairs(namedTools) do
         if containsAny(text, entry[1]) then

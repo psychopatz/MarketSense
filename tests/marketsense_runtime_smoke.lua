@@ -10,6 +10,8 @@ local build = assert(T.load("MarketSense/ItemsRegistry/MS_ItemsRegistry_Build.lu
 
 T.equal(shared.Registry.FILE_SCHEMA, "MS_ITEMS_V1", "standalone cache schema")
 T.equal(shared.Registry.ROOT_FOLDER, "MS_Items", "standalone cache folder")
+T.falsy(shared.Registry.WRITE_PREBUILD_AUDIT,
+    "prebuild JSON audit is opt-in; TXT remains the runtime catalog")
 
 T.truthy(runtimeRules.apply({
     overridesById = {

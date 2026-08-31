@@ -1,13 +1,21 @@
 # MarketSense subcategory implementation report — Project Zomboid 42.20
 
-Date: 2026-08-30
+Date: 2026-08-31
 Scope: `MarketSense` Lua classifier, TagMapper taxonomy, focused fixtures, and verification tooling.
 
 ## Outcome
 
 The 42.20 subcategory pass is implemented without changing Dynamic Trading, public MarketSense APIs, pricing, availability authority, liquid/container separation, or the existing override/blacklist/whitelist behavior.
 
-The final real-Lua scan evaluated 5,403 item definitions with zero evaluator errors. Availability was unchanged from the audit baseline: 4,471 obtainable, 723 uncertain, and 209 excluded. No excluded item was market-eligible.
+The final real-Lua scan evaluated 5,403 item definitions with zero evaluator errors. Availability was 4,479 obtainable, 715 uncertain, and 209 excluded. No excluded item was market-eligible.
+
+## Follow-up audit
+
+The uncached follow-up scan rechecked every resolved root and subcategory. The final root counts were Building 524, Clothing 1,299, Container 326, Electronics 124, Food 679, Liquid 73, Literature 540, Medical 88, Misc 452, Resource 534, Tool 326, and Weapon 438. The classifier produced zero errors and the runtime/static availability check matched all 5,403 rows.
+
+The generic/default candidate count fell from 204 to 160. The remaining 160 rows are bounded and intentional: 137 excluded clothing body/debug states, 9 uncertain Dynamic Trading quest objects, 2 obtainable memento albums, 1 uncertain moveable placeholder, and 11 Misc rows consisting of hidden base placeholders, patch-only KeyRinger definitions, one uncertain vehicle placeholder, and three ambiguous N&C packaging/guide states (`NnC.Baggie`, `NnC.MethLabCaseUnopened`, and `NnC.MethLabFlyer`).
+
+The N&C pass now routes weed and kief products to Smoking, tagged or sniffed drug consumables and explicit processing materials to Chemical, laboratory vessels and grinders to Tool Utility, and mushroom spores to Gardening Seed. Ambiguous package/guide states remain generic because their item scripts do not expose a reliable market subtype.
 
 ## Implemented changes
 

@@ -109,6 +109,11 @@ local function isGenericFoodResult(result)
         or primary == "FoodNoExplicit"
 end
 
+local function hasExplicitFoodType(ctx)
+    local foodType = ctx.foodTypeToken or ""
+    return foodType ~= "" and foodType ~= "noexplicit"
+end
+
 local function canUseAnimalRemainsLabel(ctx, result)
     local displayCategory = ctx.displayCategoryToken or ""
     local itemType = ctx.itemTypeToken or ""
@@ -234,7 +239,8 @@ local function isSmokingCue(ctx, text)
         or containsAny(text, {
             "joint", "spliff", "blunt", "bong", "smokingpipe", "smoking pipe",
             "canpipe", "cannagar", "cigarillo", "cigaretterolled", "weedpipe",
-            "crackpipe", "hookah",
+            "crackpipe", "hookah", "weed", "kief", "cannabis", " flower",
+            "flower", "cured", "curing",
         }, hits)
     return matched, hits
 end
@@ -306,10 +312,17 @@ function Resolver.correct(ctx, result)
     end
 
     hits = {}
-    if containsAny(text, {
+    local cosmeticTerms = {
         "makeup", "eyeshadow", "lipstick", "mascara", "foundation", "blush", "rouge",
-        "ratpoison", "poison",
-    }, hits) then
+    }
+    local cosmeticAppearance = containsAny(text, cosmeticTerms, hits)
+        and ((ctx.displayCategoryToken or "") == "appearance"
+            or (ctx.itemTypeToken or "") == "clothing"
+            or (ctx.itemTypeToken or "") == "container")
+    local householdRatPoison = (ctx.displayCategoryToken or "") == "household"
+        and containsAny(text, { "ratpoison" }, hits)
+    if not cosmeticAppearance and not householdRatPoison
+        and containsAny(text, { "poison" }, hits) then
         addCandidate(candidates, "MaterialChemical", 114, 0.98, "reroute_root", "label_chemical", hits)
     end
 
@@ -332,18 +345,29 @@ function Resolver.correct(ctx, result)
         addCandidate(candidates, "LiteratureRecipe", 108, 0.96, "reroute_root", "label_recipe_resource", hits)
     end
 
-    if isDrugDisplay(ctx) then
+    if isDrugDisplay(ctx) and ((result.category or "") == "Misc" or foodLike) then
         local smokingLike, smokingHits = isSmokingCue(ctx, text)
         if smokingLike then
             addCandidate(candidates, "Smoking", 106, 0.97, "reroute_root", "label_drug_smoking", smokingHits)
         else
             hits = {}
-            if ctx.isCantEat == true
-                and not ctx.hasFoodNutritionEvidence
-                and not ctx.hasFoodRecipeEvidence
+            local drainableDrug = ctx.isDrainable == true
+                or (ctx.itemTypeToken or "") == "drainable"
+            local namedDrugMaterial = containsAny(text, {
+                "cokebrick", "muriaticacid", "diethylether", "methcowffeebox",
+            }, hits)
+            local cantEatDrugMaterial = ctx.isCantEat == true
                 and containsAny(text, {
-                    "crack", "meth", "heroin", "cocaine", "paste", "mirror", "spoon",
-                }, hits) then
+                    "crack", "cocaine", "heroin", "fentanyl", "opium",
+                    "lsd", "mdma", "mushroombaggie", "methadone", "narcan",
+                    "oxycodone", "ritalin", "speed", "steroid", "valium", "xanax",
+                    "methpyrexdish",
+                }, hits)
+            local drugConsumable = (ctx.eatTypeLower or "") == "sniff"
+                or (drainableDrug and hasTagAlias(ctx, "consumable"))
+            if (drugConsumable or namedDrugMaterial or cantEatDrugMaterial)
+                and not ctx.hasFoodNutritionEvidence
+                and not ctx.hasFoodRecipeEvidence then
                 addCandidate(candidates, "MaterialChemical", 104, 0.95, "reroute_root", "label_drug_material", hits)
             end
 
@@ -362,6 +386,10 @@ function Resolver.correct(ctx, result)
 
     if foodLike and admittedFood and tostring(result.primary or "") ~= "FoodModSpecific" then
         local currentPrimary = tostring(result.primary or "")
+        -- A parsed FoodType is engine-level taxonomy. Name/recipe text can
+        -- still refine NoExplicit items, but must not override an explicit
+        -- type merely because an evolved recipe contains another food name.
+        local explicitFoodType = hasExplicitFoodType(ctx)
 
         if containsAny(ctx.doubleClickRecipeLower or "", { "openboxofwine", "openpackofbeer" }, hits) then
             addCandidate(candidates, "BeverageBox", 90, 0.94, "refine_leaf", "label_beverage_box", hits)
@@ -384,8 +412,7 @@ function Resolver.correct(ctx, result)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "herb"
-            or containsAny(text, {
+        if not explicitFoodType and containsAny(text, {
                 "basil", "chamomile", "chives", "cilantro", "cinnamon", "lavender",
                 "lemongrass", "lemon grass", "marigold", "mint", "oregano",
                 "parsley", "rosemary", "sage", "thyme", "ginger",
@@ -394,20 +421,17 @@ function Resolver.correct(ctx, result)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "stock"
-            or containsAny(text, { "bouillon", "broth", "stock" }, hits) then
+        if not explicitFoodType and containsAny(text, { "bouillon", "broth", "stock" }, hits) then
             addCandidate(candidates, "FoodStock", 84, 0.94, "refine_leaf", "label_food_stock", hits)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "petfood"
-            or containsAny(text, { "catfood", "dogfood", "treats", "pet food" }, hits) then
+        if not explicitFoodType and containsAny(text, { "catfood", "dogfood", "treats", "pet food" }, hits) then
             addCandidate(candidates, "FoodPetFood", 84, 0.94, "refine_leaf", "label_food_pet", hits)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "staple"
-            or containsAny(text, {
+        if not explicitFoodType and containsAny(text, {
                 "cereal", "oatmeal", "oats", "oat ", "barley", "cornmeal", "cornflour",
                 "rice", "pasta", "bean", "beans", "flour",
             }, hits) then
@@ -415,75 +439,69 @@ function Resolver.correct(ctx, result)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "spice"
-            or (ctx.foodTypeToken or "") == "salt"
-            or ((ctx.isSpice == true or currentPrimary == "FoodSpice")
-                and containsAny(text, {
+        if not explicitFoodType and (ctx.isSpice == true or currentPrimary == "FoodSpice")
+            and containsAny(text, {
                     "seasoning", "salt", "pepper", "powderedgarlic", "powderedonion",
                     "sauce", "paste", "vinegar", "sesameoil", "soy", "wasabi",
-                }, hits)) then
+                }, hits) then
             addCandidate(candidates, "FoodSpice", 82, 0.92, "refine_leaf", "label_food_spice", hits)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "candy"
-            or containsAny(text, {
-                "allsorts", "candy", "candies", "candycane", "caramel", "gummy",
+        if not explicitFoodType and containsAny(text, {
+            "allsorts", "candy", "candies", "candycane", "caramel", "gummy",
                 "gummies", "jellybean", "jellybeans", "licorice", "lollipop",
-                "modjeska", "peppermint", "rockcandy", "hardcand", "jujube",
-            }, hits) then
+            "modjeska", "peppermint", "rockcandy", "hardcand", "jujube",
+            "icecream", "ice cream", "popsicle", "fudgeepop", "creamocle",
+        }, hits) then
             addCandidate(candidates, foodKindToken(ctx, result, "Candy"), 82, 0.92, "refine_leaf", "label_food_candy", hits)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "baking"
-            or containsAny(text, {
-                "batter", "dough", "bakingsoda", "baking soda", "yeast", "cocoa",
-                "cake", "muffin", "cookiedough", "browniepan",
-            }, hits) then
+        if not explicitFoodType and containsAny(text, {
+            "batter", "dough", "bakingsoda", "baking soda", "yeast", "cocoa",
+            "cake", "muffin", "cookie", "cookiedough", "browniepan",
+        }, hits) then
             addCandidate(candidates, foodKindToken(ctx, result, "Baking"), 81, 0.91, "refine_leaf", "label_food_baking", hits)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "bread"
-            or containsAny(text, {
-                "bread", "bagel", "baguette", "bun", "croissant", "toast",
-                "painauchocolat", "danish",
-            }, hits) then
+        if not explicitFoodType and containsAny(text, {
+            "bread", "bagel", "baguette", "bun", "croissant", "toast",
+            "painauchocolat", "danish",
+        }, hits) then
             addCandidate(candidates, foodKindToken(ctx, result, "Bread"), 81, 0.91, "refine_leaf", "label_food_bread", hits)
         end
 
         hits = {}
-        if (ctx.foodTypeToken or "") == "cheese"
-            or (ctx.foodTypeToken or "") == "dairy"
-            or containsAny(text, { "butter", "cheese", "milkpowder", "milk powder" }, hits) then
+        if not explicitFoodType and containsAny(text, { "butter", "cheese", "milkpowder", "milk powder" }, hits) then
             addCandidate(candidates, foodKindToken(ctx, result, "Dairy"), 81, 0.91, "refine_leaf", "label_food_dairy", hits)
         end
 
         hits = {}
         if containsAny(text, {
             "crisps", "chips", "tortillachips", "jerky", "cracker", "pretzel", "snack",
-        }, hits) then
+        }, hits) and not explicitFoodType then
             addCandidate(candidates, foodKindToken(ctx, result, "Snack"), 80, 0.90, "refine_leaf", "label_food_snack", hits)
         end
 
         hits = {}
-        if containsAny(text, {
+        if not explicitFoodType and containsAny(text, {
             "apple", "banana", "berry", "fruit", "peach", "pear", "pineapple", "grape",
         }, hits) then
             addCandidate(candidates, foodKindToken(ctx, result, "Fruits"), 78, 0.89, "refine_leaf", "label_food_fruits", hits)
         end
 
         hits = {}
-        if containsAny(text, {
-            "carrot", "tomato", "broccoli", "cabbage", "corn", "eggplant", "leek",
+        if not explicitFoodType and containsAny(text, {
+            "carrot", "tomato", "broccoli", "cabbage", "cucumber", "eggplant", "leek",
             "pea", "potato", "vegetable", "avocado", "pepper", "capers", "olive",
         }, hits) then
             addCandidate(candidates, foodKindToken(ctx, result, "Vegetables"), 78, 0.89, "refine_leaf", "label_food_vegetables", hits)
         end
 
         hits = {}
-        if containsAny(text, {
+        if not explicitFoodType and containsAny(text, {
             "fish", "roe", "sardine", "seafood", "shrimp", "lobster", "trout", "oyster",
             "mussel",
         }, hits) then
@@ -491,7 +509,7 @@ function Resolver.correct(ctx, result)
         end
 
         hits = {}
-        if containsAny(text, {
+        if not explicitFoodType and containsAny(text, {
             "beef", "meat", "pork", "chicken", "steak", "sausage", "venison", "bacon",
             "ham", "baloney", "mutton",
         }, hits) then

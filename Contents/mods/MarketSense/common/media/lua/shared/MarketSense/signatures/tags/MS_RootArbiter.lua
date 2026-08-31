@@ -78,6 +78,12 @@ local function materialRoot(ctx)
     local fluidCategory = ctx.fluidCategoryLower or ""
     local replaceOnDeplete = ctx.replaceOnDepleteLower or ""
 
+    -- CorpseAnimal is exposed as a food item so it can participate in bait
+    -- and spoilage systems, but its market role is butchering material.
+    if displayCategory == "corpse" or hasTagAlias(ctx, "animalcorpse") then
+        return resolved("Resource", "root_material_animal_corpse")
+    end
+
     -- PZ uses MaterialWeapon for bars, stone, wood blanks and other craft
     -- stock that happens to inherit weapon fields.  The display category is
     -- the authoritative root signal; do not let damage/category metadata
@@ -208,7 +214,13 @@ local function toolRoot(ctx)
     if displayCategory == "tool" or displayCategory == "tools"
         or lootType == "tool"
         or hasTagAlias(ctx, "smokable")
-        or hasTagAlias(ctx, "cookware") then
+        or hasTagAlias(ctx, "cookware")
+        or (displayCategory == "drugs"
+            and (hasTagAlias(ctx, "grinder") or hasTagAlias(ctx, "grinderkief")
+                or containsAny(ctx.idLower or "", {
+                    "hotplate", "beaker", "coffeefilter", "roundflask",
+                    "volumetricflask", "pyrexdishempty",
+                }))) then
         return resolved("Tool", "root_tool")
     end
     return nil
@@ -265,8 +277,14 @@ local function buildingRoot(ctx)
         or hasTagAlias(ctx, "seed")
         or contains(lootType, "seed")
         or (seedNamed and displayCategory == "drugs")
+        or (displayCategory == "drugs" and contains(itemId, "spores"))
         or (seedNamed and (ctx.isCraftRecipeProduct == true)
             and containsAny(itemId, { "bagseed", "seedpacket" }))
+
+    if hasTagAlias(ctx, "farmingloot") and ctx.isCantEat == true
+        and containsAny(itemId, { "grasstuft", "haytuft" }) then
+        return resolved("Building", "root_building_farming_feed")
+    end
 
     if displayCategory == "gardening" or hasTagAlias(ctx, "iscompostable")
         or seedEvidence then

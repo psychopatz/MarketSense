@@ -105,7 +105,8 @@ function Signature.match(ctx)
     end
     if hasTag(ctx, "purifywater") or hasTag(ctx, "respiratorfilter")
         or hasTag(ctx, "gasmaskfilter") or hasTag(ctx, "oxygentank")
-        or containsAny(text, { "waterpurification", "respiratorfilter", "gasmaskfilter", "insectrepellent", "oxygen_tank", "extinguisher" }) then
+        or hasTag(ctx, "ragfilter")
+        or containsAny(text, { "waterpurification", "respiratorfilter", "gasmaskfilter", "insectrepellent", "oxygen_tank", "extinguisher", "ratpoison" }) then
         return result(ctx, "MiscSafety", 0.93, "misc_safety_tag_or_name")
     end
     if displayCategory == "household" or displayCategory == "appearance"

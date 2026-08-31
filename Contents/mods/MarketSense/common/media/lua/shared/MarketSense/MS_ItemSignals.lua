@@ -84,6 +84,15 @@ function Signals.electronicsToken(ctx)
     local text = Signals.text(ctx)
     local visual = visualText(ctx)
     local moveable = Signals.isMoveable(ctx)
+    -- Vehicle batteries are exposed by PZ as weapon-shaped definitions
+    -- (they carry a small native damage value), but they are market
+    -- electronics.  Admit the strong battery name signal before the root
+    -- arbiter reaches weaponRoot.  Keep chargers in the mechanics/tool
+    -- branch: the charger is an appliance/tool, not a battery stock item.
+    local batterySignal = containsAny(text, { "battery", "batteries" })
+    local batteryStock = batterySignal and not containsAny(text, {
+        "battery charger", "batterycharger", "battery_charger",
+    })
     if displayCategory == "weaponpart" or itemType == "weaponpart" then
         return nil
     end
@@ -99,6 +108,7 @@ function Signals.electronicsToken(ctx)
             "satellite", "tvcamera", "amplifier",
         }))
         or behaviorElectronic
+        or batteryStock
 
     if not hasElectronicAdmission then
         return nil
@@ -120,7 +130,7 @@ function Signals.electronicsToken(ctx)
         or (displayCategory == "lightsource" and containsAny(visual, { "flashlight", "penlight" })) then
         return { token = "ElectronicsFlashlight", confidence = 0.94, source = "electronics_flashlight" }
     end
-    if containsAny(text, { "battery" }) then
+    if batterySignal then
         return { token = "ElectronicsBattery", confidence = 0.95, source = "electronics_battery" }
     end
     if containsAny(text, { "transmitter" }) then
