@@ -67,6 +67,7 @@ local function collectFoodAuditEntry(ctx, tagInfo, primary, fileEntry)
         carbohydrates = ctx.carbohydrates,
         lipids = ctx.lipids,
         proteins = ctx.proteins,
+        foodVariantEvidence = ctx.foodVariantEvidence,
         daysFresh = ctx.daysFresh,
         daysRotten = ctx.daysRotten,
         foodDaysFresh = ctx.foodDaysFresh,
@@ -131,6 +132,14 @@ local function serializeFoodAudit(entries)
         jsonField(lines, "carbohydrates", jsonNumber(entry.carbohydrates))
         jsonField(lines, "lipids", jsonNumber(entry.lipids))
         jsonField(lines, "proteins", jsonNumber(entry.proteins))
+        local variantEvidence = entry.foodVariantEvidence or {}
+        jsonField(lines, "foodVariantStatus", Shared.jsonString(variantEvidence.status))
+        jsonField(lines, "foodVariantSource", Shared.jsonString(variantEvidence.sourceFullType))
+        jsonField(lines, "foodVariantRelation", Shared.jsonString(variantEvidence.relation))
+        jsonField(lines, "foodVariantConfidence", jsonNumber(variantEvidence.confidence))
+        jsonField(lines, "foodVariantFields", jsonArray(variantEvidence.fields))
+        jsonField(lines, "foodVariantCandidateCount", jsonNumber(#(variantEvidence.candidates or {})))
+        jsonField(lines, "foodVariantConflictCount", jsonNumber(#(variantEvidence.conflicts or {})))
         jsonField(lines, "daysFresh", jsonNumber(entry.daysFresh))
         jsonField(lines, "daysRotten", jsonNumber(entry.daysRotten))
         jsonField(lines, "foodDaysFresh", jsonNumber(entry.foodDaysFresh))
@@ -261,87 +270,192 @@ function Build.buildLiveEntry(fullType, itemData, sourceOrigin, category, primar
     }
 end
 
-function Build.collectGeneratedItems()
+local function liveItems()
+    if type(getAllItems) ~= "function" then return nil end
+    return getAllItems()
+end
+
+local function collectionSize(collection)
+    if collection == nil then return 0 end
+    if type(collection) == "table" then
+        if type(collection.size) == "function" then
+            local value = collection.size(collection)
+            return math.max(0, tonumber(value) or 0)
+        end
+        return #collection
+    end
+    local size = collection.size
+    if type(size) == "function" then
+        local value = size(collection)
+        return math.max(0, tonumber(value) or 0)
+    end
+    return 0
+end
+
+local function collectionValue(collection, index)
+    if collection == nil then return nil end
+    local get = collection.get
+    if type(get) == "function" then
+        return get(collection, index)
+    end
+    if type(collection) == "table" then
+        return collection[index + 1]
+    end
+    return nil
+end
+
+local function timestampMs()
+    if type(getTimestampMs) ~= "function" then return nil end
+    return tonumber(getTimestampMs())
+end
+
+local function budgetReached(startedAt, maxMs, processed, maxItems)
+    if processed >= maxItems then return true end
+    if startedAt == nil or maxMs == nil then return false end
+    local now = timestampMs()
+    return now ~= nil and now - startedAt >= maxMs
+end
+
+local function initializeRuntimeRules()
     local runtimeRules = Shared.ensureRuntimeRules()
     if runtimeRules and runtimeRules.loadFromFile then
         runtimeRules.loadFromFile(false)
     end
+    return runtimeRules
+end
 
-    local ok, allItems = pcall(function()
-        return getAllItems and getAllItems() or nil
-    end)
+function Build.getLiveItems()
+    return liveItems()
+end
 
-    if not ok or allItems == nil then
-        return {}
+function Build.getLiveItemCount()
+    return collectionSize(liveItems())
+end
+
+function Build.beginGeneration(allItems)
+    allItems = allItems or liveItems()
+    if allItems == nil then
+        return {
+            allItems = nil,
+            total = 0,
+            index = 0,
+            generated = {},
+            phase = "done",
+            done = true,
+            invalid = true,
+        }
     end
 
-    -- Build the acquisition index from live PZ item state before applying any
-    -- market heuristics.  This is the authoritative market-entry gate; the
-    -- offline Python tool only audits the result against source evidence.
-    Availability.rebuild(allItems)
+    local job = {
+        allItems = allItems,
+        total = collectionSize(allItems),
+        index = 0,
+        generated = {},
+        foodAudit = Registry.WRITE_PREBUILD_AUDIT and {} or nil,
+        phase = "availability",
+        done = false,
+        runtimeRules = initializeRuntimeRules(),
+    }
+    job.availabilityJob = Availability.beginRebuild(allItems)
+    return job
+end
 
-    local generated = {}
-    local foodAudit = Registry.WRITE_PREBUILD_AUDIT and {} or nil
-    for index = 0, allItems:size() - 1 do
-        local scriptItem = allItems:get(index)
-        local ctx = MarketSense.PropertyReader.buildContext(scriptItem)
-        if ctx and ctx.fullType and ctx.fullType ~= "" then
-            local syntheticSkip, syntheticReason = Shared.shouldSkipSyntheticContext(ctx)
-            local availability = Availability.get(ctx.fullType)
-            local availabilitySkip = availability.status ~= "obtainable"
-            local skip = syntheticSkip
-                or availabilitySkip
-                or (runtimeRules and runtimeRules.shouldSkip and runtimeRules.shouldSkip(ctx.fullType) or false)
-            if not skip then
-                local tagInfo = MarketSense.AutoTag.generate(ctx)
-                local baseData = {
-                    item = ctx.fullType,
-                    basePrice = Shared.getBasePrice(ctx, tagInfo),
-                    tags = TagUtils.unique(tagInfo.tags or { tagInfo.primary }),
-                    stockRange = Shared.getBaseStock(ctx),
-                }
-                local liveData = Build.applyRuntimeOverride(ctx.fullType, baseData, runtimeRules)
-                local primary = Shared.getPrimaryTag(liveData.tags)
-                local fileEntry = Shared.toFileEntry(primary, liveData.tags)
-                local origin = Shared.getOriginFromContext(ctx)
-                if foodAudit then
-                    local auditEntry = collectFoodAuditEntry(ctx, tagInfo, primary, fileEntry)
-                    if auditEntry then
-                        foodAudit[#foodAudit + 1] = auditEntry
-                    end
-                end
+local function collectOneItem(job, scriptItem)
+    local ctx = MarketSense.PropertyReader.buildContext(scriptItem)
+    if not ctx or not ctx.fullType or ctx.fullType == "" then return end
 
-                generated[ctx.fullType] = {
-                    item = ctx.fullType,
-                    basePrice = tonumber(liveData.basePrice) or Shared.getBasePrice(ctx, tagInfo),
-                    tags = TagUtils.unique(liveData.tags or { primary }),
-                    stockRange = {
-                        min = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.min) or 0),
-                        max = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.max) or 0),
-                    },
-                    availability = availability,
-                    origin = origin,
-                    root = fileEntry.root,
-                    category = fileEntry.category,
-                    subcategory = fileEntry.subcategory,
-                    leaf = fileEntry.leaf,
-                    primary = primary,
-                    primaryPrefix = fileEntry.primaryPrefix,
-                    path = fileEntry.path,
-                }
-            else
-                local reason = syntheticSkip and (syntheticReason or "synthetic")
-                    or availabilitySkip and (availability.reason or availability.status)
-                    or "runtime rule"
-                Shared.debugLog("Skipped item during MarketSense catalog generation: " .. tostring(ctx.fullType) .. " (" .. tostring(reason) .. ")")
+    local syntheticSkip, syntheticReason = Shared.shouldSkipSyntheticContext(ctx)
+    local availability = Availability.get(ctx.fullType)
+    local availabilitySkip = availability.status ~= "obtainable"
+    local runtimeRules = job.runtimeRules
+    local skip = syntheticSkip
+        or availabilitySkip
+        or (runtimeRules and runtimeRules.shouldSkip and runtimeRules.shouldSkip(ctx.fullType) or false)
+    if skip then
+        local reason = syntheticSkip and (syntheticReason or "synthetic")
+            or availabilitySkip and (availability.reason or availability.status)
+            or "runtime rule"
+        Shared.debugLog("Skipped item during MarketSense catalog generation: " .. tostring(ctx.fullType) .. " (" .. tostring(reason) .. ")")
+        return
+    end
+
+    local tagInfo = MarketSense.AutoTag.generate(ctx)
+    local baseData = {
+        item = ctx.fullType,
+        basePrice = Shared.getBasePrice(ctx, tagInfo),
+        tags = TagUtils.unique(tagInfo.tags or { tagInfo.primary }),
+        stockRange = Shared.getBaseStock(ctx),
+    }
+    local liveData = Build.applyRuntimeOverride(ctx.fullType, baseData, runtimeRules)
+    local primary = Shared.getPrimaryTag(liveData.tags)
+    local fileEntry = Shared.toFileEntry(primary, liveData.tags)
+    local origin = Shared.getOriginFromContext(ctx)
+    if job.foodAudit then
+        local auditEntry = collectFoodAuditEntry(ctx, tagInfo, primary, fileEntry)
+        if auditEntry then job.foodAudit[#job.foodAudit + 1] = auditEntry end
+    end
+
+    job.generated[ctx.fullType] = {
+        item = ctx.fullType,
+        basePrice = tonumber(liveData.basePrice) or Shared.getBasePrice(ctx, tagInfo),
+        tags = TagUtils.unique(liveData.tags or { primary }),
+        stockRange = {
+            min = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.min) or 0),
+            max = math.max(0, tonumber(liveData.stockRange and liveData.stockRange.max) or 0),
+        },
+        availability = availability,
+        origin = origin,
+        root = fileEntry.root,
+        category = fileEntry.category,
+        subcategory = fileEntry.subcategory,
+        leaf = fileEntry.leaf,
+        primary = primary,
+        primaryPrefix = fileEntry.primaryPrefix,
+        path = fileEntry.path,
+    }
+end
+
+function Build.stepGeneration(job, maxItems, maxMs)
+    if type(job) ~= "table" or job.done then return true end
+    maxItems = math.max(1, math.floor(tonumber(maxItems) or 1))
+    maxMs = tonumber(maxMs)
+    local startedAt = maxMs and timestampMs() or nil
+
+    if job.phase == "availability" then
+        if not Availability.stepRebuild(job.availabilityJob, maxItems, maxMs) then
+            return false
+        end
+        job.phase = "items"
+        return false
+    end
+
+    if job.phase == "items" then
+        local processed = 0
+        while job.index < job.total and not budgetReached(startedAt, maxMs, processed, maxItems) do
+            local scriptItem = collectionValue(job.allItems, job.index)
+            job.index = job.index + 1
+            processed = processed + 1
+            if scriptItem ~= nil then
+                collectOneItem(job, scriptItem)
             end
         end
+        if job.index < job.total then return false end
+        if job.foodAudit then
+            IO.writeFile(Registry.AUDIT_PATH, serializeFoodAudit(job.foodAudit))
+        end
+        job.phase = "done"
+        job.done = true
+        return true
     end
 
-    if foodAudit then
-        IO.writeFile(Registry.AUDIT_PATH, serializeFoodAudit(foodAudit))
-    end
-    return generated
+    job.done = true
+    return true
+end
+
+function Build.collectGeneratedItems()
+    local job = Build.beginGeneration()
+    while not Build.stepGeneration(job, math.max(1, job.total)) do end
+    return job.generated
 end
 
 function Build.mergeStoredAndGenerated(storedItems, generatedItems, activeState)
@@ -464,6 +578,7 @@ function Build.writeGroupedFiles(grouped, activeState, sourceManifestHash)
         generatorVersion = Registry.GENERATOR_VERSION,
         signatureVersion = Registry.SIGNATURE_VERSION,
         pricingHeuristicVersion = Registry.PRICING_HEURISTIC_VERSION,
+        pricingConfigHash = Shared.buildPricingConfigHash(),
         gameVersion = activeState.gameVersion,
         sourceManifestHash = tostring(sourceManifestHash or Shared.stableHash({
             tostring(activeState and activeState.activeModsHash or ""),

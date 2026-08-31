@@ -5,8 +5,25 @@ local function demandText(value)
         return string.format("%.2f", tonumber(value) or 0)
     end
 
-local function formatFood(heuristic)
+local function foodVariantText(heuristic)
+        local evidence = heuristic and heuristic.foodVariantEvidence
+        if type(evidence) ~= "table" then return "" end
+        local status = tostring(evidence.status or "")
+        if status == "" or status == "not_detected" or status == "not_applicable" then
+            return ""
+        end
         return string.format(
+            " | variant=%s[%s] | nutrition=cal:%s carb:%s fat:%s protein:%s",
+            tostring(evidence.sourceFullType or "?"),
+            tostring(evidence.relation or status),
+            tostring(heuristic.calories ~= nil and heuristic.calories or "-"),
+            tostring(heuristic.carbohydrates ~= nil and heuristic.carbohydrates or "-"),
+            tostring(heuristic.lipids ~= nil and heuristic.lipids or "-"),
+            tostring(heuristic.proteins ~= nil and heuristic.proteins or "-"))
+    end
+
+local function formatFood(heuristic)
+        local result = string.format(
             "Pricing: %s | subtype=%s | role=%s | ration=%s | hunger=%s | thirst=%s | freshness=%s | yield=%s",
             tostring(heuristic.status or "unknown"),
             tostring(heuristic.subtype or "Food"),
@@ -16,6 +33,7 @@ local function formatFood(heuristic)
             demandText(heuristic.thirstChange),
             tostring(heuristic.freshnessState or "-"),
             tostring(heuristic.yieldStatus or "not_detected"))
+        return result .. foodVariantText(heuristic)
 end
 
 local function formatLiterature(heuristic)

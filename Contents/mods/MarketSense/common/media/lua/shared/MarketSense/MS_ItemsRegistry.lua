@@ -63,12 +63,21 @@ end
 function Registry.getAllKnown()
     local catalog = Registry.state and Registry.state.catalog
     if type(catalog) == "table" and type(catalog.items) == "table" then
-        return MarketSense.Core.deepCopy(catalog.items)
+        -- The catalog is immutable between registry commits. Build one
+        -- caller-owned row snapshot instead of deep-copying thousands of rows
+        -- on every debug-window refresh/search cycle.
+        if type(Registry.state.knownSnapshot) ~= "table" then
+            Registry.state.knownSnapshot = MarketSense.Core.deepCopy(catalog.items)
+        end
+        return MarketSense.Core.shallowCopy(Registry.state.knownSnapshot)
     end
 
     local masterList = MarketSense.Config and MarketSense.Config.MasterList
     if type(masterList) == "table" then
-        return MarketSense.Core.deepCopy(masterList)
+        if type(Registry.state.knownSnapshot) ~= "table" then
+            Registry.state.knownSnapshot = MarketSense.Core.deepCopy(masterList)
+        end
+        return MarketSense.Core.shallowCopy(Registry.state.knownSnapshot)
     end
 
     return {}

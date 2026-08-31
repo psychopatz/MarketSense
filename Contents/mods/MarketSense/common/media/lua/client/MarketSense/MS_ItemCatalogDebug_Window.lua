@@ -95,6 +95,26 @@ function MarketSenseItemCatalogDebugWindow:createChildren()
     self.statusText = nil
     self:requestResponsiveLayout(true)
     self:refreshCatalog()
+    self:startCatalogWatch()
+end
+
+function MarketSenseItemCatalogDebugWindow:startCatalogWatch()
+    if self.catalogWatchHandler or not Events or not Events.OnTick
+        or type(Events.OnTick.Add) ~= "function" then
+        return
+    end
+
+    local handler
+    handler = function()
+        local state = MarketSense and MarketSense.ItemsRegistry
+            and MarketSense.ItemsRegistry.state or nil
+        if not state or state.rebuildInProgress then return end
+        if state.catalog and state.catalog ~= self.catalogReference then
+            self:refreshCatalog()
+        end
+    end
+    self.catalogWatchHandler = handler
+    Events.OnTick.Add(handler)
 end
 
 function MarketSenseItemCatalogDebugWindow:onResponsiveLayout()
@@ -186,6 +206,9 @@ function MarketSenseItemCatalogDebugWindow:refreshCatalog()
         return leftName < rightName
     end)
     self:refreshVisibleItems()
+    local state = MarketSense and MarketSense.ItemsRegistry
+        and MarketSense.ItemsRegistry.state or nil
+    self.catalogReference = state and state.catalog or nil
 end
 
 function MarketSenseItemCatalogDebugWindow:queueVisibleRefresh()
@@ -370,6 +393,10 @@ function MarketSenseItemCatalogDebugWindow:close()
     if self.searchRefreshHandler and Events and Events.OnTick then
         Events.OnTick.Remove(self.searchRefreshHandler)
         self.searchRefreshHandler = nil
+    end
+    if self.catalogWatchHandler and Events and Events.OnTick then
+        Events.OnTick.Remove(self.catalogWatchHandler)
+        self.catalogWatchHandler = nil
     end
     self:setVisible(false)
     self:removeFromUIManager()

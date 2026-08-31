@@ -35,7 +35,15 @@ end
 
 function Debug.inspectItem(fullType, withAudit)
     local ctx     = PropReader.buildContext(fullType)
-    local details = Pricing.calculateDetails(ctx, withAudit ~= false)
+    local details
+    if type(MarketSense.GetPriceDetailsForContext) == "function" then
+        details = MarketSense.GetPriceDetailsForContext(ctx, withAudit ~= false)
+    elseif type(MarketSense.GetPriceDetails) == "function" then
+        details = MarketSense.GetPriceDetails(ctx.fullType, withAudit ~= false)
+    else
+        details = Pricing.calculateDetails(ctx, withAudit ~= false)
+    end
+    if type(details) ~= "table" then return nil end
     local availability = Availability and Availability.get and Availability.get(ctx.fullType) or nil
     local out = {
         fullType = ctx.fullType,
@@ -60,6 +68,9 @@ function Debug.inspectItem(fullType, withAudit)
         audit    = details.balanceAudit,
         availability = availability,
         marketEligible = availability and availability.status == "obtainable" or false,
+        foodFacts = ctx.foodFacts,
+        foodFactTrace = ctx.foodFactTrace,
+        foodVariantEvidence = ctx.foodVariantEvidence,
         worldObjectEvidence = ctx.worldObjectEvidence,
         capabilities = ctx.capabilities,
         capabilityRequirements = ctx.capabilityRequirements,

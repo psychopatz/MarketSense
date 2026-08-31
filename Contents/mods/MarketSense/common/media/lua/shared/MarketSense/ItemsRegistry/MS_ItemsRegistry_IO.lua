@@ -145,7 +145,7 @@ function IO.parseLuaTableFile(path)
             end
             local stringFields = {
                 "generatedAt", "activeModsHash", "signatureVersion",
-                "gameVersion", "sourceManifestHash",
+                "gameVersion", "sourceManifestHash", "pricingConfigHash",
             }
             for _, key in ipairs(stringFields) do
                 local value = readStringField(text, key)
@@ -172,6 +172,7 @@ function IO.serializeIndex(indexData)
         "    generatorVersion = " .. tostring(indexData.generatorVersion or Registry.GENERATOR_VERSION) .. ",",
         "    signatureVersion = " .. Shared.quoteString(indexData.signatureVersion or Registry.SIGNATURE_VERSION) .. ",",
         "    pricingHeuristicVersion = " .. tostring(indexData.pricingHeuristicVersion or Registry.PRICING_HEURISTIC_VERSION) .. ",",
+        "    pricingConfigHash = " .. Shared.quoteString(indexData.pricingConfigHash or Shared.buildPricingConfigHash()) .. ",",
     }
 
     if indexData.gameVersion ~= nil then
@@ -462,6 +463,9 @@ function IO.validateIndex(indexData, activeState)
     end
     if tonumber(indexData.pricingHeuristicVersion) ~= Registry.PRICING_HEURISTIC_VERSION then
         return false, "pricing"
+    end
+    if tostring(indexData.pricingConfigHash or "") ~= tostring(Shared.buildPricingConfigHash()) then
+        return false, "pricing-config"
     end
     if activeState.gameVersion and Shared.trim(indexData.gameVersion or "") ~= "" and tostring(indexData.gameVersion) ~= tostring(activeState.gameVersion) then
         return false, "game"

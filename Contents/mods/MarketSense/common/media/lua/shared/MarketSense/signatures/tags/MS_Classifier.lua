@@ -121,8 +121,8 @@ local function runPipeline(ctx, pipeline, rootDecision)
     for _, name in ipairs(pipeline or {}) do
         local sig = MarketSense.Signatures[name]
         if sig and type(sig.match) == "function" then
-            local ok, result = pcall(sig.match, ctx)
-            if ok and result and result.matched then
+            local result = sig.match(ctx)
+            if result and result.matched then
                 result.signature = name
                 result.rootDecision = rootDecision
                 return result

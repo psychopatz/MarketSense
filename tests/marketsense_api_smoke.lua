@@ -136,6 +136,14 @@ T.truthy(MarketSense.Config.MasterList["Base.HarnessRegistryItem"],
     "MarketSense owns the canonical master list")
 T.truthy(api.GetPriceDetails(scriptItem.fullName),
     "MarketSense evaluator works as a standalone mod")
+local debugDetails = assert(MarketSense.DebugItem(scriptItem.fullName, true))
+local debugStatsAfterFirst = MarketSense.RuntimeCache.getStats()
+T.truthy(debugDetails.audit, "debug inspection includes an audit")
+T.truthy(MarketSense.DebugItem(scriptItem.fullName, true),
+    "cached debug inspection remains available")
+local debugStatsAfterSecond = MarketSense.RuntimeCache.getStats()
+T.equal(debugStatsAfterSecond.evaluations, debugStatsAfterFirst.evaluations,
+    "debug inspection reuses the shared detail cache")
 local propertyReader = assert(MarketSense.PropertyReader)
 local registry = assert(MarketSense.ItemsRegistry)
 

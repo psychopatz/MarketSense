@@ -34,6 +34,7 @@ Availability.CHANNEL_LABELS = {
 
 Availability.state = Availability.state or {
     built = false,
+    building = false,
     records = {},
     counts = {},
     itemCount = 0,
@@ -42,6 +43,47 @@ Availability.state = Availability.state or {
     itemsByFullType = {},
     itemsByName = {},
 }
+
+local function collectionSize(collection)
+    if collection == nil then return 0 end
+    if type(collection) == "table" then
+        if type(collection.size) == "function" then
+            local value = collection.size(collection)
+            return math.max(0, tonumber(value) or 0)
+        end
+        return #collection
+    end
+    local size = collection.size
+    if type(size) == "function" then
+        local value = size(collection)
+        return math.max(0, tonumber(value) or 0)
+    end
+    return 0
+end
+
+local function collectionValue(collection, index)
+    if collection == nil then return nil end
+    local get = collection.get
+    if type(get) == "function" then
+        return get(collection, index)
+    end
+    if type(collection) == "table" then
+        return collection[index + 1]
+    end
+    return nil
+end
+
+local function timestampMs()
+    if type(getTimestampMs) ~= "function" then return nil end
+    return tonumber(getTimestampMs())
+end
+
+local function budgetReached(startedAt, maxMs, processed, maxItems)
+    if processed >= maxItems then return true end
+    if startedAt == nil or maxMs == nil then return false end
+    local now = timestampMs()
+    return now ~= nil and now - startedAt >= maxMs
+end
 
 local function trim(value)
     return Core.trim and Core.trim(value) or tostring(value or "")
@@ -72,6 +114,9 @@ local function callValue(object, methodName, ...)
     if object == nil or type(methodName) ~= "string" then return nil end
     local method = object[methodName]
     if type(method) ~= "function" then return nil end
+    -- This is the one Java-proxy boundary in the availability scanner. PZ
+    -- exposes optional getters differently across versions, and a rejected
+    -- Java call must not abort the rest of the availability scan.
     local ok, value = pcall(method, object, ...)
     return ok and value or nil
 end
@@ -487,9 +532,10 @@ function Availability.register(fullType, channel, reference)
     return false
 end
 
-function Availability.rebuild(allItems)
+local function resetState()
     Availability.state = {
         built = false,
+        building = true,
         records = {},
         counts = {},
         itemCount = 0,
@@ -498,34 +544,29 @@ function Availability.rebuild(allItems)
         itemsByFullType = {},
         itemsByName = {},
     }
+    return Availability.state
+end
 
-    eachValue(allItems or (type(getAllItems) == "function" and getAllItems() or nil), function(item)
-        Availability.state.itemCount = Availability.state.itemCount + 1
-        local itemFullType = fullTypeOf(item)
-        if itemFullType ~= "" then
-            Availability.state.itemsByFullType[itemFullType] = item
-            local _, itemName = Core.splitFullType(itemFullType)
-            Availability.state.itemsByName[itemName] = Availability.state.itemsByName[itemName] or {}
-            Availability.state.itemsByName[itemName][#Availability.state.itemsByName[itemName] + 1] = item
-        end
-        inspectScriptItem(item)
-    end)
+function Availability.beginRebuild(allItems)
+    if allItems == nil and type(getAllItems) == "function" then
+        allItems = getAllItems()
+    end
 
-    local manager = nil
-    if type(getScriptManager) == "function" then
-        local ok, result = pcall(getScriptManager)
-        if ok then manager = result end
-    end
-    if not manager and ScriptManager and ScriptManager.instance then
-        manager = ScriptManager.instance
-    end
-    if manager then
-        scanRegularRecipes(manager)
-        scanCraftRecipes(manager)
-        scanEvolvedRecipes(manager)
-    end
-    scanRuntimeSources()
+    resetState()
+    local job = {
+        allItems = allItems,
+        index = 0,
+        total = collectionSize(allItems),
+        phase = "items",
+        sourceIndex = 1,
+        manager = nil,
+        done = false,
+    }
+    Availability.state.rebuildJob = job
+    return job
+end
 
+local function finishRebuild(job)
     local total = 0
     for _, record in pairs(Availability.state.records) do
         total = total + 1
@@ -535,10 +576,115 @@ function Availability.rebuild(allItems)
     end
     Availability.state.itemCount = math.max(Availability.state.itemCount, total)
     Availability.state.built = true
+    Availability.state.building = false
+    Availability.state.rebuildJob = nil
+    job.done = true
+    job.phase = "done"
+end
+
+-- Advance only the item-definition phase by a bounded number of entries. The
+-- recipe and runtime-table phases are intentionally separate ticks so a cold
+-- boot never pays the complete acquisition scan in one frame.
+function Availability.stepRebuild(job, maxItems, maxMs)
+    if type(job) ~= "table" or job.done then return true end
+    maxItems = math.max(1, math.floor(tonumber(maxItems) or 1))
+    maxMs = tonumber(maxMs)
+    local startedAt = maxMs and timestampMs() or nil
+
+    if job.phase == "items" then
+        local processed = 0
+        while job.index < job.total and not budgetReached(startedAt, maxMs, processed, maxItems) do
+            local item = collectionValue(job.allItems, job.index)
+            job.index = job.index + 1
+            processed = processed + 1
+            if item ~= nil then
+                Availability.state.itemCount = Availability.state.itemCount + 1
+                local itemFullType = fullTypeOf(item)
+                if itemFullType ~= "" then
+                    Availability.state.itemsByFullType[itemFullType] = item
+                    local _, itemName = Core.splitFullType(itemFullType)
+                    Availability.state.itemsByName[itemName] = Availability.state.itemsByName[itemName] or {}
+                    Availability.state.itemsByName[itemName][#Availability.state.itemsByName[itemName] + 1] = item
+                end
+                inspectScriptItem(item)
+            end
+        end
+        if job.index < job.total then return false end
+        job.phase = "regularRecipes"
+        return false
+    end
+
+    if job.phase == "regularRecipes" then
+        local manager = job.manager
+        if manager == nil and type(getScriptManager) == "function" then
+            manager = getScriptManager()
+        end
+        if manager == nil and ScriptManager and ScriptManager.instance then
+            manager = ScriptManager.instance
+        end
+        job.manager = manager
+        if manager then scanRegularRecipes(manager) end
+        job.phase = "craftRecipes"
+        return false
+    end
+
+    if job.phase == "craftRecipes" then
+        if job.manager then scanCraftRecipes(job.manager) end
+        job.phase = "evolvedRecipes"
+        return false
+    end
+
+    if job.phase == "evolvedRecipes" then
+        if job.manager then scanEvolvedRecipes(job.manager) end
+        job.phase = "runtimeSources"
+        return false
+    end
+
+    if job.phase == "runtimeSources" then
+        local source = RUNTIME_SOURCES[job.sourceIndex]
+        if source then
+            local value = _G[source.name]
+            if type(value) == "table" then
+                Availability.state.sourceCount = Availability.state.sourceCount + 1
+                scanRuntimeTable(value, source.channel, source.name, {}, 0, source.name)
+            end
+            job.sourceIndex = job.sourceIndex + 1
+            return false
+        end
+        job.phase = "finalize"
+        return false
+    end
+
+    if job.phase == "sources" then
+        -- Backward-compatible state name for jobs created by an older module
+        -- instance during a Lua reload.
+        local manager = nil
+        if type(getScriptManager) == "function" then
+            manager = getScriptManager()
+        end
+        if not manager and ScriptManager and ScriptManager.instance then
+            manager = ScriptManager.instance
+        end
+        if manager then scanRegularRecipes(manager) end
+        scanRuntimeSources()
+        job.phase = "finalize"
+        return false
+    end
+
+    finishRebuild(job)
+    return true
+end
+
+function Availability.rebuild(allItems)
+    local job = Availability.beginRebuild(allItems)
+    while not Availability.stepRebuild(job, math.max(1, job.total)) do end
     return Availability.state
 end
 
 function Availability.ensureBuilt(allItems)
+    if Availability.state.building then
+        return Availability.state
+    end
     if not Availability.state.built then
         return Availability.rebuild(allItems)
     end

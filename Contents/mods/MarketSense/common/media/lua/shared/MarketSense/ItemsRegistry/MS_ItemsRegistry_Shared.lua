@@ -40,7 +40,21 @@ Registry.state = Registry.state or {
     lastIndex = nil,
     lastRequestKey = nil,
     deferredRebuild = false,
+    rebuildPending = false,
+    rebuildScheduled = false,
+    rebuildInProgress = false,
+    rebuildJob = nil,
+    rebuildReason = nil,
+    readyProbeCount = 0,
+    lastReadyItemCount = nil,
+    stale = false,
 }
+
+-- These limits deliberately keep registry work out of the boot critical path.
+-- The rebuild is spread across ticks once PZ's live item data is stable.
+Registry.REBUILD_ITEMS_PER_TICK = 24
+Registry.REBUILD_READY_STABLE_TICKS = 2
+Registry.REBUILD_BUDGET_MS = 3
 
 local Text = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_Text"
 local State = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_State"
@@ -56,5 +70,38 @@ Shared.TagUtils = MarketSense.TagUtils
 Shared.Pricing = MarketSense.Pricing
 Shared.Stock = MarketSense.Stock
 Shared.Config = MarketSense.ItemRuntimeConfig
+
+local function appendConfigSignature(parts, prefix, value, seen)
+    local valueType = type(value)
+    if valueType == "function" or valueType == "userdata" or valueType == "thread" then
+        return
+    end
+    if valueType ~= "table" then
+        parts[#parts + 1] = prefix .. "=" .. tostring(value)
+        return
+    end
+    if seen[value] then return end
+    seen[value] = true
+
+    local keys = {}
+    for key in pairs(value) do keys[#keys + 1] = key end
+    table.sort(keys, function(left, right)
+        return tostring(left) < tostring(right)
+    end)
+    for _, key in ipairs(keys) do
+        local keyText = tostring(key)
+        if keyText ~= "MasterList" and keyText ~= "ItemRegistryRevision"
+            and keyText ~= "pricingRevision" then
+            appendConfigSignature(parts, prefix .. "." .. keyText, value[key], seen)
+        end
+    end
+end
+
+function Shared.buildPricingConfigHash()
+    local parts = {}
+    appendConfigSignature(parts, "runtime", Shared.Config or {}, {})
+    table.sort(parts)
+    return Text.stableHash(parts)
+end
 
 return Shared

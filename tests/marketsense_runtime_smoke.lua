@@ -88,6 +88,8 @@ local parsedIndex = assert(ioLayer.parseLuaTableFile("MS_Items/MS_ItemsIndex.txt
 T.equal(parsedIndex.schemaVersion, 4, "safe index schema")
 T.equal(parsedIndex.activeMods[2], "Example Mod", "safe index active mod")
 T.equal(parsedIndex.files[1].path, "Food/Staple/Canned.txt", "safe index file path")
+T.equal(parsedIndex.pricingConfigHash, shared.buildPricingConfigHash(),
+    "pricing configuration is persisted in the runtime index")
 _G.getFileReader = nil
 
 _G.getGameTime = function()

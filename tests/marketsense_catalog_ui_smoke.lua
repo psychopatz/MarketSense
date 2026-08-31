@@ -121,6 +121,20 @@ local foodHeuristicText = Window.BuildPriceHeuristicSummary({
 T.equal(foodHeuristicText,
     "Pricing: ready | subtype=FoodNonPerishableBoxed | role=edible | ration=1.25 | hunger=-0.30 | thirst=0.00 | freshness=definition_freshness | yield=resolved",
     "catalog displays food utility and valued bundle evidence")
+T.equal(Window.BuildPriceHeuristicSummary({
+    priceHeuristic = {
+        model = "food_v2", status = "ready", subtype = "Food",
+        role = "edible", rationUnits = 1.25, hungerChange = -0.3,
+        thirstChange = 0, freshnessState = "fresh", yieldStatus = "not_detected",
+        calories = 120, carbohydrates = 20, lipids = 1, proteins = 5,
+        foodVariantEvidence = {
+            status = "verified", sourceFullType = "Base.CannedTomatoOpen",
+            relation = "definition_reference",
+        },
+    },
+}),
+    "Pricing: ready | subtype=Food | role=edible | ration=1.25 | hunger=-0.30 | thirst=0.00 | freshness=fresh | yield=not_detected | variant=Base.CannedTomatoOpen[definition_reference] | nutrition=cal:120 carb:20 fat:1 protein:5",
+    "catalog displays opened-food nutrition evidence")
 T.equal(Window.BuildMarketModifierSummary({
     marketPricing = {
         anchor = 10,

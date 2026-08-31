@@ -8,12 +8,24 @@ MarketSense.RuntimeCache = MarketSense.RuntimeCache or {
     tags = {},
     contexts = {},
     missing = {},
+    stats = {
+        detailHits = 0,
+        detailMisses = 0,
+        evaluations = 0,
+        failures = 0,
+    },
     built = false,
     pricingRevision = 0,
 }
 
 local Cache = MarketSense.RuntimeCache
 local Core = MarketSense.Core
+
+Cache.stats = Cache.stats or {}
+Cache.stats.detailHits = Cache.stats.detailHits or 0
+Cache.stats.detailMisses = Cache.stats.detailMisses or 0
+Cache.stats.evaluations = Cache.stats.evaluations or 0
+Cache.stats.failures = Cache.stats.failures or 0
 
 local function currentPricingRevision()
     local config = MarketSense.ItemRuntimeConfig
@@ -40,7 +52,13 @@ end
 
 function Cache.getDetails(fullType)
     Cache.ensureCurrent()
-    return Cache.details[fullType]
+    local value = Cache.details[fullType]
+    if value ~= nil then
+        Cache.stats.detailHits = (Cache.stats.detailHits or 0) + 1
+    else
+        Cache.stats.detailMisses = (Cache.stats.detailMisses or 0) + 1
+    end
+    return value
 end
 
 function Cache.setDetails(fullType, details)
@@ -55,6 +73,28 @@ function Cache.setDetails(fullType, details)
     Cache.stock[fullType] = Core.deepCopy(stored.stock or { min = 0, max = 0 })
     Cache.tags[fullType] = Core.deepCopy(stored.expandedTags or stored.tags or {})
     return stored
+end
+
+function Cache.recordEvaluation()
+    Cache.ensureCurrent()
+    Cache.stats.evaluations = (Cache.stats.evaluations or 0) + 1
+end
+
+function Cache.recordFailure()
+    Cache.ensureCurrent()
+    Cache.stats.failures = (Cache.stats.failures or 0) + 1
+end
+
+function Cache.getStats()
+    Cache.ensureCurrent()
+    local stats = Core.shallowCopy(Cache.stats or {})
+    stats.contexts = 0
+    stats.details = 0
+    stats.pending = 0
+    for _ in pairs(Cache.contexts or {}) do stats.contexts = stats.contexts + 1 end
+    for _ in pairs(Cache.details or {}) do stats.details = stats.details + 1 end
+    stats.pricingRevision = Cache.pricingRevision
+    return stats
 end
 
 function Cache.getContext(fullType)

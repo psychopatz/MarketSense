@@ -54,8 +54,8 @@ local function staticOverride(ctx)
         return nil
     end
 
-    local ok, result = pcall(sig.match, ctx)
-    if ok and result and result.matched then
+    local result = sig.match(ctx)
+    if result and result.matched then
         return resolved(result.category or MarketSense.TagMapper.categoryFromPrimary(result.primary), "root_static_override", result)
     end
     return nil

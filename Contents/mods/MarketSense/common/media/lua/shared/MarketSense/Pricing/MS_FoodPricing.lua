@@ -4,6 +4,7 @@ require "MarketSense/MS_Core"
 require "MarketSense/Pricing/MS_YieldResolver"
 require "MarketSense/Pricing/MS_PricingUtils"
 require "MarketSense/Pricing/MS_TransformPricing"
+require "MarketSense/MS_FoodVariantEvidence"
 
 MarketSense = MarketSense or {}
 MarketSense.FoodPricing = MarketSense.FoodPricing or {}
@@ -15,6 +16,11 @@ local Core = MarketSense.Core
 local YieldResolver = MarketSense.YieldResolver
 local Utils = require "MarketSense/Pricing/MS_PricingUtils"
 local TransformPricing = MarketSense.TransformPricing
+local FoodVariantEvidence = MarketSense.FoodVariantEvidence
+
+local function buildVariantContext(fullType)
+    return MarketSense.PropertyReader.buildContext(fullType, nil, true)
+end
 
 local DEFAULTS = {
     model = "food_v2",
@@ -234,6 +240,13 @@ function FoodPricing.calculate(ctx, details)
     local yieldInfo = details.yieldResolution or YieldResolver.resolve(ctx)
     details.yieldResolution = yieldInfo
 
+    if FoodVariantEvidence and type(FoodVariantEvidence.apply) == "function"
+        and MarketSense.PropertyReader
+        and type(MarketSense.PropertyReader.buildContext) == "function"
+    then
+        FoodVariantEvidence.apply(ctx, buildVariantContext, yieldInfo)
+    end
+
     if yieldInfo.status == "resolved" then
         local bundleScore, bundleHeuristic = TransformPricing.evaluate(ctx, details, {
             multiplier = c.bundleMultiplier,
@@ -246,6 +259,7 @@ function FoodPricing.calculate(ctx, details)
             bundleHeuristic.status = "ready"
             bundleHeuristic.anchor = number(c.anchor, DEFAULTS.anchor)
             bundleHeuristic.reason = "Deterministic food transform valued from individualized child outputs."
+            bundleHeuristic.foodVariantEvidence = Core.deepCopy(ctx.foodVariantEvidence)
             Utils.addYieldEvidence(bundleHeuristic, details)
             bundleHeuristic.positiveContributions = Core.deepCopy(bundleHeuristic.contributions)
             bundleHeuristic.negativeContributions = {}
@@ -329,6 +343,10 @@ function FoodPricing.calculate(ctx, details)
         thirstUnits = thirstUnits,
         calorieUnits = calorieUnits,
         calories = calories,
+        carbohydrates = math.max(0, number(ctx.carbohydrates, 0) or 0),
+        lipids = math.max(0, number(ctx.lipids, 0) or 0),
+        proteins = math.max(0, number(ctx.proteins, 0) or 0),
+        foodVariantEvidence = Core.deepCopy(ctx.foodVariantEvidence),
         moodMultiplier = mood,
         moodBenefit = moodBenefit,
         moodHarm = moodHarm,

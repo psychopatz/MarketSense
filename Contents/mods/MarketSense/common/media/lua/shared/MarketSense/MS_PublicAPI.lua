@@ -19,6 +19,7 @@ local function invalidatePricingViews()
     if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.state then
         MarketSense.ItemsRegistry.state.loaded = false
         MarketSense.ItemsRegistry.state.catalog = nil
+        MarketSense.ItemsRegistry.state.knownSnapshot = nil
     end
 end
 local API           = MarketSense
@@ -49,7 +50,7 @@ function MarketSense.GetItemCapabilities(fullType)
     }
 end
 
-function API.GetPriceDetails(fullType, withAudit)
+local function getCachedPriceDetails(fullType, withAudit, source)
     if type(fullType) ~= "string" or fullType == "" then
         return nil
     end
@@ -57,9 +58,24 @@ function API.GetPriceDetails(fullType, withAudit)
     if cached and (withAudit ~= true or type(cached.balanceAudit) == "table") then
         return cached
     end
-    local details = Pricing.calculateDetails(fullType, withAudit)
-    Cache.setDetails(fullType, details)
-    return details
+
+    Cache.recordEvaluation()
+    local details = Pricing.calculateDetails(source or fullType, withAudit)
+    if type(details) ~= "table" then
+        Cache.recordFailure()
+        return nil
+    end
+
+    return Cache.setDetails(fullType, details)
+end
+
+function API.GetPriceDetails(fullType, withAudit)
+    return getCachedPriceDetails(fullType, withAudit)
+end
+
+function API.GetPriceDetailsForContext(context, withAudit)
+    if type(context) ~= "table" then return nil end
+    return getCachedPriceDetails(context.fullType, withAudit, context)
 end
 
 -- Evaluate a concrete InventoryItem without contaminating the definition
@@ -120,6 +136,91 @@ function API.ClearRuntimeCache()
     Cache.clear()
 end
 
+-- Queue definition-level pricing requests across ticks. Project Zomboid Lua
+-- is single-threaded, so this is cooperative batching rather than unsafe Lua
+-- threads. Duplicate types in one or many queued requests share the cache.
+local requestQueue = MarketSense._priceRequestQueue or {
+    nextId = 0,
+    requests = {},
+    handler = nil,
+}
+MarketSense._priceRequestQueue = requestQueue
+
+local function stopRequestQueue()
+    if requestQueue.handler and Events and Events.OnTick
+        and type(Events.OnTick.Remove) == "function" then
+        Events.OnTick.Remove(requestQueue.handler)
+    end
+    requestQueue.handler = nil
+end
+
+local function processRequestQueue()
+    local request = requestQueue.requests[1]
+    if not request then
+        stopRequestQueue()
+        return
+    end
+
+    local processed = 0
+    local startedAt = nil
+    if type(getTimestampMs) == "function" then
+        startedAt = tonumber(getTimestampMs())
+    end
+    while request.index <= #request.types and processed < 8 do
+        local fullType = request.types[request.index]
+        request.index = request.index + 1
+        processed = processed + 1
+        request.results[fullType] = API.GetPriceDetails(fullType, request.withAudit)
+        if startedAt and type(getTimestampMs) == "function" then
+            local now = tonumber(getTimestampMs())
+            if now and now - startedAt >= 2 then break end
+        end
+    end
+
+    if request.index <= #request.types then return end
+    table.remove(requestQueue.requests, 1)
+    request.done = true
+    if type(request.callback) == "function" then
+        -- Consumer callbacks are outside MarketSense; isolate them so one
+        -- third-party handler cannot abort the request queue.
+        pcall(request.callback, request.results, request)
+    end
+end
+
+function API.RequestPriceDetails(fullTypes, callback, withAudit)
+    if type(fullTypes) ~= "table" then return nil end
+
+    local types = {}
+    local seen = {}
+    for _, fullType in ipairs(fullTypes) do
+        if type(fullType) == "string" and fullType ~= "" and not seen[fullType] then
+            seen[fullType] = true
+            types[#types + 1] = fullType
+        end
+    end
+
+    requestQueue.nextId = requestQueue.nextId + 1
+    local request = {
+        id = requestQueue.nextId,
+        types = types,
+        index = 1,
+        results = {},
+        callback = callback,
+        withAudit = withAudit == true,
+        done = false,
+    }
+    requestQueue.requests[#requestQueue.requests + 1] = request
+
+    if not requestQueue.handler and Events and Events.OnTick
+        and type(Events.OnTick.Add) == "function" then
+        requestQueue.handler = processRequestQueue
+        Events.OnTick.Add(requestQueue.handler)
+    elseif not requestQueue.handler then
+        while not request.done do processRequestQueue() end
+    end
+    return request
+end
+
 function API.GetRegistryDetails(fullType)
     if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.get then
         return MarketSense.ItemsRegistry.get(fullType)
@@ -171,6 +272,7 @@ function API.ApplyRuntimeRule(ruleTable)
             if MarketSense.ItemsRegistry and MarketSense.ItemsRegistry.state then
                 MarketSense.ItemsRegistry.state.loaded = false
                 MarketSense.ItemsRegistry.state.catalog = nil
+                MarketSense.ItemsRegistry.state.knownSnapshot = nil
             end
             if MarketSense.Config then
                 MarketSense.Config.MasterList = {}

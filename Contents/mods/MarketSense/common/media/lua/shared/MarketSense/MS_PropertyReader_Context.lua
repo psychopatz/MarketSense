@@ -3,6 +3,7 @@ require "MarketSense/MS_PropertyReader_Signals"
 require "MarketSense/MS_PropertyReader_Facts"
 require "MarketSense/MS_PropertyReader_ContextModel"
 require "MarketSense/MS_PropertyReader_Enrichment"
+require "MarketSense/MS_FoodVariantEvidence"
 
 MarketSense = MarketSense or {}
 
@@ -12,8 +13,13 @@ local Cache = MarketSense.RuntimeCache
 local FactReader = require "MarketSense/MS_PropertyReader_Facts"
 local ContextModel = require "MarketSense/MS_PropertyReader_ContextModel"
 local Enrichment = require "MarketSense/MS_PropertyReader_Enrichment"
+local FoodVariantEvidence = require "MarketSense/MS_FoodVariantEvidence"
 
-function ContextBuilder.buildContext(scriptItemOrFullType, inventoryItem)
+local function buildVariantContext(fullType)
+    return ContextBuilder.buildContext(fullType, nil, true)
+end
+
+function ContextBuilder.buildContext(scriptItemOrFullType, inventoryItem, skipFoodVariantEvidence)
     if type(scriptItemOrFullType) == "table" and scriptItemOrFullType.fullType and scriptItemOrFullType.item ~= nil then
         return scriptItemOrFullType
     end
@@ -30,7 +36,13 @@ function ContextBuilder.buildContext(scriptItemOrFullType, inventoryItem)
         -- always be read afresh.
         if inventoryItem == nil then
             local cached = Cache.getContext(fullType)
-            if cached then return Core.deepCopy(cached) end
+            if cached then
+                if cached.foodVariantEvidence == nil and not skipFoodVariantEvidence then
+                    FoodVariantEvidence.apply(cached, buildVariantContext)
+                    Cache.setContext(cached.fullType or fullType, cached)
+                end
+                return Core.deepCopy(cached)
+            end
         end
         scriptItem = Core.findScriptItem(fullType)
     else
@@ -59,6 +71,9 @@ function ContextBuilder.buildContext(scriptItemOrFullType, inventoryItem)
         facts, scriptItem, fullType, moduleName, typeName, instance, isTemporary
     )
     Enrichment.apply(context)
+    if not skipFoodVariantEvidence then
+        FoodVariantEvidence.apply(context, buildVariantContext)
+    end
 
     if isTemporary then Core.releaseTemporaryInstance(instance) end
     Cache.setContext(context.fullType, context)
