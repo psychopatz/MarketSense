@@ -3,7 +3,9 @@ T.addPackagePaths()
 package.path = T.modRoot .. "/common/media/lua/client/?.lua;" .. package.path
 
 MarketSense = {}
-getText = function(key) return key end
+getText = function(key)
+    error("MarketSense catalog used native getText for owned key: " .. tostring(key))
+end
 require "MarketSense/signatures/tags/MS_TagMapper"
 
 local UI = {
@@ -53,6 +55,27 @@ package.preload["MarketSense/MS_PublicAPI"] = function() return MarketSense end
 package.preload["PsychopatzCore/UI/PsychopatzUI"] = function() return UI end
 package.preload["PsychopatzCore/UI/PsychopatzDebugHubWindow"] = function()
     return PsychopatzCore.DebugHub
+end
+local marketSenseTranslations = {
+    UI_MarketSenseCatalog_ToolTitle = "[TL] Catalog ng Item",
+    UI_MarketSenseCatalog_ToolDescription = "[TL] Ipakita ang lahat ng MarketSense item ayon sa taxonomy.",
+}
+local marketSenseTranslationHandle = {
+    get = function(_, key, fallback)
+        return marketSenseTranslations[key] or fallback or key
+    end,
+}
+package.preload["PsychopatzCore/Translation/PsychopatzCustomTranslationManager"] = function()
+    CustomTranslationManager = {
+        forMod = function()
+            return {
+                registerSystem = function()
+                    return marketSenseTranslationHandle
+                end,
+            }
+        end,
+    }
+    return CustomTranslationManager
 end
 
 local Window = dofile(T.modRoot
@@ -463,6 +486,11 @@ T.equal(buildingHeuristicText,
     "catalog displays building heuristic evidence")
 T.equal(PsychopatzCore.DebugHub.testTool.id, "marketsense.itemCatalog",
     "catalog debug tool registration")
+T.equal(PsychopatzCore.DebugHub.testTool.title, "[TL] Catalog ng Item",
+    "catalog hub title uses MarketSense translation")
+T.equal(PsychopatzCore.DebugHub.testTool.description,
+    "[TL] Ipakita ang lahat ng MarketSense item ayon sa taxonomy.",
+    "catalog hub description uses MarketSense translation")
 local generatedWindow = {
     allItems = {},
     refreshCatalog = function(self) self.refreshed = true end,

@@ -1,6 +1,7 @@
 require "MarketSense/MS_PublicAPI"
 require "PsychopatzCore/UI/PsychopatzUI"
 require "MarketSense/MS_ItemCatalogDebug_PriceFormatting"
+local Translation = require "MarketSense/MS_Translation"
 
 MarketSense = MarketSense or {}
 
@@ -25,7 +26,8 @@ local CATEGORY_ORDER = {
 
 local TEXT_FALLBACKS = {
     UI_MarketSenseCatalog_Title = "MarketSense Item Test Catalog",
-    UI_MarketSenseCatalog_ToolTitle = "MarketSense Item Catalog",
+    UI_MarketSenseCatalog_ToolTitle = "Item Catalog",
+    UI_MarketSenseCatalog_ToolDescription = "Display every available MarketSense item by taxonomy and test its runtime evaluator.",
     UI_MarketSenseCatalog_Collapse = "Collapse all",
     UI_MarketSenseCatalog_Expand = "Expand all",
     UI_MarketSenseCatalog_Refresh = "Refresh catalog",
@@ -57,27 +59,13 @@ local TEXT_FALLBACKS = {
 local DISPLAY_NAME_CACHE = {}
 
 local function tr(key, fallback)
-    if type(getText) == "function" then
-        local ok, value = pcall(getText, key)
-        if ok and value and value ~= key and value ~= "" then
-            return value
-        end
-    end
-    return fallback or TEXT_FALLBACKS[key] or key
+    return Translation.GetKey(key, fallback or TEXT_FALLBACKS[key] or key)
 end
 
 local function trFormat(key, fallback, ...)
-    if type(getText) == "function" then
-        -- PZ versions differ on whether getText consumes format arguments.
-        -- Read the translated template first, then format it here so a
-        -- literal "%s" never leaks into the catalog UI.
-        local ok, value = pcall(getText, key)
-        if ok and value and value ~= key and value ~= "" then
-            local formatted, result = pcall(string.format, tostring(value), ...)
-            return formatted and result or tostring(value)
-        end
-    end
-    local template = fallback or TEXT_FALLBACKS[key] or key
+    -- Format the resolved catalog value here so a literal "%s" never leaks
+    -- into the catalog UI on PZ versions with different getText signatures.
+    local template = tr(key, fallback)
     local formatted, result = pcall(string.format, template, ...)
     return formatted and result or tostring(template)
 end

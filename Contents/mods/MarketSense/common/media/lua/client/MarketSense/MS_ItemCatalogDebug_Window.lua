@@ -59,28 +59,28 @@ function MarketSenseItemCatalogDebugWindow:createChildren()
 
     self.collapseAllButton = UI.CreateButton(self, {
         id = "collapse",
-        title = getText("UI_MarketSenseCatalog_Collapse"),
+        title = tr("UI_MarketSenseCatalog_Collapse", "Collapse all"),
         target = self,
         onclick = MarketSenseItemCatalogDebugWindow.onCollapseAll,
         variant = "quiet",
     })
     self.expandButton = UI.CreateButton(self, {
         id = "expand",
-        title = getText("UI_MarketSenseCatalog_Expand"),
+        title = tr("UI_MarketSenseCatalog_Expand", "Expand all"),
         target = self,
         onclick = MarketSenseItemCatalogDebugWindow.onExpandAll,
         variant = "quiet",
     })
     self.refreshButton = UI.CreateButton(self, {
         id = "refresh",
-        title = getText("UI_MarketSenseCatalog_Refresh"),
+        title = tr("UI_MarketSenseCatalog_Refresh", "Refresh catalog"),
         target = self,
         onclick = MarketSenseItemCatalogDebugWindow.onRefreshCatalog,
         variant = "primary",
     })
     self.generateButton = UI.CreateButton(self, {
         id = "generate",
-        title = getText("UI_MarketSenseCatalog_Generate"),
+        title = tr("UI_MarketSenseCatalog_Generate", "Generate MarketSense catalog"),
         target = self,
         onclick = MarketSenseItemCatalogDebugWindow.onGenerateRuntimeItems,
         variant = "success",
@@ -532,7 +532,8 @@ function MarketSenseItemCatalogDebugWindow.Open()
     end
 
     local window = UI.NewWindow(MarketSenseItemCatalogDebugWindow, {
-        title = getText("UI_MarketSenseCatalog_Title"),
+        title = tr("UI_MarketSenseCatalog_Title",
+            "MarketSense Item Test Catalog"),
         persistenceKey = "MarketSense.ItemCatalogDebug",
         resizable = true,
         responsiveSpec = {
@@ -556,7 +557,7 @@ if PsychopatzCore.DebugHub and PsychopatzCore.DebugHub.RegisterTool then
         id = "marketsense.itemCatalog",
         source = "MarketSense",
         order = 20,
-        title = getText("UI_MarketSenseCatalog_ToolTitle"),
+        title = tr("UI_MarketSenseCatalog_ToolTitle", "Item Catalog"),
         description = tr("UI_MarketSenseCatalog_ToolDescription",
             "Display every available MarketSense item by taxonomy and test its runtime evaluator."),
         available = function()
