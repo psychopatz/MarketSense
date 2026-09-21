@@ -1,6 +1,9 @@
 name=Market Sense
 id=MarketSense
 description=MarketSense item taxonomy, runtime availability detection, and price evaluation service for Project Zomboid mods.
+author=Psychopatz
+poster=poster.png
+icon=icon.png
 category=features
 version=1.0.0
 versionMin=42.20
