@@ -67,7 +67,7 @@ local function getCachedPriceDetails(fullType, withAudit, source)
         local registry = MarketSense.ItemsRegistry
         local state = registry and registry.state or nil
         if state and not state.loaded and type(registry.ensureLoaded) == "function" then
-            pcall(registry.ensureLoaded, false)
+            registry.ensureLoaded(false)
             state = registry.state
         end
         if state and state.stale ~= true and registry
@@ -110,6 +110,9 @@ end
 function API.GetPriceDetailsForInstance(fullType, inventoryItem, withAudit)
     if type(fullType) ~= "string" or fullType == "" or inventoryItem == nil then
         return nil
+    end
+    if Cache.recordInstanceRequest then
+        Cache.recordInstanceRequest()
     end
     return Pricing.calculateDetails(fullType, withAudit == true, inventoryItem)
 end
@@ -204,6 +207,9 @@ local function processRequestQueue()
         local fullType = request.types[request.index]
         request.index = request.index + 1
         processed = processed + 1
+        if Cache.recordQueuedItem then
+            Cache.recordQueuedItem()
+        end
         request.results[fullType] = API.GetPriceDetails(fullType, request.withAudit)
         if startedAt and type(getTimestampMs) == "function" then
             local now = tonumber(getTimestampMs())

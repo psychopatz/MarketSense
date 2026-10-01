@@ -341,36 +341,51 @@ local function eachValue(collection, callback)
     Core.forEachCollection(collection, callback)
 end
 
+local function scanRegularRecipe(recipe, index)
+    local result = callValue(recipe, "getResult")
+    local item = result and resolveItem(callValue(result, "getFullType")) or nil
+    if not item and result then
+        local resultType = trim(callValue(result, "getType"))
+        item = resolveItem(resultType)
+    end
+    if item then
+        addChannel(fullTypeOf(item), "craft", "regular recipe #" .. tostring(index))
+    end
+end
+
 local function scanRegularRecipes(manager)
     local recipes = callValue(manager, "getAllRecipes")
-    eachValue(recipes, function(recipe, index)
-        local result = callValue(recipe, "getResult")
-        local item = result and resolveItem(callValue(result, "getFullType")) or nil
-        if not item and result then
-            local resultType = trim(callValue(result, "getType"))
-            item = resolveItem(resultType)
-        end
-        if item then
-            addChannel(fullTypeOf(item), "craft", "regular recipe #" .. tostring(index))
-        end
+    eachValue(recipes, scanRegularRecipe)
+end
+
+local function scanCraftRecipe(recipe, recipeIndex)
+    local outputs = callValue(recipe, "getOutputs")
+    eachValue(outputs, function(output, outputIndex)
+        local resultItems = callValue(output, "getPossibleResultItems")
+        eachValue(resultItems, function(item)
+            local fullType = fullTypeOf(item)
+            if fullType ~= "" then
+                addChannel(fullType, "craft", "craft recipe #" .. tostring(recipeIndex)
+                    .. ".output#" .. tostring(outputIndex))
+            end
+        end)
     end)
 end
 
 local function scanCraftRecipes(manager)
     local recipes = callValue(manager, "getAllCraftRecipes")
-    eachValue(recipes, function(recipe, recipeIndex)
-        local outputs = callValue(recipe, "getOutputs")
-        eachValue(outputs, function(output, outputIndex)
-            local resultItems = callValue(output, "getPossibleResultItems")
-            eachValue(resultItems, function(item)
-                local fullType = fullTypeOf(item)
-                if fullType ~= "" then
-                    addChannel(fullType, "craft", "craft recipe #" .. tostring(recipeIndex)
-                        .. ".output#" .. tostring(outputIndex))
-                end
-            end)
-        end)
-    end)
+    eachValue(recipes, scanCraftRecipe)
+end
+
+local function scanEvolvedRecipe(recipe, index)
+    local fullType = trim(callValue(recipe, "getFullResultItem"))
+    local item = resolveItem(fullType)
+    if not item then
+        item = resolveItem(callValue(recipe, "getResultItem"))
+    end
+    if item then
+        addChannel(fullTypeOf(item), "evolved_recipe", "evolved recipe #" .. tostring(index))
+    end
 end
 
 local function scanEvolvedRecipes(manager)
@@ -378,16 +393,38 @@ local function scanEvolvedRecipes(manager)
     if recipes == nil then
         recipes = callValue(manager, "getAllEvolvedRecipes")
     end
-    eachValue(recipes, function(recipe, index)
-        local fullType = trim(callValue(recipe, "getFullResultItem"))
-        local item = resolveItem(fullType)
-        if not item then
-            item = resolveItem(callValue(recipe, "getResultItem"))
+    eachValue(recipes, scanEvolvedRecipe)
+end
+
+-- Recipe collections can contain thousands of Java objects. Keep a cursor for
+-- each phase so the scheduled registry rebuild uses the same item/time budget
+-- for recipe output discovery that it already uses for item discovery.
+local function stepRecipeCollection(job, stateName, collection, scanItem,
+    startedAt, maxMs, maxItems)
+    local state = job[stateName]
+    if state == nil then
+        state = {
+            collection = collection,
+            index = 0,
+            total = collectionSize(collection),
+        }
+        job[stateName] = state
+    end
+
+    local processed = 0
+    while state.index < state.total
+        and not budgetReached(startedAt, maxMs, processed, maxItems)
+    do
+        local index = state.index
+        local recipe = collectionValue(state.collection, index)
+        state.index = index + 1
+        processed = processed + 1
+        if recipe ~= nil then
+            scanItem(recipe, index + 1)
         end
-        if item then
-            addChannel(fullTypeOf(item), "evolved_recipe", "evolved recipe #" .. tostring(index))
-        end
-    end)
+    end
+
+    return state.index >= state.total
 end
 
 local function scanLootList(value, source, path)
@@ -447,7 +484,137 @@ local function scanRuntimeTable(value, channel, source, seen, depth, path)
     end
 end
 
-local RUNTIME_SOURCES = {
+local RUNTIME_SOURCES
+
+local function makeRuntimeFrame(value, channel, source, path, depth, seen)
+    if type(value) ~= "table" or depth > 10 then return nil end
+    seen = seen or {}
+    if seen[value] then return nil end
+    seen[value] = true
+
+    local keys = {}
+    for key in pairs(value) do
+        keys[#keys + 1] = key
+    end
+    return {
+        kind = "table",
+        value = value,
+        channel = channel,
+        source = source,
+        path = path,
+        depth = depth,
+        keys = keys,
+        index = 1,
+        seen = seen,
+    }
+end
+
+local function makeLootFrame(value, source, path)
+    if type(value) ~= "table" then return nil end
+    local length = #value
+    if length < 2 then return nil end
+
+    local totalWeight = 0
+    for index = 1, length, 2 do
+        local weight = tonumber(value[index + 1])
+        if weight ~= nil then totalWeight = totalWeight + math.max(0, weight) end
+    end
+
+    return {
+        kind = "loot",
+        value = value,
+        source = source,
+        path = path,
+        length = length,
+        totalWeight = totalWeight,
+        index = 1,
+    }
+end
+
+-- Runtime tables are arbitrary nested Lua structures. The legacy recursive
+-- scanner remains available for synchronous compatibility, while scheduled
+-- rebuilds use explicit frames so one source can yield between table keys.
+local function stepRuntimeSources(job, maxItems, maxMs, startedAt)
+    job.runtimeStack = job.runtimeStack or {}
+    job.runtimeSourceIndex = job.runtimeSourceIndex or 1
+    local processed = 0
+
+    while not budgetReached(startedAt, maxMs, processed, maxItems) do
+        local stack = job.runtimeStack
+        local frame = stack[#stack]
+        if frame == nil then
+            local source = RUNTIME_SOURCES[job.runtimeSourceIndex]
+            if source == nil then return true end
+
+            job.runtimeSourceIndex = job.runtimeSourceIndex + 1
+            local value = _G[source.name]
+            if type(value) == "table" then
+                Availability.state.sourceCount = Availability.state.sourceCount + 1
+                local root = makeRuntimeFrame(value, source.channel, source.name,
+                    source.name, 0, {})
+                if root then stack[#stack + 1] = root end
+            end
+        elseif frame.kind == "loot" then
+            if frame.index > frame.length then
+                stack[#stack] = nil
+            else
+                local index = frame.index
+                local itemName = frame.value[index]
+                local weight = tonumber(frame.value[index + 1])
+                frame.index = index + 2
+                processed = processed + 1
+                if type(itemName) == "string" then
+                    local item = resolveItem(itemName)
+                    if item then
+                        weight = weight and math.max(0, weight) or nil
+                        local relativeWeight
+                        if frame.totalWeight > 0 and weight ~= nil then
+                            relativeWeight = weight / frame.totalWeight
+                        end
+                        local fullType = fullTypeOf(item)
+                        local lootSource = tostring(frame.source) .. ":"
+                            .. tostring(frame.path or "items")
+                        addLootEvidence(fullType, lootSource,
+                            "runtime:" .. tostring(frame.source) .. ":"
+                                .. tostring(frame.path or "items"),
+                            weight, relativeWeight)
+                    end
+                end
+            end
+        elseif frame.index > #frame.keys then
+            stack[#stack] = nil
+        else
+            local key = frame.keys[frame.index]
+            frame.index = frame.index + 1
+            processed = processed + 1
+            local child = frame.value[key]
+            local keyText = tostring(key or "")
+            if frame.channel == "loot" and keyText == "items"
+                and type(child) == "table"
+            then
+                local loot = makeLootFrame(child, frame.source,
+                    frame.path and (frame.path .. ".items") or "items")
+                if loot then stack[#stack + 1] = loot end
+            elseif type(child) == "string" then
+                local item = resolveItem(child)
+                if item then
+                    addChannel(fullTypeOf(item), frame.channel,
+                        "runtime:" .. frame.source)
+                end
+            elseif type(child) == "table" then
+                local childPath = frame.path
+                    and (frame.path .. "." .. keyText) or keyText
+                local childFrame = makeRuntimeFrame(child, frame.channel,
+                    frame.source, childPath, frame.depth + 1, frame.seen)
+                if childFrame then stack[#stack + 1] = childFrame end
+            end
+        end
+    end
+
+    return false
+end
+
+RUNTIME_SOURCES = {
     -- 42.20 keeps direct room/container entries in Distributions and the
     -- procedural tables below it.  Keep both: some valid items are only
     -- present in one of these layers.
@@ -623,32 +790,58 @@ function Availability.stepRebuild(job, maxItems, maxMs)
             manager = ScriptManager.instance
         end
         job.manager = manager
-        if manager then scanRegularRecipes(manager) end
+        if manager then
+            local recipes = job.regularRecipes
+            if recipes == nil then
+                recipes = callValue(manager, "getAllRecipes")
+                job.regularRecipes = recipes
+            end
+            if not stepRecipeCollection(job, "regularRecipeState", recipes,
+                scanRegularRecipe, startedAt, maxMs, maxItems) then
+                return false
+            end
+        end
         job.phase = "craftRecipes"
         return false
     end
 
     if job.phase == "craftRecipes" then
-        if job.manager then scanCraftRecipes(job.manager) end
+        if job.manager then
+            local recipes = job.craftRecipes
+            if recipes == nil then
+                recipes = callValue(job.manager, "getAllCraftRecipes")
+                job.craftRecipes = recipes
+            end
+            if not stepRecipeCollection(job, "craftRecipeState", recipes,
+                scanCraftRecipe, startedAt, maxMs, maxItems) then
+                return false
+            end
+        end
         job.phase = "evolvedRecipes"
         return false
     end
 
     if job.phase == "evolvedRecipes" then
-        if job.manager then scanEvolvedRecipes(job.manager) end
+        if job.manager then
+            local recipes = job.evolvedRecipes
+            if recipes == nil then
+                recipes = callValue(job.manager, "getAllEvolvedRecipesList")
+                if recipes == nil then
+                    recipes = callValue(job.manager, "getAllEvolvedRecipes")
+                end
+                job.evolvedRecipes = recipes
+            end
+            if not stepRecipeCollection(job, "evolvedRecipeState", recipes,
+                scanEvolvedRecipe, startedAt, maxMs, maxItems) then
+                return false
+            end
+        end
         job.phase = "runtimeSources"
         return false
     end
 
     if job.phase == "runtimeSources" then
-        local source = RUNTIME_SOURCES[job.sourceIndex]
-        if source then
-            local value = _G[source.name]
-            if type(value) == "table" then
-                Availability.state.sourceCount = Availability.state.sourceCount + 1
-                scanRuntimeTable(value, source.channel, source.name, {}, 0, source.name)
-            end
-            job.sourceIndex = job.sourceIndex + 1
+        if not stepRuntimeSources(job, maxItems, maxMs, startedAt) then
             return false
         end
         job.phase = "finalize"

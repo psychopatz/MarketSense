@@ -205,10 +205,7 @@ function Core.findScriptItem(fullType)
 
     local manager = nil
     if getScriptManager then
-        local ok, result = pcall(getScriptManager)
-        if ok then
-            manager = result
-        end
+        manager = getScriptManager()
     end
 
     if not manager and ScriptManager and ScriptManager.instance then
@@ -219,14 +216,13 @@ function Core.findScriptItem(fullType)
         return nil
     end
 
-    local item = Core.safeCall(manager, "FindItem", nil, fullType)
-    if item then
-        return item
+    if manager.FindItem then
+        local item = manager:FindItem(fullType)
+        if item then return item end
     end
 
-    item = Core.safeCall(manager, "getItem", nil, fullType)
-    if item then
-        return item
+    if manager.getItem then
+        return manager:getItem(fullType)
     end
 
     return nil
@@ -238,13 +234,12 @@ function Core.createTemporaryInstance(fullType)
     if not scriptItem then return nil end
 
     if type(instanceItem) ~= "function" then return nil end
-    local ok, result = pcall(instanceItem, scriptItem)
-    return ok and result or nil
+    return instanceItem(scriptItem)
 end
 
 function Core.releaseTemporaryInstance(instance)
     if instance and type(instance.Remove) == "function" then
-        pcall(instance.Remove, instance)
+        instance:Remove()
     end
 end
 

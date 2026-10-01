@@ -13,7 +13,7 @@ from .scan_scope import normalize_category_filter
 
 
 # Bumped when the result row universe or exposed runtime evidence changes.
-CACHE_FORMAT_VERSION = 11
+CACHE_FORMAT_VERSION = 12
 
 # Presentation changes (GUI, terminal formatting, exports, and heuristic
 # reports) must not force the expensive Workshop/Lua evaluation to run again.
@@ -23,7 +23,7 @@ EVALUATOR_FILES = (
     "config.py", "evaluation.py", "models.py", "sandbox.py",
     "sandbox_defaults.json",
     "script_fields.py", "script_parser.py", "tile_parser.py", "workshop.py",
-    "workshop_paths.py", "scan_scope.py", "recipe_parser.py",
+    "workshop_paths.py", "scan_scope.py", "recipe_parser.py", "item_scope.py",
 )
 
 
@@ -114,6 +114,7 @@ def cache_key(lua: str, options: Any, roots: Iterable[Path], scripts_root: Path 
             "category_filter": normalize_category_filter(
                 getattr(options, "category_filter", "")
             ),
+            "item_types": list(getattr(options, "item_types", ()) or ()),
         },
         "inputs": {
             # Lua distribution/recipe/foraging data is part of the strict

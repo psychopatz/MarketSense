@@ -8,8 +8,8 @@ local Core = MarketSense.Core
 
 function State.getTimestamp()
     if type(getGameTime) == "function" then
-        local ok, gameTime = pcall(getGameTime)
-        if ok and gameTime then
+        local gameTime = getGameTime()
+        if gameTime then
             local year = Core.safeNumber(gameTime, "getYear", 0)
             local month = Core.safeNumber(gameTime, "getMonth", -1) + 1
             local day = Core.safeNumber(gameTime, "getDay", 0)
@@ -70,8 +70,8 @@ function State.debugLog(message)
 end
 
 function State.ensureRuntimeRules()
-    local ok = pcall(require, "MarketSense/MS_RuntimeRules")
-    if ok and MarketSense.RuntimeRules then
+    require "MarketSense/MS_RuntimeRules"
+    if MarketSense.RuntimeRules then
         return MarketSense.RuntimeRules
     end
     return nil
@@ -92,8 +92,8 @@ function State.getActiveModsList()
 
     if activated and activated.size and activated.get then
         for index = 0, activated:size() - 1 do
-            local ok, value = pcall(activated.get, activated, index)
-            if ok and value ~= nil then
+            local value = activated:get(index)
+            if value ~= nil then
                 active[#active + 1] = tostring(value)
             end
         end

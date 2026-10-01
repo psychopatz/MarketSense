@@ -185,18 +185,16 @@ function MarketSenseItemCatalogDebugWindow:refreshCatalog()
     self.statusText = nil
     local loaded = true
     if MarketSense and type(MarketSense.EnsureRuntimeRegistryLoaded) == "function" then
-        local ok, result = pcall(MarketSense.EnsureRuntimeRegistryLoaded, false)
-        loaded = ok and result ~= false
-        if not ok then self.statusText = tostring(result) end
+        local result = MarketSense.EnsureRuntimeRegistryLoaded(false)
+        loaded = result ~= false
     end
 
     local known = {}
     if loaded and MarketSense
         and type(MarketSense.GetAllKnownItems) == "function"
     then
-        local ok, result = pcall(MarketSense.GetAllKnownItems)
-        if ok and type(result) == "table" then known = result end
-        if not ok then self.statusText = tostring(result) end
+        local result = MarketSense.GetAllKnownItems()
+        if type(result) == "table" then known = result end
     end
 
     self.allItems = {}
@@ -359,11 +357,13 @@ function MarketSenseItemCatalogDebugWindow:onGenerateRuntimeItems()
     local startedAt = timestampMs()
     local ok, result
     if MarketSense and type(MarketSense.RegenerateItemRegistry) == "function" then
-        ok, result = pcall(MarketSense.RegenerateItemRegistry)
+        result = MarketSense.RegenerateItemRegistry()
+        ok = true
     elseif MarketSense
         and type(MarketSense.EnsureRuntimeRegistryLoaded) == "function"
     then
-        ok, result = pcall(MarketSense.EnsureRuntimeRegistryLoaded, true)
+        result = MarketSense.EnsureRuntimeRegistryLoaded(true)
+        ok = true
     else
         ok, result = false, "MarketSense runtime catalog generation is unavailable."
     end
@@ -378,7 +378,7 @@ function MarketSenseItemCatalogDebugWindow:onGenerateRuntimeItems()
     end
 
     if MarketSense and type(MarketSense.ClearRuntimeCache) == "function" then
-        pcall(MarketSense.ClearRuntimeCache)
+        MarketSense.ClearRuntimeCache()
     end
     self.selectedItem = nil
     self.selectedDetails = nil
@@ -408,14 +408,9 @@ function MarketSenseItemCatalogDebugWindow:inspectItem(row)
     self.selectedDetails = nil
     if not row or not MarketSense then return end
     if type(MarketSense.DebugItem) == "function" then
-        local ok, details = pcall(MarketSense.DebugItem, row.fullType, true)
-        if ok then self.selectedDetails = details
-        else self.statusText = tostring(details) end
+        self.selectedDetails = MarketSense.DebugItem(row.fullType, true)
     elseif type(MarketSense.GetPriceDetails) == "function" then
-        local ok, details = pcall(MarketSense.GetPriceDetails,
-            row.fullType, true)
-        if ok then self.selectedDetails = details
-        else self.statusText = tostring(details) end
+        self.selectedDetails = MarketSense.GetPriceDetails(row.fullType, true)
     end
 end
 

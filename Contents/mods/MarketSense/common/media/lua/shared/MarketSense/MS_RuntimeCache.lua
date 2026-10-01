@@ -16,6 +16,8 @@ MarketSense.RuntimeCache = MarketSense.RuntimeCache or {
         detailHits = 0,
         detailMisses = 0,
         evaluations = 0,
+        instanceRequests = 0,
+        queuedItems = 0,
         failures = 0,
     },
     built = false,
@@ -52,6 +54,8 @@ Cache.stats = Cache.stats or {}
 Cache.stats.detailHits = Cache.stats.detailHits or 0
 Cache.stats.detailMisses = Cache.stats.detailMisses or 0
 Cache.stats.evaluations = Cache.stats.evaluations or 0
+Cache.stats.instanceRequests = Cache.stats.instanceRequests or 0
+Cache.stats.queuedItems = Cache.stats.queuedItems or 0
 Cache.stats.failures = Cache.stats.failures or 0
 
 local function currentPricingRevision()
@@ -110,6 +114,17 @@ end
 function Cache.recordEvaluation()
     Cache.ensureCurrent()
     Cache.stats.evaluations = (Cache.stats.evaluations or 0) + 1
+end
+
+function Cache.recordInstanceRequest()
+    Cache.ensureCurrent()
+    Cache.stats.instanceRequests = (Cache.stats.instanceRequests or 0) + 1
+    Cache.stats.evaluations = (Cache.stats.evaluations or 0) + 1
+end
+
+function Cache.recordQueuedItem()
+    Cache.ensureCurrent()
+    Cache.stats.queuedItems = (Cache.stats.queuedItems or 0) + 1
 end
 
 function Cache.recordFailure()

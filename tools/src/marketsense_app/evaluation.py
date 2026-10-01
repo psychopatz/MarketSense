@@ -9,6 +9,7 @@ from pathlib import Path
 from .cache import ResultCache, cache_key
 from .config import DEFAULT_GAME_VERSION
 from .heuristics import heuristic_coverage
+from .item_scope import normalize_item_types, select_item_definitions
 from .reporting import build_summary
 from .review import low_confidence_rows, review_row
 from .sandbox import sandbox_definition_audit
@@ -40,6 +41,7 @@ class ScanOptions:
     sandbox_options: dict[str, int | float] = field(default_factory=dict)
     availability_filter: str = "obtainable"
     category_filter: str = ""
+    item_types: tuple[str, ...] = ()
 
 
 def _cache_for_options(
@@ -148,7 +150,14 @@ def evaluate(
         options.availability_filter,
         progress,
     )
-    runtime = run_runtime_phase(lua, discovery, evidence, progress)
+    requested_item_types = normalize_item_types(options.item_types)
+    runtime = run_runtime_phase(
+        lua,
+        discovery,
+        evidence,
+        progress,
+        item_types=requested_item_types,
+    )
     enriched = enrich_runtime_rows(
         runtime.bridge_result.rows,
         evidence.availability_records,
@@ -211,6 +220,16 @@ def evaluate(
         tile_sprite_properties=len(tile_properties),
     )
     summary["category_filter"] = category_filter or "all"
+    selected_definitions, missing_item_types = select_item_definitions(
+        discovery.scoped_ordered if category_filter else discovery.all_ordered,
+        requested_item_types,
+    )
+    summary["item_scope"] = {
+        "requested": list(requested_item_types),
+        "matched": [definition.full_type for definition in selected_definitions],
+        "missing": missing_item_types,
+        "runtime": "targeted" if requested_item_types else "catalog",
+    }
     summary["category_scope"] = {
         "requested": category_filter or "all",
         "discovered_definitions": len(all_ordered),

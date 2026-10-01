@@ -3,6 +3,17 @@ T.addPackagePaths()
 
 _G.unpack = _G.unpack or table.unpack
 
+-- The real runtime cache uses PZ's file bridge. Keep the standalone API
+-- fixture explicit about the empty-cache contract instead of relying on a
+-- production-only global.
+_G.getFileReader = function() return nil end
+_G.getFileWriter = function()
+    return {
+        write = function() end,
+        close = function() end,
+    }
+end
+
 local scriptItem = {
     fullName = "Base.DescriptionFood",
 }

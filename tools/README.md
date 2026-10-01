@@ -27,8 +27,28 @@ tools/run.sh --console --availability all --availability-chunk 2 --chunk-size 25
 tools/run.sh --console --category Food --availability all --chart none
 tools/run.sh --console --heuristic-gap-chunk 2 --chunk-size 25
 tools/run.sh --console --heuristic-gap-out /tmp/marketsense-gaps.json
+tools/run.sh --console --item Base.Axe --availability all --format json
+tools/run.sh --console --item Base.Axe --item Base.CannedCorn --format jsonl
+tools/run.sh --console --items-file /tmp/marketsense-items.txt --format json
+tools/run.sh --console --engine --item Base.Axe --instance --format json
 python3 tests/marketsense_tool_smoke.py
 ```
+
+Focused cases use exact item full types and only send the matched definitions to
+the fast Lua bridge. An items file may be a JSON list, `{ "items": [...] }`,
+or one full type per line. Targeted results have a separate cache key and report
+missing definitions under `summary.item_scope`.
+
+`--engine` starts a disposable Project Zomboid JVM script bootstrap with
+MarketSense and its dependency mounted as temporary user mods. It loads the
+real `ScriptManager`, shared/server Lua, and item definitions without creating a
+world or running the full asset server. `--instance` additionally creates a
+real `InventoryItem` and calls `GetPriceDetailsForInstance`. The first engine
+run pays the PZ JVM startup cost and is intentionally separate from the fast
+bridge. No active save or Workshop file is used.
+Engine rows include the actual script identity, per-case `elapsedMs`, and
+runtime-cache counters in metadata so cold registry work can be separated from
+steady-state pricing.
 
 The old direct command remains supported for scripts and existing workflows:
 

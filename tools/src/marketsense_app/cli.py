@@ -16,6 +16,8 @@ from .config import (
     DEFAULT_SANDBOX_SETTINGS_PATH,
 )
 from .evaluation import ScanOptions, evaluate
+from .engine_runner import EngineOptions, run_engine
+from .item_scope import load_item_types, normalize_item_types
 from .reporting import (
     write_csv,
     write_heuristic_gap_report,
@@ -61,6 +63,38 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         type=int,
         default=0,
         help="Evaluate at most this many unique items; 0 means all discovered items.",
+    )
+    parser.add_argument(
+        "--item",
+        action="append",
+        default=[],
+        help="Target an exact item full type; repeat or comma-separate for a focused run.",
+    )
+    parser.add_argument(
+        "--items-file",
+        type=Path,
+        help="Read exact item full types from a JSON list/object or one-per-line text file.",
+    )
+    parser.add_argument(
+        "--engine",
+        action="store_true",
+        help="Run targeted cases through a headless Project Zomboid script bootstrap.",
+    )
+    parser.add_argument(
+        "--instance",
+        action="store_true",
+        help="In engine mode, also price a real InventoryItem instance.",
+    )
+    parser.add_argument(
+        "--pz-root",
+        type=Path,
+        help="Project Zomboid install root for --engine; auto-detected when omitted.",
+    )
+    parser.add_argument(
+        "--engine-timeout",
+        type=float,
+        default=300.0,
+        help="Headless engine timeout in seconds (default: 300).",
     )
     parser.add_argument("--top", type=int, default=12, help="Rows shown in top/bottom tables.")
     parser.add_argument(
@@ -166,6 +200,39 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    item_types = list(args.item)
+    if args.items_file:
+        try:
+            item_types.extend(load_item_types(args.items_file))
+        except (OSError, ValueError) as error:
+            print(f"Invalid --items-file: {error}", file=sys.stderr)
+            return 2
+    item_types = list(normalize_item_types(item_types))
+    if args.engine:
+        if not item_types:
+            print("--engine requires --item or --items-file.", file=sys.stderr)
+            return 2
+        if args.engine_timeout <= 0:
+            print("--engine-timeout must be positive.", file=sys.stderr)
+            return 2
+        try:
+            result = run_engine(
+                EngineOptions(
+                    item_types=tuple(item_types),
+                    pz_root=args.pz_root,
+                    instance=args.instance,
+                    timeout_seconds=args.engine_timeout,
+                )
+            )
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+            print(f"MarketSense engine harness failed: {error}", file=sys.stderr)
+            return 1
+        if args.format == "jsonl":
+            for row in result.rows:
+                print(json.dumps(row, sort_keys=True))
+        else:
+            print(json.dumps({"metadata": result.metadata, "items": result.rows}, indent=2, sort_keys=True))
+        return 0
     if not 0.0 <= args.confidence_threshold <= 1.0:
         print("--confidence-threshold must be between 0 and 1.", file=sys.stderr)
         return 2
@@ -228,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
                 sandbox_options=sandbox_options,
                 availability_filter=args.availability,
                 category_filter=args.category,
+                item_types=tuple(item_types),
             ),
         )
     except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:

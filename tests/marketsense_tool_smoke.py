@@ -21,6 +21,11 @@ from marketsense_app.availability import (
 from marketsense_app.bridge import find_lua, run_lua
 from marketsense_app.evaluation import ScanOptions, load_cached_result, merge_scan_definitions
 from marketsense_app.heuristics import heuristic_coverage, heuristic_gap
+from marketsense_app.item_scope import (
+    load_item_types,
+    normalize_item_types,
+    select_item_definitions,
+)
 from marketsense_app.gui_filters import filter_rows, view_summary
 from marketsense_app.gui_items import ItemsMixin, category_metadata, metadata_label
 from marketsense_app.gui_overview import OverviewMixin
@@ -67,6 +72,9 @@ def main() -> int:
     assert pz_version_int("42") == 42000
     assert pz_version_int("42.1200") == 42999
     assert pz_version_int("not-a-version") == 0
+    assert normalize_item_types(("Base.Axe, Base.Axe", " base.Berry ")) == (
+        "Base.Axe", "base.Berry"
+    )
 
     scope_mod = WorkshopMod(Path("scope-fixture"), "scope", "Scope", "Scope", "fixture")
     scope_food = ItemDefinition(
@@ -182,6 +190,18 @@ def main() -> int:
         parser_mod = WorkshopMod(parser_root.parent.parent, "base", "Base", "Base", "base")
         parsed_weapon = parse_script(parser_script, parser_mod)
         assert parsed_weapon[0].props["weaponCategories"] == "base:improvised;base:spear"
+
+        item_file = root / "items.json"
+        item_file.write_text(
+            json.dumps({"items": ["Base.Axe", "Base.Axe", "Base.Berry"]}),
+            encoding="utf-8",
+        )
+        assert load_item_types(item_file) == ("Base.Axe", "Base.Berry")
+        selected, missing = select_item_definitions(
+            [scope_food, scope_weapon], ("Base.ScopeWeapon", "Base.Missing")
+        )
+        assert [item.full_type for item in selected] == ["Base.ScopeWeapon"]
+        assert missing == ["Base.Missing"]
 
         workshop = root / "workshop"
         narcotics = workshop / "123" / "mods" / "Narcotics"
@@ -379,6 +399,7 @@ tileset {
             filters=(), game_version="42.20", game_root=None, no_base_game=False,
             max_items=0, confidence_threshold=0.5, sandbox_options={},
             availability_filter="obtainable",
+            item_types=(),
         )
         key_before = cache_key(
             str(root / "marketsense.lua"), cache_options,
@@ -391,6 +412,13 @@ tileset {
             (media.parent,), scripts_root,
         )
         assert key_before != key_after
+        targeted_options = SimpleNamespace(**vars(cache_options))
+        targeted_options.item_types = ("Base.Axe",)
+        assert cache_key(
+            str(root / "marketsense.lua"), cache_options, (media.parent,), scripts_root,
+        ) != cache_key(
+            str(root / "marketsense.lua"), targeted_options, (media.parent,), scripts_root,
+        )
         unscoped_options = ScanOptions(
             workshop_roots=(media.parent,), category_filter="",
         )

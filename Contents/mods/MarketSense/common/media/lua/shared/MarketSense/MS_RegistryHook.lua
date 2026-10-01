@@ -15,13 +15,7 @@ Events.OnGameBoot.Add(function()
         return
     end
 
-    local ok, catalog = pcall(MarketSense.EnsureRuntimeRegistryLoaded, false)
-    if not ok then
-        if type(MarketSense.Log) == "function" then
-            MarketSense.Log("Error", "Init", "Registry boot load failed: " .. tostring(catalog))
-        end
-        return
-    end
+    local catalog = MarketSense.EnsureRuntimeRegistryLoaded(false)
 
     if type(MarketSense.Log) == "function" then
         local count = type(catalog) == "table" and tonumber(catalog.total) or 0

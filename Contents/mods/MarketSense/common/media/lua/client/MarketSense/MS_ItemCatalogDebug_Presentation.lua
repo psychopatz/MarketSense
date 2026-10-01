@@ -81,8 +81,7 @@ end
 
 local function timestampMs()
     if type(getTimestampMs) ~= "function" then return nil end
-    local ok, value = pcall(getTimestampMs)
-    return ok and tonumber(value) or nil
+    return tonumber(getTimestampMs())
 end
 
 local function contains(list, value)
@@ -174,8 +173,8 @@ local function categoryPath(row)
     if #path == 1 and primary ~= "" and MarketSense.TagMapper
         and type(MarketSense.TagMapper.getDefinition) == "function"
     then
-        local ok, definition = pcall(MarketSense.TagMapper.getDefinition, primary)
-        local subcategory = ok and definition and definition.subcategory or nil
+        local definition = MarketSense.TagMapper.getDefinition(primary)
+        local subcategory = definition and definition.subcategory or nil
         if subcategory and subcategory ~= "" and subcategory ~= "Root"
             and subcategory ~= "General"
         then
@@ -190,8 +189,8 @@ local function safeItemDisplayName(fullType)
     local cached = DISPLAY_NAME_CACHE[fullType]
     if cached then return cached end
     if type(getItemDisplayName) == "function" then
-        local ok, value = pcall(getItemDisplayName, fullType)
-        if ok and value and tostring(value) ~= "" then
+        local value = getItemDisplayName(fullType)
+        if value and tostring(value) ~= "" then
             local result = tostring(value)
             DISPLAY_NAME_CACHE[fullType] = result
             return result
@@ -562,8 +561,8 @@ local function registryDetails(fullType)
     if not MarketSense or type(MarketSense.GetRegistryDetails) ~= "function" then
         return nil
     end
-    local ok, result = pcall(MarketSense.GetRegistryDetails, fullType)
-    return ok and type(result) == "table" and result or nil
+    local result = MarketSense.GetRegistryDetails(fullType)
+    return type(result) == "table" and result or nil
 end
 
 local function baseItemSummary(details)

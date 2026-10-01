@@ -1,8 +1,7 @@
 version=1
 id=3803640668
 title=Market Sense
-
-description=MarketSense item taxonomy, runtime availability detection, and price evaluation service for     
+description=MarketSense item taxonomy, runtime availability detection, and price evaluation service for
 description=[b]Market Sense[/b]
 description=
 description=A reusable market knowledge and valuation dependency for Project Zomboid mods.
@@ -29,5 +28,8 @@ description=[*]Dynamic Trading
 description=[/list]
 description=
 description=Both systems can use the same item definitions and valuation logic without having to maintain their own separate versions.
+description=
+description=Workshop ID: 3803640668
+description=Mod ID: MarketSense
 tags=Build 42;Balance;Framework;Misc
-visibility=private
+visibility=public

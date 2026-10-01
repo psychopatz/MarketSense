@@ -19,6 +19,7 @@ from .availability import (
     normalize_availability_filter,
 )
 from .bridge import BridgeResult, run_lua_result
+from .item_scope import normalize_item_types, select_item_definitions
 from .models import ItemDefinition, WorkshopMod
 from .recipe_parser import discover_tool_recipe_usage, discover_yield_recipes
 from .scan_scope import candidate_definitions, normalize_category_filter, row_matches_category
@@ -287,11 +288,27 @@ def run_runtime_phase(
     discovery: DiscoveryPhase,
     evidence: EvidencePhase,
     progress: ProgressCallback | None = None,
+    item_types: tuple[str, ...] = (),
 ) -> RuntimePhase:
     """Project evidence and execute the unchanged Lua bridge contract."""
 
+    requested_item_types = normalize_item_types(item_types)
+    source_definitions = discovery.scoped_ordered if discovery.category_filter else discovery.all_ordered
+    selected_definitions, missing_item_types = select_item_definitions(
+        source_definitions,
+        requested_item_types,
+    )
+    if requested_item_types:
+        runtime_definitions = selected_definitions
+        report_progress(
+            progress,
+            f"lua: targeted selection {len(runtime_definitions):,} matched / "
+            f"{len(missing_item_types):,} missing",
+        )
+    else:
+        runtime_definitions = discovery.all_ordered
     bridge_definitions = emulate_pz_acquisition_flags(
-        discovery.all_ordered,
+        runtime_definitions,
         evidence.availability_records,
         evidence.tile_properties,
     )
@@ -302,7 +319,7 @@ def run_runtime_phase(
         evidence.effective_sandbox,
         yield_recipes=evidence.yield_recipes,
         tool_recipe_usage=evidence.tool_recipe_usage,
-        emitted_types={definition.full_type for definition in discovery.scoped_ordered},
+        emitted_types={definition.full_type for definition in runtime_definitions},
     )
     report_progress(progress, f"lua: returned {len(bridge_result.rows):,} rows")
     return RuntimePhase(bridge_definitions=bridge_definitions, bridge_result=bridge_result)
