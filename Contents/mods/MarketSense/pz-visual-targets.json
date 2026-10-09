@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "targets": [
+    {
+      "id": "marketsense.item-catalog",
+      "title": "MarketSense Item Catalog",
+      "category": "items",
+      "description": "Opens the production item catalog inspector over MarketSense catalog data without inventing an inventory item.",
+      "order": 10,
+      "tags": ["catalog", "items"],
+      "opener": {
+        "file": "common/media/lua/client/MarketSense/MS_ItemCatalogDebug_Window.lua",
+        "function": "Open"
+      },
+      "context_requirements": ["none"],
+      "expected_root": {
+        "class_name": "MarketSenseItemCatalogDebugWindow"
+      },
+      "supports_ui_tree": true,
+      "supports_batch": false
+    }
+  ]
+}
