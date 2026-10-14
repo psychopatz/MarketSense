@@ -1,4 +1,3 @@
-require "ISUI/ISTextEntryBox"
 require "ISUI/ISComboBox"
 require "MarketSense/MS_PublicAPI"
 require "PsychopatzCore/UI/PsychopatzUI"
@@ -44,12 +43,12 @@ end
 function MarketSenseItemCatalogDebugWindow:createChildren()
     PsychopatzWindow.createChildren(self)
 
-    self.search = ISTextEntryBox:new("", 0, 0, 100, 28)
-    self.search:initialise()
-    self.search:instantiate()
-    if self.search.setClearButton then self.search:setClearButton(true) end
-    self.search.onTextChange = function() self:queueVisibleRefresh() end
-    self:addChild(self.search)
+    self.search = UI.CreateSearchEntry(self, {
+        width = 100,
+        height = 28,
+        clearButton = true,
+        onTextChange = function() self:queueVisibleRefresh() end,
+    })
 
     self.filterCombo = ISComboBox:new(0, 0, 100, 28, self,
         MarketSenseItemCatalogDebugWindow.onFilterChanged)
