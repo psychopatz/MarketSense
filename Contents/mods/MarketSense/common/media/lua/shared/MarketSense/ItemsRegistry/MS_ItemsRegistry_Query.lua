@@ -193,20 +193,10 @@ function Query.query(options)
 
     local index = buildIndex()
     local rows
-    if category and moddedOnly then
-        local source = obtainableOnly
-            and (index.obtainableByCategory[category] or {})
-            or (index.byCategory[category] or {})
-        rows = {}
-        local catalog = Registry.state.catalog
-        for _, fullType in ipairs(source) do
-            local entry = catalog.items[fullType]
-            if entry and tostring(entry.sourceModId or "") ~= "Vanilla"
-                and tostring(entry.sourceModId or "") ~= ""
-            then
-                rows[#rows + 1] = fullType
-            end
-        end
+    if category and moddedOnly and obtainableOnly then
+        rows = index.obtainableModdedByCategory[category] or {}
+    elseif category and moddedOnly then
+        rows = index.moddedByCategory[category] or {}
     elseif moddedOnly and obtainableOnly then
         rows = index.obtainableModded
     elseif moddedOnly then

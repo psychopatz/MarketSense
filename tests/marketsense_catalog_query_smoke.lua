@@ -99,6 +99,17 @@ T.equal(#modded, 1,
 T.equal(modded[1].fullType, "Mod.Item4300",
     "modded query reaches item beyond former 4096 boundary")
 
+local moddedFood = api.QueryItems({
+    category = "Food",
+    obtainableOnly = true,
+    moddedOnly = true,
+    limit = 8,
+})
+T.equal(#moddedFood, 1,
+    "category+modded query uses the canonical bounded index")
+T.equal(moddedFood[1].fullType, "Mod.Item4300",
+    "category+modded query preserves the beyond-cap item")
+
 items["Zed.NewItem"] = {
     fullType = "Zed.NewItem",
     moduleName = "Zed",
