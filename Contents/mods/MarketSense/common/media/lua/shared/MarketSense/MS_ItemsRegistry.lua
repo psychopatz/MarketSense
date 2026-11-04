@@ -25,6 +25,13 @@ Registry.regenerate = Runtime.rebuildCache
 Registry.refreshCatalogPrices = Runtime.refreshCatalogPrices
 Registry.scheduleRebuild = Runtime.scheduleRebuild
 
+local Query = require "MarketSense/ItemsRegistry/MS_ItemsRegistry_Query"
+Registry.queryItems = Query.query
+Registry.getQueryItem = Query.get
+Registry.isQueryReady = Query.isReady
+Registry.getQueryRevision = Query.getRevision
+Registry.invalidateQuery = Query.invalidate
+
 function Registry.getAvailability(fullType)
     if not Availability or type(Availability.get) ~= "function" then
         return nil

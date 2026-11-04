@@ -268,6 +268,47 @@ function API.GetRegistryDetails(fullType)
     return nil
 end
 
+function API.GetCatalogRevision()
+    local registry = MarketSense.ItemsRegistry
+    if registry and type(registry.getQueryRevision) == "function" then
+        return registry.getQueryRevision()
+    end
+    return math.max(0, math.floor(tonumber(
+        MarketSense.Config and MarketSense.Config.ItemRegistryRevision
+    ) or 0))
+end
+
+function API.GetPricingRevision()
+    return math.max(0, math.floor(tonumber(
+        MarketSense.ItemRuntimeConfig
+            and MarketSense.ItemRuntimeConfig.pricingRevision
+    ) or 0))
+end
+
+function API.IsCatalogReady()
+    local registry = MarketSense.ItemsRegistry
+    return registry
+        and type(registry.isQueryReady) == "function"
+        and registry.isQueryReady() == true
+        or false
+end
+
+function API.GetCatalogItem(fullType, options)
+    local registry = MarketSense.ItemsRegistry
+    if not registry or type(registry.getQueryItem) ~= "function" then
+        return nil, "catalog_query_unavailable"
+    end
+    return registry.getQueryItem(fullType, options)
+end
+
+function API.QueryItems(options)
+    local registry = MarketSense.ItemsRegistry
+    if not registry or type(registry.queryItems) ~= "function" then
+        return {}, "catalog_query_unavailable"
+    end
+    return registry.queryItems(options)
+end
+
 function API.GetRuntimeRules()
     return RuntimeRules and RuntimeRules.getRules and RuntimeRules.getRules() or {}
 end
