@@ -527,7 +527,7 @@ function MarketSenseItemCatalogDebugWindow.Open()
 
     local window = UI.NewWindow(MarketSenseItemCatalogDebugWindow, {
         title = tr("UI_MarketSenseCatalog_Title",
-            "MarketSense Item Test Catalog"),
+            "Item Catalog & Evaluator"),
         persistenceKey = "MarketSense.ItemCatalogDebug",
         resizable = true,
         responsiveSpec = {
@@ -551,7 +551,7 @@ if PsychopatzCore.DebugHub and PsychopatzCore.DebugHub.RegisterTool then
         id = "marketsense.itemCatalog",
         source = "MarketSense",
         order = 20,
-        title = tr("UI_MarketSenseCatalog_ToolTitle", "Item Catalog"),
+        title = tr("UI_MarketSenseCatalog_ToolTitle", "Item Catalog & Evaluator"),
         description = tr("UI_MarketSenseCatalog_ToolDescription",
             "Display every available MarketSense item by taxonomy and test its runtime evaluator."),
         available = function()

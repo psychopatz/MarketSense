@@ -25,8 +25,8 @@ local CATEGORY_ORDER = {
 }
 
 local TEXT_FALLBACKS = {
-    UI_MarketSenseCatalog_Title = "MarketSense Item Test Catalog",
-    UI_MarketSenseCatalog_ToolTitle = "Item Catalog",
+    UI_MarketSenseCatalog_Title = "Item Catalog & Evaluator",
+    UI_MarketSenseCatalog_ToolTitle = "Item Catalog & Evaluator",
     UI_MarketSenseCatalog_ToolDescription = "Display every available MarketSense item by taxonomy and test its runtime evaluator.",
     UI_MarketSenseCatalog_Collapse = "Collapse all",
     UI_MarketSenseCatalog_Expand = "Expand all",

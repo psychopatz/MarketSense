@@ -1,6 +1,6 @@
 {
-    "UI_MarketSenseCatalog_Title": "Catalog ng Test Item ng MarketSense",
-    "UI_MarketSenseCatalog_ToolTitle": "Catalog ng Item",
+    "UI_MarketSenseCatalog_Title": "Catalog at Evaluator ng Item",
+    "UI_MarketSenseCatalog_ToolTitle": "Catalog at Evaluator ng Item",
     "UI_MarketSenseCatalog_ToolDescription": "Ipakita ang lahat ng available na MarketSense item ayon sa taxonomy at subukan ang runtime evaluator nito.",
     "UI_MarketSenseCatalog_Heading": "MGA AVAILABLE NA MARKET ITEM",
     "UI_MarketSenseCatalog_Collapse": "I-collapse lahat",
